@@ -8,6 +8,51 @@ import './styles/mobile-optimizations.css'
 import './styles/custom-utilities.css'
 import { configureWebViewAuth, getEnvironmentInfo } from './utils/webViewDetection'
 
+// Initialize Google Analytics and GTM
+function initializeAnalytics() {
+  try {
+    // Google Tag Manager initialization
+    const gtmScript = document.createElement('script');
+    gtmScript.async = true;
+    gtmScript.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-5FNR895V';
+    document.head.appendChild(gtmScript);
+
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      'gtm.start': new Date().getTime(),
+      'event': 'gtm.js'
+    });
+
+    // Google Analytics initialization
+    const gtagScript = document.createElement('script');
+    gtagScript.async = true;
+    gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-FQJS8LREP5';
+    document.head.appendChild(gtagScript);
+
+    window.gtag = function() {
+      window.dataLayer.push(arguments);
+    };
+    window.gtag('js', new Date());
+    window.gtag('config', 'G-FQJS8LREP5');
+
+    // Google AdSense
+    const adsenseScript = document.createElement('script');
+    adsenseScript.async = true;
+    adsenseScript.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6003470714469240';
+    adsenseScript.setAttribute('crossorigin', 'anonymous');
+    document.head.appendChild(adsenseScript);
+  } catch (error) {
+    console.error('Error initializing analytics:', error);
+  }
+}
+
+// Initialize analytics after DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeAnalytics);
+} else {
+  initializeAnalytics();
+}
+
 // Configure WebView authentication on app start
 configureWebViewAuth();
 

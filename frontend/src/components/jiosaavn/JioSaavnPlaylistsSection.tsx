@@ -27,14 +27,14 @@ type CachedPlaylistPayload = {
 const CACHE_PREFIX = 'jiosaavn-cache-';
 
 const CATEGORY_TTL_MS: Record<string, number> = {
-  trending: 30 * 60 * 1000,
-  'most-viral': 45 * 60 * 1000,
-  'most-played': 60 * 60 * 1000,
-  'top-dhurandhar': 60 * 60 * 1000,
-  'new-arrivals': 45 * 60 * 1000,
-  bollywood: 60 * 60 * 1000,
-  romantic: 60 * 60 * 1000,
-  punjabi: 60 * 60 * 1000,
+  trending: 10 * 60 * 1000,         // 10 min (was 30) - show fresh content
+  'most-viral': 12 * 60 * 1000,     // 12 min (was 45) - fresh viral content
+  'most-played': 15 * 60 * 1000,    // 15 min (was 60) - regular refresh
+  'top-dhurandhar': 15 * 60 * 1000, // 15 min (was 60)
+  'new-arrivals': 12 * 60 * 1000,   // 12 min (was 45) - always fresh
+  bollywood: 15 * 60 * 1000,        // 15 min (was 60)
+  romantic: 15 * 60 * 1000,         // 15 min (was 60)
+  punjabi: 15 * 60 * 1000,          // 15 min (was 60)
 };
 
 function getContextSignature(categoryId: string): string {
@@ -171,12 +171,9 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       setPlaylists(cached.data.slice(0, limit));
     }
 
-    if (cached && !isStale(cached, categoryId, ctxSignature) && cached.data.length > 0) {
-      return;
-    }
-
-    // Stale-while-revalidate: keep cached UI (if any), fetch fresh in background.
-    fetchPlaylists({ forceRefresh: false, ctxSignature });
+    // Always fetch fresh data - don't rely on cache for homepage
+    // This ensures randomization and fresh playlists on every load
+    fetchPlaylists({ forceRefresh: true, ctxSignature });
   }, [categoryId, disableAutoFetch, limit, playlistsOverride]);
 
   const fetchPlaylists = async (opts?: { forceRefresh?: boolean; ctxSignature?: string }) => {
@@ -190,7 +187,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       let data: JioSaavnPlaylist[];
       
       // Use optimized methods with timeout for better performance
-      const fetchPromise = jioSaavnService.getFreshPlaylistsByCategory(categoryId, limit, forceRefresh);
+      const fetchPromise = jioSaavnService.getFreshPlaylistsByCategory(categoryId, limit, true);
 
       // Add timeout to prevent slow loading
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -203,11 +200,14 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         // Timeout fetching playlists, using fallback
         // Fast fallback
         if (categoryId === 'trending') {
-          data = await jioSaavnService.searchPlaylists('trending now', limit, forceRefresh);
+          data = await jioSaavnService.searchPlaylists('trending now', limit, true);
         } else {
-          data = await jioSaavnService.searchPlaylists(categoryId, limit, forceRefresh);
+          data = await jioSaavnService.searchPlaylists(categoryId, limit, true);
         }
       }
+      
+      // Always shuffle results for variety and randomness
+      data = shufflePlaylistsArray(data);
       
       // Limit the results if needed
       if (data.length > limit) {
@@ -227,6 +227,16 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper to shuffle playlists
+  const shufflePlaylistsArray = (playlists: JioSaavnPlaylist[]): JioSaavnPlaylist[] => {
+    const shuffled = [...playlists];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
   };
 
   const handlePlaylistClick = (playlist: JioSaavnPlaylist) => {

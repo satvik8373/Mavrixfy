@@ -15,20 +15,54 @@ import { updateMetaTags, metaPresets } from '@/utils/metaTags';
 import { PromotionsBanner } from '@/components/PromotionsBanner';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 
-const HOME_JIOSAAVN_SECTION_ORDER = [
+const ALL_JIOSAAVN_CATEGORIES = [
   'trending',
   'most-viral',
   'most-played',
   'top-dhurandhar',
   'new-arrivals',
+  'party',
+  'workout',
+  'romance',
+  'devotional',
+  'indie',
+  'ghazals',
+  'classical',
+  'dance',
+  'pop',
 ] as const;
 
-const HOME_JIOSAAVN_TITLES: Record<(typeof HOME_JIOSAAVN_SECTION_ORDER)[number], string> = {
+const HOME_JIOSAAVN_TITLES: Record<(typeof ALL_JIOSAAVN_CATEGORIES)[number], string> = {
   trending: 'Trending Now',
   'most-viral': 'Most Viral',
   'most-played': 'Most Played',
   'top-dhurandhar': 'Top Dhurandhar',
   'new-arrivals': 'New Arrivals',
+  'party': 'Party Hits',
+  'workout': 'Workout Mix',
+  'romance': 'Romantic Vibes',
+  'devotional': 'Devotional',
+  'indie': 'Indie Gems',
+  'ghazals': 'Ghazals',
+  'classical': 'Classical',
+  'dance': 'Dance Tracks',
+  'pop': 'Pop Hits',
+};
+
+// Shuffle array utility
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// Get random categories for homepage (5-6 sections)
+const getRandomHomeCategories = (): typeof ALL_JIOSAAVN_CATEGORIES => {
+  const shuffled = shuffleArray([...ALL_JIOSAAVN_CATEGORIES]);
+  return shuffled.slice(0, 6) as typeof ALL_JIOSAAVN_CATEGORIES;
 };
 
 const HomePage = () => {
@@ -46,6 +80,7 @@ const HomePage = () => {
   const [likedSongsColor, setLikedSongsColor] = useState<string | null>(null);
   const [playerThemeColor, setPlayerThemeColor] = useState<string>('rgb(60, 40, 120)');
   const [homeJioCategories, setHomeJioCategories] = useState<HomeJioSaavnCategoryData[]>([]);
+  const [randomCategories, setRandomCategories] = useState<typeof ALL_JIOSAAVN_CATEGORIES | null>(null);
   const homePlaylistCardScrollWidth = 160;
   const homePlaylistCardItemWidth = 160;
 
@@ -53,6 +88,11 @@ const HomePage = () => {
   useEffect(() => {
     loadLikedSongs();
   }, [loadLikedSongs]);
+
+  // Generate random categories on mount
+  useEffect(() => {
+    setRandomCategories(getRandomHomeCategories());
+  }, []);
 
   // Update meta tags for home page
   useEffect(() => {
@@ -400,8 +440,8 @@ const HomePage = () => {
             </HorizontalScroll>
           </SectionWrapper>
 
-          {/* JioSaavn Sections */}
-          {HOME_JIOSAAVN_SECTION_ORDER.map((categoryId) => {
+          {/* JioSaavn Sections - Randomized */}
+          {(randomCategories || getRandomHomeCategories()).map((categoryId) => {
             const category = homeJioCategoryMap.get(categoryId);
 
             return (
@@ -409,7 +449,7 @@ const HomePage = () => {
                 <JioSaavnPlaylistsSection
                   title={category?.title || HOME_JIOSAAVN_TITLES[categoryId]}
                   categoryId={categoryId}
-                  limit={15}
+                  limit={12}
                   showViewAll={true}
                   playlistsOverride={category?.results ?? null}
                   disableAutoFetch={homeJioCategories.length > 0}
