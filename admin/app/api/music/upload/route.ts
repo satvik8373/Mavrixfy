@@ -47,7 +47,7 @@ async function uploadToCloudinary(buffer: Buffer, publicId: string): Promise<str
 
   // Build multipart form
   const form = new FormData();
-  form.append('file', new Blob([buffer], { type: 'audio/mpeg' }), `${publicId}.mp3`);
+  form.append('file', new Blob([new Uint8Array(buffer)], { type: 'audio/mpeg' }), `${publicId}.mp3`);
   form.append('api_key', apiKey);
   form.append('timestamp', String(timestamp));
   form.append('signature', signature);

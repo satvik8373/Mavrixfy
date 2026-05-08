@@ -33,10 +33,10 @@ export default function ArtistsPage() {
     if (!form.name.trim()) { setError('Artist name is required.'); return; }
     setSaving(true); setError('');
     try {
-      const data = { name: form.name.trim(), bio: form.bio.trim() || null, imageUrl: form.imageUrl.trim() || null, verified: form.verified, updatedAt: serverTimestamp() };
+      const data = { name: form.name.trim(), bio: form.bio.trim() || undefined, imageUrl: form.imageUrl.trim() || undefined, verified: form.verified, updatedAt: serverTimestamp() };
       if (editId) {
         await updateDoc(doc(db, 'artists', editId), data);
-        setArtists(prev => prev.map(a => a.id === editId ? { ...a, ...data, id: editId } : a));
+        setArtists(prev => prev.map(a => a.id === editId ? { ...a, ...data, id: editId } as Artist : a));
       } else {
         const ref = await addDoc(collection(db, 'artists'), { ...data, createdAt: serverTimestamp() });
         setArtists(prev => [{ id: ref.id, ...data } as Artist, ...prev]);

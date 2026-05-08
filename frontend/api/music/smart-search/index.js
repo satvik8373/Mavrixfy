@@ -1,63 +1,54 @@
 /**
  * Smart Search API — Vercel serverless function
- * Searches JioSaavn (3 providers with fallback) + Firestore catalog via REST API
+ * Searches the configured Mavrixfy song API + Firestore catalog via REST API
  * Runs server-side so no CORS issues from the browser
  */
 
-const JIOSAAVN_PROVIDERS = [
-  'https://saavn.sumit.co/api/search/songs',
-  'https://jiosaavn-api-privatecvc2.vercel.app/search/songs',
-  'https://saavn.me/search/songs',
-];
+import { buildSongApiUrl } from '../utils.js';
 
 const FIREBASE_PROJECT_ID = 'spotify-8fefc';
 const FIRESTORE_REST = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 async function searchJioSaavn(query, limit = 20) {
-  for (const baseUrl of JIOSAAVN_PROVIDERS) {
-    try {
-      const url = `${baseUrl}?query=${encodeURIComponent(query)}&limit=${limit}`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'MavrixfyApp/1.0' },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const raw = json?.data?.results || json?.results || [];
-      const songs = raw
-        .filter(s => s?.id)
-        .map(s => {
-          const downloads = Array.isArray(s.downloadUrl) ? s.downloadUrl : [];
-          const audioUrl =
-            downloads.find(d => d.quality === '320kbps')?.url ||
-            downloads.find(d => d.quality === '160kbps')?.url ||
-            downloads[downloads.length - 1]?.url || '';
-          const images = Array.isArray(s.image) ? s.image : [];
-          const imageUrl =
-            images.find(i => i.quality === '500x500')?.url ||
-            images[images.length - 1]?.url || '';
-          const artist =
-            s.artists?.primary?.map(a => a.name).join(', ') ||
-            s.primaryArtists || s.artist || 'Unknown Artist';
-          return {
-            id: s.id,
-            title: s.name || s.title || '',
-            artist,
-            album: s.album?.name || '',
-            year: s.year ? Number(s.year) : null,
-            duration: Number(s.duration) || 0,
-            imageUrl,
-            audioUrl,
-            source: 'jiosaavn',
-          };
-        })
-        .filter(s => s.audioUrl);
-      if (songs.length > 0) return songs;
-    } catch {
-      // try next provider
-    }
+  try {
+    const res = await fetch(buildSongApiUrl('/search/songs', { query, limit }), {
+      headers: { 'User-Agent': 'MavrixfyApp/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const raw = json?.data?.results || json?.results || [];
+    return raw
+      .filter(s => s?.id)
+      .map(s => {
+        const downloads = Array.isArray(s.downloadUrl) ? s.downloadUrl : [];
+        const audioUrl =
+          downloads.find(d => d.quality === '320kbps')?.url ||
+          downloads.find(d => d.quality === '160kbps')?.url ||
+          downloads[downloads.length - 1]?.url || '';
+        const images = Array.isArray(s.image) ? s.image : [];
+        const imageUrl =
+          images.find(i => i.quality === '500x500')?.url ||
+          images[images.length - 1]?.url || '';
+        const artist =
+          s.artists?.primary?.map(a => a.name).join(', ') ||
+          s.primaryArtists || s.artist || 'Unknown Artist';
+        return {
+          id: s.id,
+          title: s.name || s.title || '',
+          artist,
+          album: s.album?.name || '',
+          year: s.year ? Number(s.year) : null,
+          duration: Number(s.duration) || 0,
+          imageUrl,
+          audioUrl,
+          source: 'jiosaavn',
+        };
+      })
+      .filter(s => s.audioUrl);
+  } catch {
+    return [];
   }
-  return [];
 }
 
 function getFieldValue(field) {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL for JioSaavn API
-const JIOSAAVN_API_BASE_URL = process.env.JIOSAAVN_API_BASE_URL || 'https://saavn.dev/api';
+const JIOSAAVN_API_BASE_URL = process.env.JIOSAAVN_API_BASE_URL || 'https://mavrixfy-song-api.vercel.app/api';
 
 // Helper function to make JioSaavn API calls
 const fetchFromJioSaavn = async (endpoint, queryParams = {}) => {

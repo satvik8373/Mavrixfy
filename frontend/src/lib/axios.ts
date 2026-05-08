@@ -1,52 +1,13 @@
 /// <reference types="vite/client" />
 
 import axios from "axios";
+import { API_BASE_URL } from "./apiConfig";
 // Avoid importing Firebase eagerly to keep initial bundle small
 // We'll lazy-import inside the interceptor
 
-// Get API URL from environment variables or fallback to default
-const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim();
-
-const hostname = window.location.hostname;
-const isLocalhost =
-	hostname === "localhost" ||
-	hostname === "127.0.0.1" ||
-	hostname === "::1";
-const isProductionHost =
-	hostname === "mavrixfy.site" ||
-	hostname === "www.mavrixfy.site";
-const isHostedDeployment = !isLocalhost;
-
-const normalizeApiUrl = (value: string) => {
-	if (!value) return value;
-	if (value === "/api") return value;
-	return value.endsWith("/api") ? value : value.replace(/\/+$/, "") + "/api";
-};
-
-// Force correct API URL for production
-let FINAL_API_URL = RAW_API_URL;
-
-// Resolve API URL robustly for local dev + hosted previews/PWA installs.
-if (!RAW_API_URL) {
-	FINAL_API_URL = isHostedDeployment ? "/api" : "http://localhost:5000/api";
-} else if (isProductionHost) {
-	if (RAW_API_URL.includes("localhost")) {
-		// Safety guard: never use localhost API on production domain.
-		FINAL_API_URL = "/api";
-	} else if (/^https?:\/\/spotify-api-drab\.vercel\.app\/?api?$/i.test(RAW_API_URL)) {
-		// Route production traffic through same-origin proxy to avoid browser CORS failures.
-		FINAL_API_URL = "/api";
-	}
-}
-
-FINAL_API_URL = normalizeApiUrl(FINAL_API_URL);
-
-// Remove trailing slash and ensure proper formatting
-const cleanApiUrl = FINAL_API_URL === "/api" ? FINAL_API_URL : FINAL_API_URL.replace(/\/+$/, '');
-
 // Create and configure axios instance
 const axiosInstance = axios.create({
-	baseURL: cleanApiUrl,
+	baseURL: API_BASE_URL,
 	timeout: 20000,
 	withCredentials: true
 });

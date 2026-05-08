@@ -9,6 +9,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { buildNewUserProfileDocument } from '@/services/userProfileDocument';
+import { buildApiUrl } from '@/lib/apiConfig';
 
 interface LocationState {
   email: string;
@@ -63,14 +64,8 @@ const VerifyEmail = () => {
 
   const sendVerificationCode = async () => {
     try {
-      // Get base URL without /api since we'll add the full path
-      let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      
-      // Remove /api suffix if present
-      API_URL = API_URL.replace(/\/api\/?$/, '');
-      
       // Call backend API to send OTP
-      const response = await fetch(`${API_URL}/api/otp/send`, {
+      const response = await fetch(buildApiUrl('/otp/send'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,14 +143,8 @@ const VerifyEmail = () => {
     setLoading(true);
 
     try {
-      // Get base URL without /api since we'll add the full path
-      let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      
-      // Remove /api suffix if present
-      API_URL = API_URL.replace(/\/api\/?$/, '');
-      
       // Verify OTP with backend
-      const verifyResponse = await fetch(`${API_URL}/api/otp/verify`, {
+      const verifyResponse = await fetch(buildApiUrl('/otp/verify'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

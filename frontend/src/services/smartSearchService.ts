@@ -1,4 +1,5 @@
 import { getCatalogSongs, filterCatalogSongs } from './catalogService';
+import { buildSongApiUrl } from '@/lib/apiConfig';
 
 export interface SmartSearchSong {
     id: string;
@@ -38,13 +39,6 @@ export interface SmartSearchResult {
 // Vercel serverless function — handles JioSaavn + catalog server-side (no CORS)
 const SMART_SEARCH_API = '/api/music/smart-search';
 
-// Direct JioSaavn fallback (for local dev where serverless isn't running)
-const JIOSAAVN_URLS = [
-    'https://saavn.sumit.co/api/search/songs',
-    'https://jiosaavn-api-privatecvc2.vercel.app/search/songs',
-    'https://saavn.me/search/songs',
-];
-
 async function fetchViaServerless(query: string): Promise<SmartSearchSong[] | null> {
     try {
         const res = await fetch(
@@ -61,47 +55,43 @@ async function fetchViaServerless(query: string): Promise<SmartSearchSong[] | nu
 }
 
 async function fetchJioSaavnDirect(query: string, limit = 20): Promise<SmartSearchSong[]> {
-    for (const baseUrl of JIOSAAVN_URLS) {
-        try {
-            const url = `${baseUrl}?query=${encodeURIComponent(query)}&limit=${limit}`;
-            const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-            if (!res.ok) continue;
-            const json = await res.json();
-            const raw: any[] = json?.data?.results || json?.results || [];
-            const songs: SmartSearchSong[] = raw
-                .filter((s: any) => s?.id)
-                .map((s: any) => {
-                    const downloads: any[] = Array.isArray(s.downloadUrl) ? s.downloadUrl : [];
-                    const audioUrl =
-                        downloads.find((d: any) => d.quality === '320kbps')?.url ||
-                        downloads.find((d: any) => d.quality === '160kbps')?.url ||
-                        downloads[downloads.length - 1]?.url || '';
-                    const images: any[] = Array.isArray(s.image) ? s.image : [];
-                    const imageUrl =
-                        images.find((i: any) => i.quality === '500x500')?.url ||
-                        images[images.length - 1]?.url || '';
-                    const artist =
-                        s.artists?.primary?.map((a: any) => a.name).join(', ') ||
-                        s.primaryArtists || s.artist || 'Unknown Artist';
-                    return {
-                        id: s.id,
-                        title: s.name || s.title || '',
-                        artist,
-                        album: s.album?.name || '',
-                        year: s.year ? Number(s.year) : null,
-                        duration: Number(s.duration) || 0,
-                        imageUrl,
-                        audioUrl,
-                        source: 'jiosaavn',
-                    };
-                })
-                .filter((s: SmartSearchSong) => s.audioUrl);
-            if (songs.length > 0) return songs;
-        } catch {
-            // try next provider
-        }
+    try {
+        const url = buildSongApiUrl(`/search/songs?query=${encodeURIComponent(query)}&limit=${limit}`);
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) return [];
+        const json = await res.json();
+        const raw: any[] = json?.data?.results || json?.results || [];
+        return raw
+            .filter((s: any) => s?.id)
+            .map((s: any) => {
+                const downloads: any[] = Array.isArray(s.downloadUrl) ? s.downloadUrl : [];
+                const audioUrl =
+                    downloads.find((d: any) => d.quality === '320kbps')?.url ||
+                    downloads.find((d: any) => d.quality === '160kbps')?.url ||
+                    downloads[downloads.length - 1]?.url || '';
+                const images: any[] = Array.isArray(s.image) ? s.image : [];
+                const imageUrl =
+                    images.find((i: any) => i.quality === '500x500')?.url ||
+                    images[images.length - 1]?.url || '';
+                const artist =
+                    s.artists?.primary?.map((a: any) => a.name).join(', ') ||
+                    s.primaryArtists || s.artist || 'Unknown Artist';
+                return {
+                    id: s.id,
+                    title: s.name || s.title || '',
+                    artist,
+                    album: s.album?.name || '',
+                    year: s.year ? Number(s.year) : null,
+                    duration: Number(s.duration) || 0,
+                    imageUrl,
+                    audioUrl,
+                    source: 'jiosaavn',
+                };
+            })
+            .filter((s: SmartSearchSong) => s.audioUrl);
+    } catch {
+        return [];
     }
-    return [];
 }
 
 function rankScore(s: SmartSearchSong, query: string): number {

@@ -13,6 +13,7 @@ interface Song { id: string; title: string; artist: string; imageUrl?: string; }
 interface Playlist {
   id: string; name: string; description?: string;
   imageUrl?: string; songs?: string[]; isPublic?: boolean; createdAt?: any;
+  createdBy?: { uid?: string; fullName?: string; imageUrl?: string | null };
 }
 
 const EMPTY_FORM = { name: '', description: '', imageUrl: '', isPublic: true };
@@ -55,15 +56,15 @@ export default function PlaylistsPage() {
     try {
       const data = {
         name: form.name.trim(),
-        description: form.description.trim() || null,
-        imageUrl: form.imageUrl.trim() || null,
+        description: form.description.trim() || undefined,
+        imageUrl: form.imageUrl.trim() || undefined,
         isPublic: form.isPublic,
         updatedAt: serverTimestamp(),
         createdBy: { uid: session?.uid, fullName: session?.name, imageUrl: null },
       };
       if (editId) {
         await updateDoc(doc(db, 'playlists', editId), data);
-        setPlaylists(prev => prev.map(p => p.id === editId ? { ...p, ...data, id: editId } : p));
+        setPlaylists(prev => prev.map(p => p.id === editId ? { ...p, ...data, id: editId } as Playlist : p));
       } else {
         const ref = await addDoc(collection(db, 'playlists'), { ...data, songs: [], createdAt: serverTimestamp() });
         setPlaylists(prev => [{ id: ref.id, ...data, songs: [] } as Playlist, ...prev]);
@@ -156,6 +157,11 @@ export default function PlaylistsPage() {
                     <h3 className="font-semibold text-gray-900 truncate">{playlist.name}</h3>
                     {playlist.description && (
                       <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{playlist.description}</p>
+                    )}
+                    {playlist.createdBy?.fullName && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        Created by: <span className="font-medium text-gray-600">{playlist.createdBy.fullName}</span>
+                      </p>
                     )}
                   </div>
                   {playlist.isPublic === false && (

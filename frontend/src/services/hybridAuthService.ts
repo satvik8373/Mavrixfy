@@ -14,12 +14,13 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import axiosInstance from "@/lib/axios";
+import { API_BASE_URL } from "@/lib/apiConfig";
 import { isWebView, clearAuthCache } from "@/utils/webViewDetection";
 import { signInWithFacebook, initializeFacebookSDK } from "./facebookAuthService";
 import { buildNewUserProfileDocument, buildUserProfileDocument } from "@/services/userProfileDocument";
 
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = API_BASE_URL;
 
 /**
  * Hybrid authentication service that works with both Firebase and the backend API

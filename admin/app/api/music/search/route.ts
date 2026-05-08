@@ -68,28 +68,22 @@ type ProviderQueryResult = {
   results: NormalizedSong[];
 };
 
+const SONG_API_BASE_URL = (
+  process.env.JIOSAAVN_API_BASE_URL ||
+  process.env.VITE_SONG_API_URL ||
+  'https://mavrixfy-song-api.vercel.app/api'
+).replace(/\/+$/, '');
+
 const JIOSAAVN_PROVIDERS: ProviderConfig[] = [
   {
     source: 'jiosaavn',
-    label: 'JioSaavn',
-    searchUrl: 'https://saavn.sumit.co/api/search/songs',
-    globalUrl: 'https://saavn.sumit.co/api/search',
-  },
-  {
-    source: 'jiosaavn-backup',
-    label: 'JioSaavn Backup',
-    searchUrl: 'https://jiosaavn-api-privatecvc2.vercel.app/search/songs',
-    globalUrl: 'https://jiosaavn-api-privatecvc2.vercel.app/search',
-  },
-  {
-    source: 'jiosaavn-backup-2',
-    label: 'JioSaavn Backup 2',
-    searchUrl: 'https://saavn.me/search/songs',
-    globalUrl: 'https://saavn.me/search',
+    label: 'Mavrixfy Song API',
+    searchUrl: `${SONG_API_BASE_URL}/search/songs`,
+    globalUrl: `${SONG_API_BASE_URL}/search`,
   },
 ];
 
-const SONG_DETAILS_URL = 'https://saavn.sumit.co/api/songs';
+const SONG_DETAILS_URL = `${SONG_API_BASE_URL}/songs`;
 
 const QUERY_QUALIFIER_TOKENS = new Set([
   'acoustic',

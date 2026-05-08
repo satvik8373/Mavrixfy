@@ -3,12 +3,10 @@ import {
   TrendingUp, Clapperboard, Heart, Music, PartyPopper, Dumbbell,
   BookMarked, Radio, Globe, Globe2
 } from 'lucide-react';
+import { SONG_API_BASE_URL } from '@/lib/apiConfig';
 import { getHighestQualityAudioUrl } from '@/utils/jiosaavnAudio';
 
-// Updated to use more reliable JioSaavn API endpoints with fallbacks
-const BASE_URL = 'https://saavn.sumit.co/api';
-const FALLBACK_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
-const BACKUP_BASE_URL = 'https://saavn.me';
+const BASE_URL = SONG_API_BASE_URL;
 
 export interface JioSaavnImage {
   quality: string;
@@ -362,30 +360,10 @@ export const PLAYLIST_CATEGORIES: PlaylistCategory[] = [
 
 class JioSaavnService {
   private axiosInstance;
-  private fallbackInstance;
-  private backupInstance;
 
   constructor() {
     this.axiosInstance = axios.create({
       baseURL: BASE_URL,
-      timeout: 10000,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
-
-    this.fallbackInstance = axios.create({
-      baseURL: FALLBACK_BASE_URL,
-      timeout: 10000,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
-
-    this.backupInstance = axios.create({
-      baseURL: BACKUP_BASE_URL,
       timeout: 10000,
       headers: {
         'Accept': 'application/json',
@@ -505,28 +483,18 @@ class JioSaavnService {
     params: any = {},
     method: 'GET' | 'POST' = 'GET'
   ): Promise<T> {
-    const instances = [this.axiosInstance, this.fallbackInstance, this.backupInstance];
+    const response = await this.axiosInstance.request({
+      method,
+      url: endpoint,
+      params: method === 'GET' ? params : undefined,
+      data: method === 'POST' ? params : undefined,
+    });
 
-    for (let i = 0; i < instances.length; i++) {
-      try {
-        const response = await instances[i].request({
-          method,
-          url: endpoint,
-          params: method === 'GET' ? params : undefined,
-          data: method === 'POST' ? params : undefined,
-        });
-
-        if (response.data && (response.data.success !== false)) {
-          return response.data;
-        }
-      } catch (error) {
-        if (i === instances.length - 1) {
-          throw error;
-        }
-      }
+    if (response.data && response.data.success !== false) {
+      return response.data;
     }
 
-    throw new Error('All API endpoints failed');
+    throw new Error('API endpoint failed');
   }
 
   // Get trending playlists with enhanced search terms and charts

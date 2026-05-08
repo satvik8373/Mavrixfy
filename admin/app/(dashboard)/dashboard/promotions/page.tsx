@@ -3,10 +3,20 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase-client';
-import { Megaphone, Plus, Edit, Trash2, ImageIcon, Loader2, X, Check, Film, Music, Globe, Smartphone, Image } from 'lucide-react';
+import { Megaphone, Plus, Edit, Trash2, ImageIcon, Loader2, X, Check, Film, Music, Globe, Smartphone, Image, Upload, Link2, Search, ExternalLink, LayoutGrid, LayoutList, Maximize2 } from 'lucide-react';
 
 type MediaType = 'image' | 'gif' | 'video' | 'audio';
 type Platform  = 'web' | 'app';
+type BannerLayout = 'hero' | 'card' | 'full-width' | 'sidebar';
+type ActionType = 'none' | 'external' | 'song' | 'playlist' | 'artist' | 'album';
+
+interface AttachedSong {
+  id: string;
+  title: string;
+  artist: string;
+  imageUrl: string;
+  streamUrl: string;
+}
 
 interface Promotion {
   id: string;
@@ -14,20 +24,32 @@ interface Promotion {
   description: string;
   mediaUrl?: string;
   mediaType?: MediaType;
+  cloudinaryPublicId?: string;
   platforms?: Platform;
   status: 'active' | 'scheduled' | 'ended';
   startDate?: string;
   endDate?: string;
+  layout?: BannerLayout;
+  actionType?: ActionType;
+  actionUrl?: string;
+  attachedSong?: AttachedSong;
+  priority?: number;
 }
 
 const EMPTY_FORM = {
   title: '',
   description: '',
   mediaUrl: '',
+  cloudinaryPublicId: '',
   platforms: 'web' as Platform,
   status: 'active' as 'active' | 'scheduled' | 'ended',
   startDate: '',
   endDate: '',
+  layout: 'hero' as BannerLayout,
+  actionType: 'none' as ActionType,
+  actionUrl: '',
+  attachedSong: null as AttachedSong | null,
+  priority: 0,
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -39,6 +61,22 @@ const STATUS_STYLES: Record<string, string> = {
 const PLATFORM_OPTIONS: { value: Platform; label: string; icon: React.ReactNode }[] = [
   { value: 'web', label: 'Web', icon: <Globe className="h-4 w-4" /> },
   { value: 'app', label: 'App', icon: <Smartphone className="h-4 w-4" /> },
+];
+
+const LAYOUT_OPTIONS: { value: BannerLayout; label: string; icon: React.ReactNode; description: string }[] = [
+  { value: 'hero', label: 'Hero Banner', icon: <Maximize2 className="h-4 w-4" />, description: 'Large featured banner' },
+  { value: 'card', label: 'Card', icon: <LayoutGrid className="h-4 w-4" />, description: 'Medium card layout' },
+  { value: 'full-width', label: 'Full Width', icon: <LayoutList className="h-4 w-4" />, description: 'Spans entire width' },
+  { value: 'sidebar', label: 'Sidebar', icon: <LayoutList className="h-4 w-4" />, description: 'Compact sidebar' },
+];
+
+const ACTION_OPTIONS: { value: ActionType; label: string }[] = [
+  { value: 'none', label: 'No Action' },
+  { value: 'external', label: 'External Link' },
+  { value: 'song', label: 'Play Song' },
+  { value: 'playlist', label: 'Open Playlist' },
+  { value: 'artist', label: 'View Artist' },
+  { value: 'album', label: 'View Album' },
 ];
 
 /** Detect media type purely from URL */
@@ -78,33 +116,151 @@ export default function PromotionsPage() {
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
   const [editId, setEditId]         = useState<string | null>(null);
+  const [uploading, setUploading]   = useState(false);
+  const [showSongSearch, setShowSongSearch] = useState(false);
+  const [songQuery, setSongQuery]   = useState('');
+  const [songResults, setSongResults] = useState<any[]>([]);
+  const [searchingSongs, setSearchingSongs] = useState(false);
 
   useEffect(() => { fetchPromotions(); }, []);
 
   async function fetchPromotions() {
     try {
       const snap = await getDocs(collection(db, 'promotions'));
-      setPromotions(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Promotion[]);
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Promotion[];
+      // Sort by priority (higher first) then by creation date
+      data.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      setPromotions(data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav'];
+    if (!validTypes.includes(file.type)) {
+      setError('Invalid file type. Use images, videos, or audio files.');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File too large. Maximum size is 10MB.');
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'mavrixfy/promotions');
+      
+      let type = 'image';
+      if (file.type.startsWith('video/')) type = 'video';
+      else if (file.type.startsWith('audio/')) type = 'audio';
+      formData.append('type', type);
+
+      const response = await fetch('/api/promotions/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setForm(f => ({
+          ...f,
+          mediaUrl: result.data.url,
+          cloudinaryPublicId: result.data.publicId,
+        }));
+      } else {
+        setError(result.message || 'Upload failed');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function searchSongs() {
+    if (!songQuery.trim()) return;
+    setSearchingSongs(true);
+    try {
+      const response = await fetch(`/api/music/search?query=${encodeURIComponent(songQuery)}&limit=50`);
+      const data = await response.json();
+      if (data.success) {
+        setSongResults(data.data.results || []);
+        if (data.data.results.length === 0) {
+          console.log('[Promotions] No songs found for query:', songQuery);
+        } else {
+          console.log('[Promotions] Found songs:', data.data.results.length);
+        }
+      } else {
+        console.error('[Promotions] Search failed:', data.message);
+        setError(data.message || 'Search failed');
+      }
+    } catch (e) {
+      console.error('Song search failed:', e);
+      setError('Failed to search songs. Please try again.');
+    } finally {
+      setSearchingSongs(false);
+    }
+  }
+
+  function attachSong(song: any) {
+    setForm(f => ({
+      ...f,
+      attachedSong: {
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        imageUrl: song.imageUrl,
+        streamUrl: song.streamUrl,
+      },
+      actionType: 'song',
+    }));
+    setShowSongSearch(false);
+    setSongQuery('');
+    setSongResults([]);
+  }
+
   async function handleSave() {
     if (!form.title.trim()) { setError('Title is required.'); return; }
+    if (form.actionType === 'external' && !form.actionUrl.trim()) {
+      setError('External link URL is required.');
+      return;
+    }
     setSaving(true); setError('');
     try {
       const url = form.mediaUrl.trim();
-      const data = {
+      const data: any = {
         title:       form.title.trim(),
         description: form.description.trim(),
-        mediaUrl:    url || undefined,
-        mediaType:   url ? detectMediaType(url) : undefined,
         platforms:   form.platforms,
         status:      form.status,
-        startDate:   form.startDate || undefined,
-        endDate:     form.endDate   || undefined,
+        layout:      form.layout,
+        actionType:  form.actionType,
+        priority:    form.priority || 0,
         updatedAt:   serverTimestamp(),
       };
+
+      // Only add fields if they have values (Firestore doesn't accept undefined)
+      if (url) {
+        data.mediaUrl = url;
+        data.mediaType = detectMediaType(url);
+      }
+      if (form.cloudinaryPublicId) data.cloudinaryPublicId = form.cloudinaryPublicId;
+      if (form.startDate) data.startDate = form.startDate;
+      if (form.endDate) data.endDate = form.endDate;
+      if (form.actionUrl.trim()) data.actionUrl = form.actionUrl.trim();
+      if (form.attachedSong) data.attachedSong = form.attachedSong;
+
       if (editId) {
         await updateDoc(doc(db, 'promotions', editId), data);
         setPromotions(prev => prev.map(p => p.id === editId ? { ...p, ...data, id: editId } : p));
@@ -113,6 +269,7 @@ export default function PromotionsPage() {
         setPromotions(prev => [{ id: ref.id, ...data } as Promotion, ...prev]);
       }
       closeModal();
+      await fetchPromotions(); // Re-fetch to apply sorting
     } catch (e: any) { setError(e.message || 'Failed to save.'); }
     finally { setSaving(false); }
   }
@@ -129,15 +286,29 @@ export default function PromotionsPage() {
       title:       p.title,
       description: p.description || '',
       mediaUrl:    p.mediaUrl    || '',
+      cloudinaryPublicId: p.cloudinaryPublicId || '',
       platforms:   p.platforms   || 'web',
       status:      p.status,
       startDate:   p.startDate   || '',
       endDate:     p.endDate     || '',
+      layout:      p.layout      || 'hero',
+      actionType:  p.actionType  || 'none',
+      actionUrl:   p.actionUrl   || '',
+      attachedSong: p.attachedSong || null,
+      priority:    p.priority    || 0,
     });
     setShowModal(true);
   }
 
-  function closeModal() { setShowModal(false); setForm(EMPTY_FORM); setEditId(null); setError(''); }
+  function closeModal() { 
+    setShowModal(false); 
+    setForm(EMPTY_FORM); 
+    setEditId(null); 
+    setError(''); 
+    setShowSongSearch(false);
+    setSongQuery('');
+    setSongResults([]);
+  }
 
   // Live-detect type as user types URL
   const detectedType = form.mediaUrl ? detectMediaType(form.mediaUrl) : null;
@@ -187,9 +358,30 @@ export default function PromotionsPage() {
                         <MediaTypeIcon type={promo.mediaType} />{promo.mediaType}
                       </span>
                     )}
+                    {promo.layout && (
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 capitalize">
+                        {promo.layout.replace('-', ' ')}
+                      </span>
+                    )}
+                    {promo.actionType && promo.actionType !== 'none' && (
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 capitalize">
+                        <Link2 className="h-3 w-3" />{promo.actionType}
+                      </span>
+                    )}
                     {platformBadge(promo.platforms)}
+                    {(promo.priority || 0) > 0 && (
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700">
+                        Priority: {promo.priority}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 text-xs text-gray-500 truncate">{promo.description}</p>
+                  {promo.attachedSong && (
+                    <p className="mt-0.5 text-xs text-blue-600 flex items-center gap-1">
+                      <Music className="h-3 w-3" />
+                      {promo.attachedSong.title} - {promo.attachedSong.artist}
+                    </p>
+                  )}
                   {(promo.startDate || promo.endDate) && (
                     <p className="mt-0.5 text-xs text-gray-400">{promo.startDate}{promo.endDate ? ` → ${promo.endDate}` : ''}</p>
                   )}
@@ -226,6 +418,104 @@ export default function PromotionsPage() {
                 <textarea className="input-field resize-none" rows={2} placeholder="Short description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
 
+              {/* Banner Layout */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">Banner Layout</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {LAYOUT_OPTIONS.map(opt => (
+                    <button key={opt.value} type="button" onClick={() => setForm(f => ({ ...f, layout: opt.value }))}
+                      className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${form.layout === opt.value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        {opt.icon}
+                        <span className="text-sm font-medium text-gray-900">{opt.label}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">{opt.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Media Upload */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">Banner Media</label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                        {uploading ? (
+                          <><Loader2 className="h-4 w-4 animate-spin" />Uploading...</>
+                        ) : (
+                          <><Upload className="h-4 w-4" />Upload to Cloudinary</>
+                        )}
+                      </div>
+                      <input type="file" className="hidden" accept="image/*,video/*,audio/*" onChange={handleFileUpload} disabled={uploading} />
+                    </label>
+                  </div>
+                  
+                  {form.mediaUrl && (
+                    <div className="relative rounded-lg border border-gray-200 p-2">
+                      <MediaPreview url={form.mediaUrl} type={detectMediaType(form.mediaUrl)} />
+                      <button type="button" onClick={() => setForm(f => ({ ...f, mediaUrl: '', cloudinaryPublicId: '' }))}
+                        className="absolute top-1 right-1 rounded-md bg-red-500 p-1 text-white hover:bg-red-600">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-500">Or paste URL:</div>
+                  <input className="input-field text-sm" placeholder="https://... (image, gif, video, audio)" value={form.mediaUrl} onChange={e => setForm(f => ({ ...f, mediaUrl: e.target.value }))} />
+                  {detectedType && (
+                    <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <MediaTypeIcon type={detectedType} />
+                      Detected: <span className="font-medium capitalize">{detectedType}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Type */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Click Action</label>
+                <select className="input-field" value={form.actionType} onChange={e => setForm(f => ({ ...f, actionType: e.target.value as ActionType }))}>
+                  {ACTION_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* External Link */}
+              {form.actionType === 'external' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">External URL <span className="text-red-500">*</span></label>
+                  <input className="input-field" placeholder="https://..." value={form.actionUrl} onChange={e => setForm(f => ({ ...f, actionUrl: e.target.value }))} />
+                </div>
+              )}
+
+              {/* Attach Song */}
+              {form.actionType === 'song' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Attached Song</label>
+                  {form.attachedSong ? (
+                    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <img src={form.attachedSong.imageUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{form.attachedSong.title}</p>
+                        <p className="text-xs text-gray-500 truncate">{form.attachedSong.artist}</p>
+                      </div>
+                      <button type="button" onClick={() => setForm(f => ({ ...f, attachedSong: null }))}
+                        className="rounded-md p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setShowSongSearch(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                      <Search className="h-4 w-4" />Search & Attach Song
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-2">Show On</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -236,17 +526,6 @@ export default function PromotionsPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Media URL</label>
-                <input className="input-field" placeholder="https://... (image, gif, video, audio)" value={form.mediaUrl} onChange={e => setForm(f => ({ ...f, mediaUrl: e.target.value }))} />
-                {detectedType && (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-500">
-                    <MediaTypeIcon type={detectedType} />
-                    Detected: <span className="font-medium capitalize">{detectedType}</span>
-                  </p>
-                )}
               </div>
 
               <div>
@@ -268,6 +547,12 @@ export default function PromotionsPage() {
                   <input type="date" className="input-field" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Priority (0-100)</label>
+                <input type="number" min="0" max="100" className="input-field" placeholder="0" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: parseInt(e.target.value) || 0 }))} />
+                <p className="mt-1 text-xs text-gray-500">Higher priority promotions appear first</p>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
@@ -276,6 +561,78 @@ export default function PromotionsPage() {
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 {editId ? 'Save Changes' : 'Create'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Song Search Modal */}
+      {showSongSearch && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowSongSearch(false)} />
+          <div className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-white shadow-xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h2 className="text-base font-semibold text-gray-900">Search Songs</h2>
+              <button onClick={() => setShowSongSearch(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex gap-2">
+                <input
+                  className="input-field flex-1"
+                  placeholder="Search for songs..."
+                  value={songQuery}
+                  onChange={e => setSongQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && searchSongs()}
+                  autoFocus
+                />
+                <button onClick={searchSongs} disabled={searchingSongs || !songQuery.trim()}
+                  className="btn-primary flex items-center gap-2 px-4">
+                  {searchingSongs ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </button>
+              </div>
+              {songResults.length > 0 && (
+                <p className="mt-2 text-xs text-gray-500">
+                  Found {songResults.length} song{songResults.length !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {searchingSongs ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                </div>
+              ) : songResults.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Music className="h-10 w-10 text-gray-300" />
+                  <p className="mt-3 text-sm font-medium text-gray-900">
+                    {songQuery ? 'No songs found' : 'Search for a song'}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {songQuery ? 'Try a different search term' : 'Enter a song name or artist'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {songResults.map(song => (
+                    <button key={song.id} type="button" onClick={() => attachSong(song)}
+                      className="w-full flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-left hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                      <img src={song.imageUrl} alt="" className="h-12 w-12 rounded object-cover flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{song.title}</p>
+                        <p className="text-xs text-gray-500 truncate">{song.artist}</p>
+                        {song.album?.name && (
+                          <p className="text-xs text-gray-400 truncate">{song.album.name}</p>
+                        )}
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

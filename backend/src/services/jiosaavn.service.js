@@ -1,10 +1,9 @@
 import axios from 'axios';
 import { getHighestQualityAudioUrl, getHighestQualityDownload } from '../lib/jiosaavnAudio.js';
 
-// Use the same API as the website for better reliability
-const JIOSAAVN_API_BASE_URL = 'https://saavn.sumit.co/api';
-const FALLBACK_API_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
-const BACKUP_API_BASE_URL = 'https://saavn.me';
+const JIOSAAVN_API_BASE_URL = process.env.JIOSAAVN_API_BASE_URL || 'https://mavrixfy-song-api.vercel.app/api';
+const FALLBACK_API_BASE_URL = JIOSAAVN_API_BASE_URL;
+const BACKUP_API_BASE_URL = JIOSAAVN_API_BASE_URL;
 
 /**
  * Search for songs, albums, artists on JioSaavn

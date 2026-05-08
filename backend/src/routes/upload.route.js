@@ -76,7 +76,7 @@ router.post("/", protectRoute, async (req, res) => {
       // Return URL to access the file with full API base URL
       const baseUrl = process.env.NODE_ENV === "production" 
         ? process.env.BACKEND_URL || ""
-        : "http://localhost:5000";
+        : `${req.protocol}://${req.get("host")}`;
       const imageUrl = `${baseUrl}/uploads/${fileName}`;
       return res.json({ imageUrl });
     }

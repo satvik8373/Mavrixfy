@@ -59,6 +59,12 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
     
+    // Promotions - public read, admin write
+    match /promotions/{promotionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
     // All other collections - admin only
     match /{document=**} {
       allow read, write: if isAdmin();

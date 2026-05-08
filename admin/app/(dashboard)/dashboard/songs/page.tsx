@@ -508,9 +508,9 @@ export default function SongsPage() {
 
       const data = {
         title: form.title.trim(), artist: form.artist.trim(),
-        album: form.album.trim() || null, genre: form.genre || null,
-        duration: form.duration ? parseInt(form.duration) : null,
-        imageUrl: form.imageUrl.trim() || null,
+        album: form.album.trim() || undefined, genre: form.genre || undefined,
+        duration: form.duration ? parseInt(form.duration) : undefined,
+        imageUrl: form.imageUrl.trim() || undefined,
         streamUrl: audioUrl,
         audioUrl,
         storagePath: uploadedAudio?.storagePath || null,

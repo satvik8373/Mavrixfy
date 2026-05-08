@@ -1,4 +1,4 @@
-import { getHighestQualityDownload } from '../utils.js';
+import { buildSongApiUrl, getHighestQualityDownload } from '../utils.js';
 
 export default async function handler(req, res) {
   try {
@@ -26,9 +26,8 @@ export default async function handler(req, res) {
     // Add cache control headers (shorter for search queries)
     res.setHeader('Cache-Control', 'public, max-age=1800'); // Cache for 30 minutes
     
-    // Call the JioSaavn API directly
     const response = await fetch(
-      `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&page=1&limit=20`
+      buildSongApiUrl('/search/songs', { query, page: 1, limit: 20 })
     );
     
     if (!response.ok) {

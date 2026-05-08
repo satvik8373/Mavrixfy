@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { buildApiUrl } from '@/lib/apiConfig';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
 
@@ -79,12 +80,7 @@ const EmbedPlaylistPage = () => {
   useEffect(() => {
     const fetchPlaylist = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL ||
-          (window.location.hostname.includes('mavrixfy.site')
-            ? '/api'
-            : 'http://localhost:5000/api');
-
-        const response = await fetch(`${apiUrl}/playlists/${id}`, {
+        const response = await fetch(buildApiUrl(`/playlists/${id}`), {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

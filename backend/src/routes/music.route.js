@@ -14,7 +14,7 @@ import {
 const router = Router();
 
 // Constants
-const JIOSAAVN_API_BASE_URL = process.env.JIOSAAVN_API_BASE_URL || "https://saavn.dev/api";
+const JIOSAAVN_API_BASE_URL = process.env.JIOSAAVN_API_BASE_URL || "https://mavrixfy-song-api.vercel.app/api";
 
 // Proxy endpoint for JioSaavn search
 router.get("/search", searchSongs);

@@ -1,21 +1,15 @@
 import admin from "../config/firebase.js";
 import { getHighestQualityDownload } from "../lib/jiosaavnAudio.js";
 
-const SAAVN_SONGS_ENDPOINT = "https://saavn.sumit.co/api/songs";
+const SAAVN_API_BASE_URL = (process.env.JIOSAAVN_API_BASE_URL || "https://mavrixfy-song-api.vercel.app/api").replace(/\/+$/, "");
+const SAAVN_SONGS_ENDPOINT = `${SAAVN_API_BASE_URL}/songs`;
 const SAAVN_SEARCH_PROVIDERS = [
   {
-    name: "sumit",
-    songsEndpoint: "https://saavn.sumit.co/api/search/songs",
-    globalEndpoint: "https://saavn.sumit.co/api/search",
+    name: "mavrixfy",
+    songsEndpoint: `${SAAVN_API_BASE_URL}/search/songs`,
+    globalEndpoint: `${SAAVN_API_BASE_URL}/search`,
     pageOffset: 0,
     minimumPrimaryResults: 8,
-  },
-  {
-    name: "privatecvc2",
-    songsEndpoint: "https://jiosaavn-api-privatecvc2.vercel.app/search/songs",
-    globalEndpoint: "https://jiosaavn-api-privatecvc2.vercel.app/search",
-    pageOffset: 1,
-    minimumPrimaryResults: 0,
   },
 ];
 const GLOBAL_SEARCH_FALLBACK_THRESHOLD = 6;

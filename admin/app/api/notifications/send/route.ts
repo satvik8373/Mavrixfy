@@ -107,7 +107,7 @@ async function sendWebNotifications(
       const code = res.error?.code;
       if (code === 'messaging/invalid-registration-token' ||
           code === 'messaging/registration-token-not-registered') {
-        invalidTokens.push(batch[idx].token);
+        invalidTokens.push(batch[idx]);
       }
     });
   }
