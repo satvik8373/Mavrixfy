@@ -1173,7 +1173,7 @@ export function PlaylistPage() {
                             alt={song.title}
                             className="h-full w-full object-cover"
                             loading={index < 5 ? "eager" : "lazy"}
-                            {...(index < 5 ? { fetchPriority: "high" } : {})}
+                            ref={index < 5 ? (el) => { if (el) (el as any).fetchPriority = 'high'; } : undefined}
                           />
                         </div>
                         <div className="flex flex-col min-w-0 flex-1">

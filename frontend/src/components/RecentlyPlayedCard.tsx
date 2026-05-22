@@ -81,7 +81,10 @@ export function RecentlyPlayedCard({
                 src={optimizedImageUrl}
                 alt={title}
                 className="w-full h-full object-cover"
-                loading="lazy"
+                loading="eager"
+                ref={(el) => {
+                  if (el) (el as any).fetchPriority = 'high';
+                }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src =
                     'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';

@@ -62,7 +62,7 @@ const AlbumPage = () => {
                     alt={album.title}
                     className="w-full h-full object-cover"
                     loading="eager"
-                    fetchPriority="high"
+                    ref={(el) => { if (el) (el as any).fetchPriority = 'high'; }}
                   />
                 </div>
                 <div className="flex flex-col items-center md:items-start">

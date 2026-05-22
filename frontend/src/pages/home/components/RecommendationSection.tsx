@@ -54,7 +54,7 @@ export const RecommendationSection = ({ section }: RecommendationSectionProps) =
                     alt={item.title}
                     className="h-full w-full object-cover"
                     loading={index < 2 ? 'eager' : 'lazy'}
-                    {...(index < 2 ? { fetchPriority: 'high' as const } : {})}
+                    ref={index < 2 ? (el) => { if (el) (el as any).fetchPriority = 'high'; } : undefined}
                   />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center">

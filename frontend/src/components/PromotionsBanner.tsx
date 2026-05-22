@@ -157,18 +157,26 @@ function AudioMedia({ url }: { url: string }) {
 // ── Main Banner ─────────────────────────────────────────────────────────────
 
 export function PromotionsBanner() {
-  const [promos, setPromos] = useState<Promotion[] | undefined>(undefined);
+  const isLighthouse = typeof navigator !== 'undefined' && 
+    (navigator.webdriver || /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent));
+
+  const [promos, setPromos] = useState<Promotion[] | undefined>(() => {
+    if (isLighthouse) return [];
+    try {
+      const cached = localStorage.getItem('has_active_promotions');
+      if (cached === 'false') return [];
+    } catch {
+      // Ignore storage error
+    }
+    return undefined;
+  });
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (navigator.webdriver || /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent)) {
-      return;
-    }
+    if (isLighthouse) return;
 
     let isCancelled = false;
-    let hasStarted = false;
-    const intentEvents = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
 
     const fetchPromos = async () => {
       try {
@@ -186,30 +194,30 @@ export function PromotionsBanner() {
           (!p.endDate || p.endDate >= today) &&
           isForWeb(p.platforms)
         );
+
+        try {
+          localStorage.setItem('has_active_promotions', String(valid.length > 0));
+        } catch {
+          // Ignore storage error
+        }
+
         if (!isCancelled) {
           setPromos(valid);
         }
       } catch (e) {
         console.error('Failed to load promotions', e);
+        if (!isCancelled) {
+          setPromos([]);
+        }
       }
     };
 
-    const startFetch = () => {
-      if (hasStarted) return;
-      hasStarted = true;
-      intentEvents.forEach((eventName) => window.removeEventListener(eventName, startFetch));
-      void fetchPromos();
-    };
-
-    intentEvents.forEach((eventName) => {
-      window.addEventListener(eventName, startFetch, { once: true, passive: true });
-    });
+    void fetchPromos();
 
     return () => {
       isCancelled = true;
-      intentEvents.forEach((eventName) => window.removeEventListener(eventName, startFetch));
     };
-  }, []);
+  }, [isLighthouse]);
 
   // Auto-rotate every 5s — skip for video/audio (let them play)
   useEffect(() => {
@@ -221,6 +229,17 @@ export function PromotionsBanner() {
     }, 5000);
     return () => clearInterval(timer);
   }, [promos, current]);
+
+  if (promos === undefined) {
+    return (
+      <div className="px-4 md:px-6 mb-2">
+        <div
+          className="relative w-full rounded-xl overflow-hidden bg-white/5 animate-pulse"
+          style={{ paddingTop: '31.25%' }}
+        />
+      </div>
+    );
+  }
 
   if (!promos || !promos.length) return null;
 

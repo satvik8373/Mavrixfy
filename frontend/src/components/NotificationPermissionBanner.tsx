@@ -52,7 +52,7 @@ export function NotificationPermissionBanner() {
   if (!show) return null;
 
   return (
-    <div className="mx-4 md:mx-6 mb-3 flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 px-4 py-3">
+    <div className="fixed bottom-[96px] md:bottom-6 right-4 md:right-6 z-[100] max-w-[calc(100vw-2rem)] md:max-w-sm flex items-center gap-3 rounded-xl bg-zinc-950/95 backdrop-blur-md border border-white/10 p-4 shadow-2xl animate-[slideIn_0.3s_ease-out] hover:border-white/20 transition-all duration-200">
       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-500/20">
         <Bell className="h-4 w-4 text-green-400" />
       </div>

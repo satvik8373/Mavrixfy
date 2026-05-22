@@ -122,6 +122,7 @@ interface HomeState {
   isRecommendationFeedLoading: boolean;
   hasRecommendationFeedFailed: boolean;
   canLoadGuestJio: boolean;
+  renderDeferredSections: boolean;
 }
 
 type HomeAction =
@@ -134,7 +135,8 @@ type HomeAction =
   | { type: 'recommendations_loading' }
   | { type: 'recommendations_loaded'; feed: RecommendationFeed }
   | { type: 'recommendations_failed' }
-  | { type: 'guest_jio_ready' };
+  | { type: 'guest_jio_ready' }
+  | { type: 'render_deferred' };
 
 const homeReducer = (state: HomeState, action: HomeAction): HomeState => {
   switch (action.type) {
@@ -181,6 +183,8 @@ const homeReducer = (state: HomeState, action: HomeAction): HomeState => {
       };
     case 'guest_jio_ready':
       return { ...state, canLoadGuestJio: true };
+    case 'render_deferred':
+      return { ...state, renderDeferredSections: true };
     default:
       return state;
   }
@@ -308,6 +312,29 @@ const HomeRecentlyPlayedGrid = ({
   );
 };
 
+const ScrollCardsSkeleton = ({ count = 6, itemWidth = 160 }: { count?: number; itemWidth?: number }) => (
+  <>
+    {Array.from({ length: count }).map((_, i) => (
+      <ScrollItem key={i} width={itemWidth}>
+        <div className="w-full rounded-md p-1 md:p-2 bg-transparent relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:before-shimmer before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent">
+          <div className="relative w-full aspect-square mb-2 md:mb-3">
+            <div className="w-full h-full rounded-[4px] bg-white/10 animate-pulse shadow-lg" />
+          </div>
+          <div className="space-y-1 min-h-[62px] md:min-h-[70px]">
+            <div className="space-y-1">
+              <div className="h-3 bg-white/10 rounded animate-pulse w-5/6" />
+              <div className="h-3 bg-white/10 rounded animate-pulse w-2/3" />
+            </div>
+            <div className="pt-1">
+              <div className="h-2.5 bg-white/5 rounded animate-pulse w-1/2" />
+            </div>
+          </div>
+        </div>
+      </ScrollItem>
+    ))}
+  </>
+);
+
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
   const fetchPublicPlaylists = usePlaylistStore(state => state.fetchPublicPlaylists);
@@ -326,6 +353,7 @@ const HomePage = () => {
     isRecommendationFeedLoading,
     hasRecommendationFeedFailed,
     canLoadGuestJio,
+    renderDeferredSections // Added for performance
   }, dispatchHome] = useReducer(homeReducer, {
     isInitialLoading: false,
     displayItems: [],
@@ -338,6 +366,7 @@ const HomePage = () => {
     isRecommendationFeedLoading: false,
     hasRecommendationFeedFailed: false,
     canLoadGuestJio: false,
+    renderDeferredSections: true,
   });
   const navigate = useNavigate();
   const { loadLikedSongs } = useLikedSongsStore();
@@ -379,6 +408,8 @@ const HomePage = () => {
   useEffect(() => {
     updateMetaTags(metaPresets.home());
   }, []);
+
+
 
   useEffect(() => {
     const readThemeColor = () => {
@@ -647,9 +678,20 @@ const HomePage = () => {
             <>
               {isAuthenticated && recommendationFeedEnabled() && (
                 isRecommendationFeedLoading ? (
-                  <div className="px-4 md:px-6 mb-6 mt-4">
-                    <HomeSkeleton count={1} type="card" className="" />
-                  </div>
+                  <SectionWrapper
+                    title="Recommended for you"
+                    subtitle="Personalized recommendations based on your taste"
+                  >
+                    <HorizontalScroll
+                      itemWidth={homePlaylistCardScrollWidth}
+                      gap={10}
+                      showArrows={true}
+                      snapToItems={false}
+                      edgeToEdge={true}
+                    >
+                      <ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />
+                    </HorizontalScroll>
+                  </SectionWrapper>
                 ) : hasRecommendationFeedFailed ? (
                   <section className="px-4 md:px-6 mb-6 mt-4">
                     <div className="rounded-md border border-white/10 bg-white/[0.04] px-4 py-5">
@@ -683,7 +725,7 @@ const HomePage = () => {
                   edgeToEdge={true}
                 >
                   {publicPlaylists.length > 0 ? (
-                    <Suspense fallback={<HomeSkeleton count={6} type="card" className="" />}>
+                    <Suspense fallback={<ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />}>
                       {publicPlaylists.slice(0, 20).map((playlist, index) => (
                         <ScrollItem key={playlist._id} width={homePlaylistCardItemWidth}>
                           <div
@@ -701,18 +743,18 @@ const HomePage = () => {
                       ))}
                     </Suspense>
                   ) : (isInitialLoading || isLoading || !isAuthenticated) ? (
-                    <HomeSkeleton count={6} type="card" className="" />
+                    <ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />
                   ) : hasLoadedOnce ? (
                     <div className="text-zinc-500 text-sm p-4 w-full text-center animate-[fadeIn_0.3s_ease-out]">
                       No playlists found
                     </div>
                   ) : (
-                    <HomeSkeleton count={6} type="card" className="" />
+                    <ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />
                   )}
                 </HorizontalScroll>
               </SectionWrapper>
 
-              {/* JioSaavn Sections - Randomized */}
+              {/* JioSaavn Sections - Randomized with Intersection Observer lazy loading */}
               {randomCategories.map((categoryId) => {
                 const category = homeJioCategoryMap.get(categoryId);
 

@@ -79,7 +79,7 @@ export function PlaylistCard({
                 className="w-full h-full object-cover rounded-[4px]"
                 onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
                 loading={eagerLoad ? "eager" : "lazy"}
-                {...(eagerLoad ? { fetchPriority: "high" } : {})}
+                ref={eagerLoad ? (el) => { if (el) (el as any).fetchPriority = 'high'; } : undefined}
               />
             </div>
 
@@ -96,7 +96,7 @@ export function PlaylistCard({
           </div>
 
           {/* Playlist Info */}
-          <div className="space-y-1">
+          <div className="space-y-1 min-h-[62px] md:min-h-[70px]">
             <h3 className="text-foreground text-xs md:text-sm font-medium line-clamp-2 leading-tight">
               {playlist.name}
             </h3>

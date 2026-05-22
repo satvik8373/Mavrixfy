@@ -87,7 +87,7 @@ const SongRow = ({ song, index, allSongs, onPlay }: SongRowProps) => (
     </div>
     <div className="w-10 h-10 rounded-md overflow-hidden bg-white/5 flex-shrink-0">
       {song.imageUrl
-        ? <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading={index < 5 ? "eager" : "lazy"} {...(index < 5 ? { fetchPriority: "high" } : {})} />
+        ? <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading={index < 5 ? "eager" : "lazy"} ref={index < 5 ? (el) => { if (el) (el as any).fetchPriority = 'high'; } : undefined} />
         : <div className="w-full h-full flex items-center justify-center"><Music className="w-4 h-4 text-white/20" /></div>
       }
     </div>
@@ -281,7 +281,7 @@ const SearchPage = () => {
 
                   <div className="relative w-28 h-28 rounded-xl overflow-hidden shadow-2xl flex-shrink-0">
                     {smartResult.topResult.imageUrl
-                      ? <img src={smartResult.topResult.imageUrl} alt={smartResult.topResult.title} className="w-full h-full object-cover" loading="eager" fetchPriority="high" />
+                      ? <img src={smartResult.topResult.imageUrl} alt={smartResult.topResult.title} className="w-full h-full object-cover" loading="eager" ref={(el) => { if (el) (el as any).fetchPriority = 'high'; }} />
                       : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Music className="w-10 h-10 text-white/20" /></div>
                     }
                   </div>

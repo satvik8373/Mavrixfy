@@ -38,7 +38,7 @@ const SectionGrid = ({ songs, title, isLoading }: SectionGridProps) => {
                   alt={song.title}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   loading={index < 4 ? "eager" : "lazy"}
-                  {...(index < 4 ? { fetchPriority: "high" } : {})}
+                  ref={index < 4 ? (el) => { if (el) (el as any).fetchPriority = 'high'; } : undefined}
                 />
               </div>
               <PlayButton song={song} />

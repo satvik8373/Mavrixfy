@@ -1,4 +1,5 @@
 import React, { useReducer, useEffect } from 'react';
+import { useInView } from 'react-intersection-observer';
 import { RefreshCw } from 'lucide-react';
 import { JioSaavnPlaylistCard } from './JioSaavnPlaylistCard';
 import { JioSaavnPlaylist, jioSaavnService, PlaylistCategory } from '@/services/jioSaavnService';
@@ -176,6 +177,14 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   deferAutoFetch = false,
 }) => {
   const category = jioSaavnService.getCategoryById(categoryId) || null;
+  
+  // Set up intersection observer for lazy fetching
+  const { ref: inViewRef, inView } = useInView({
+    triggerOnce: true,
+    rootMargin: '200px 0px',
+    skip: !!playlistsOverride || disableAutoFetch,
+  });
+
   const [state, dispatchSection] = useReducer(playlistsSectionReducer, {
     playlists: (() => {
       if (Array.isArray(playlistsOverride)) {
@@ -187,8 +196,8 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       const cached = readCachedPlaylists(categoryId);
       return cached?.data?.slice(0, limit) || [];
     })() as JioSaavnPlaylist[],
-    // Reserve row space before the fetch effect runs so rows below do not shift in.
-    isLoading: !Array.isArray(playlistsOverride) && (!disableAutoFetch || deferAutoFetch),
+    // Loading is true initially if we have no cache and need to load
+    isLoading: !Array.isArray(playlistsOverride) && !disableAutoFetch && !readCachedPlaylists(categoryId),
     error: null as string | null,
   });
   const { playlists, isLoading, error } = state;
@@ -265,16 +274,6 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       return;
     }
 
-    if (deferAutoFetch) {
-      dispatchSection({
-        type: 'sync',
-        playlists: [],
-        isLoading: true,
-        error: null,
-      });
-      return;
-    }
-
     if (disableAutoFetch) {
       dispatchSection({
         type: 'sync',
@@ -284,15 +283,26 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       return;
     }
 
+    // Sync cache immediately so we have instant visual rendering
     const cached = readCachedPlaylists(categoryId);
+    const hasCache = !!cached?.data?.length;
+    
     dispatchSection({
       type: 'sync',
-      playlists: cached?.data?.length ? cached.data.slice(0, limit) : [],
+      playlists: hasCache ? cached.data.slice(0, limit) : [],
+      isLoading: !hasCache,
     });
 
-    const ctxSignature = getContextSignature(categoryId);
-    fetchPlaylists({ forceRefresh: true, ctxSignature });
-  }, [categoryId, deferAutoFetch, disableAutoFetch, limit, playlistsOverride, fetchPlaylists]);
+    // Start API fetch only when visible in viewport
+    if (inView && !deferAutoFetch) {
+      const ctxSignature = getContextSignature(categoryId);
+      const isCacheStale = !cached || isStale(cached, categoryId, ctxSignature);
+      
+      if (!hasCache || isCacheStale) {
+        fetchPlaylists({ forceRefresh: true, ctxSignature });
+      }
+    }
+  }, [categoryId, disableAutoFetch, limit, playlistsOverride, fetchPlaylists, inView, deferAutoFetch]);
 
 
 
@@ -394,53 +404,56 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   }
 
   return (
-    <SectionWrapper
-      title={getSectionTitle()}
-      showViewAll={showViewAll}
-      onViewAll={handleViewAll}
-    >
-      <HorizontalScroll
-        itemWidth={cardScrollWidth}
-        gap={10}
-        showArrows={true}
-        snapToItems={false}
-        edgeToEdge={true}
-        className="min-h-[217px]"
+    <div ref={inViewRef} className="w-full">
+      <SectionWrapper
+        title={getSectionTitle()}
+        showViewAll={showViewAll}
+        onViewAll={handleViewAll}
       >
-        {isLoading ? (
-          // Loading skeleton
-          Array.from({ length: 8 }).map((_, i) => (
-            <ScrollItem key={i} width={cardItemWidth}>
-              <div className="space-y-2 p-1">
-                <div 
-                  className="w-full aspect-square rounded-md bg-muted animate-pulse" 
-                  style={{animationDelay: `${i * 0.1}s`}}
+        <HorizontalScroll
+          itemWidth={cardScrollWidth}
+          gap={10}
+          showArrows={true}
+          snapToItems={false}
+          edgeToEdge={true}
+          className="min-h-[238px] md:min-h-[258px]"
+        >
+          {isLoading ? (
+            // Loading skeleton matching JioSaavnPlaylistCard exactly
+            Array.from({ length: 8 }).map((_, i) => (
+              <ScrollItem key={i} width={cardItemWidth}>
+                <div className="w-full rounded-md p-1 md:p-2 bg-transparent">
+                  <div className="relative w-full aspect-square mb-2 md:mb-3">
+                    <div className="w-full h-full rounded-[4px] bg-white/10 animate-pulse shadow-lg" />
+                  </div>
+                  {/* Matching Info Layout Height to eradicate CLS */}
+                  <div className="space-y-1 min-h-[62px] md:min-h-[70px]">
+                    <div className="space-y-1">
+                      <div className="h-3 bg-white/10 rounded animate-pulse w-5/6" />
+                      <div className="h-3 bg-white/10 rounded animate-pulse w-2/3" />
+                    </div>
+                    <div className="pt-1">
+                      <div className="h-2.5 bg-white/5 rounded animate-pulse w-1/2" />
+                    </div>
+                  </div>
+                </div>
+              </ScrollItem>
+            ))
+          ) : (
+            // Actual playlist cards
+            playlists.map((playlist) => (
+              <ScrollItem key={playlist.id} width={cardItemWidth}>
+                <JioSaavnPlaylistCard
+                  playlist={playlist}
+                  onClick={handlePlaylistClick}
+                  onPlay={handlePlayPlaylist}
+                  showDescription={true}
                 />
-                <div 
-                  className="h-3 rounded bg-muted animate-pulse" 
-                  style={{animationDelay: `${i * 0.1 + 0.1}s`}}
-                />
-                <div 
-                  className="h-2 rounded bg-muted animate-pulse w-3/4" 
-                  style={{animationDelay: `${i * 0.1 + 0.2}s`}}
-                />
-              </div>
-            </ScrollItem>
-          ))
-        ) : (
-          // Actual playlist cards
-          playlists.map((playlist) => (
-            <ScrollItem key={playlist.id} width={cardItemWidth}>
-              <JioSaavnPlaylistCard
-                playlist={playlist}
-                onClick={handlePlaylistClick}
-                onPlay={handlePlayPlaylist}
-                showDescription={true}
-              />
-            </ScrollItem>
-          ))
-        )}
-      </HorizontalScroll>
-    </SectionWrapper>
+              </ScrollItem>
+            ))
+          )}
+        </HorizontalScroll>
+      </SectionWrapper>
+    </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Play } from 'lucide-react';
 import { JioSaavnPlaylist, jioSaavnService } from '@/services/jioSaavnService';
 import { cn } from '@/lib/utils';
@@ -79,8 +79,8 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
           </div>
         </div>
 
-        {/* Playlist Info */}
-        <div className="space-y-1">
+        {/* Playlist Info with fixed min-height to prevent layout shifts */}
+        <div className="space-y-1 min-h-[62px] md:min-h-[70px]">
           <h3 className="text-foreground text-xs md:text-sm font-medium line-clamp-2 leading-tight">
             {playlist.name}
           </h3>
