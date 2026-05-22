@@ -49,7 +49,12 @@ const navItems: NavItem[] = [
 
 const groupOrder = ['Monitor', 'Catalog', 'Growth', 'Trust', 'Release', 'Security'];
 
-export function Sidebar() {
+interface SidebarProps {
+  className?: string;
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { session, signOut } = useAuth();
 
@@ -65,7 +70,7 @@ export function Sidebar() {
   });
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-gray-200 bg-white">
+    <aside className={cn('h-full w-64 border-r border-gray-200 bg-white', className)}>
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
@@ -102,6 +107,7 @@ export function Sidebar() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        onClick={onNavigate}
                         className={cn(
                           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                           isActive

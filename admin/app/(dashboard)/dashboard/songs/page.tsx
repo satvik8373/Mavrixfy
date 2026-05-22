@@ -605,18 +605,18 @@ export default function SongsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Songs</h1>
           <p className="mt-1 text-sm text-gray-500">
             {fsLoading ? 'Loading...' : `${firestoreSongs.length} songs in catalog`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <button type="button" onClick={fetchFirestoreSongs} disabled={fsLoading} className="btn-secondary flex items-center gap-2" title="Refresh catalog">
             <RefreshCw className={`size-4 ${fsLoading ? 'animate-spin' : ''}`} />
           </button>
-          <button type="button" onClick={() => openCreateModal()} className="btn-primary flex items-center gap-2">
+          <button type="button" onClick={() => openCreateModal()} className="btn-primary flex flex-1 items-center justify-center gap-2 sm:flex-none">
             <Plus className="size-4" /> Add Song
           </button>
         </div>
@@ -645,7 +645,7 @@ export default function SongsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit">
+      <div className="flex w-full overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-1 sm:w-fit">
         <button type="button"
           onClick={() => { setViewMode('catalog'); setSearchQuery(''); setApiResults([]); setSearched(false); }}
           className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -729,7 +729,8 @@ export default function SongsPage() {
           </div>
         ) : (
           <>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-left">
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Song</th>
@@ -828,6 +829,7 @@ export default function SongsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-500">
               {viewMode === 'search'
                 ? `${apiResults.length} newest-first direct-play results for "${searchQuery}"`
@@ -875,7 +877,7 @@ export default function SongsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={closeModal} />
-          <div className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-white shadow-xl">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{editId ? 'Edit Song' : 'Add New Song'}</h2>
               <button type="button" onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
@@ -884,13 +886,13 @@ export default function SongsPage() {
               {formError && (
                 <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{formError}</div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
                   <label htmlFor="songs-title-1" className="mb-1 block text-xs font-medium text-gray-700">Title <span className="text-red-500">*</span></label>
                   <input id="songs-title-1" className="input-field" placeholder="Song title" value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label htmlFor="songs-artist-2" className="mb-1 block text-xs font-medium text-gray-700">Artist <span className="text-red-500">*</span></label>
                   <input id="songs-artist-2" className="input-field" placeholder="Artist name" value={form.artist}
                     onChange={e => setForm(f => ({ ...f, artist: e.target.value }))} />
@@ -918,12 +920,12 @@ export default function SongsPage() {
                   <input id="songs-year-6" className="input-field" type="number" placeholder="e.g. 2024" value={form.year}
                     onChange={e => setForm(f => ({ ...f, year: e.target.value }))} />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label htmlFor="songs-artwork-url-7" className="mb-1 block text-xs font-medium text-gray-700">Artwork URL</label>
                   <input id="songs-artwork-url-7" className="input-field" placeholder="https://..." value={form.imageUrl}
                     onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <p className="mb-1 block text-xs font-medium text-gray-700">
                     MP3 File <span className="text-red-500">*</span>
                   </p>
@@ -979,9 +981,9 @@ export default function SongsPage() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
-              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={closeModal} className="btn-secondary w-full sm:w-auto">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {saving ? (uploadingAudio ? 'Uploading MP3...' : (editId ? 'Saving Changes...' : 'Adding Song...')) : (editId ? 'Save Changes' : 'Add Song')}
               </button>

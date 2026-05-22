@@ -452,13 +452,13 @@ export default function PromotionsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Promotions</h1>
           <p className="mt-1 text-sm text-gray-500">Manage banners and promotional campaigns</p>
         </div>
         {!showModal && (
-        <button onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }} className="btn-primary flex items-center gap-2">
+        <button type="button" onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
           <Plus className="size-4" /> Create Promotion
         </button>
         )}
@@ -480,7 +480,7 @@ export default function PromotionsPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {promotions.map(promo => (
-              <div key={promo.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
+              <div key={promo.id} className="flex flex-col gap-4 px-6 py-4 hover:bg-gray-50 sm:flex-row sm:items-center">
                 {(promo.mediaUrl || promo.targetImageUrl || promo.attachedSong?.imageUrl)
                   ? <MediaPreview url={promo.mediaUrl || promo.targetImageUrl || promo.attachedSong?.imageUrl || ''} type={promo.mediaType || 'image'} />
                   : <div className="flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100"><ImageIcon className="size-6 text-gray-400" /></div>
@@ -527,9 +527,9 @@ export default function PromotionsPage() {
                     <p className="mt-0.5 text-xs text-gray-400">{promo.startDate}{promo.endDate ? ` → ${promo.endDate}` : ''}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => openEdit(promo)} className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><Edit className="size-4" /></button>
-                  <button onClick={() => handleDelete(promo.id)} className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700"><Trash2 className="size-4" /></button>
+                <div className="flex flex-shrink-0 items-center gap-1 self-end sm:self-auto">
+                  <button type="button" onClick={() => openEdit(promo)} className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><Edit className="size-4" /></button>
+                  <button type="button" onClick={() => handleDelete(promo.id)} className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700"><Trash2 className="size-4" /></button>
                 </div>
               </div>
             ))}
@@ -541,12 +541,12 @@ export default function PromotionsPage() {
       {showModal && (
         <div className="bg-white">
           <div className="w-full">
-            <div className="flex items-center justify-between border-b border-gray-200 px-1 pb-5">
+            <div className="flex flex-col gap-3 border-b border-gray-200 px-1 pb-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">{editId ? 'Edit Promotion' : 'Create Promotion'}</h2>
                 <p className="mt-1 text-sm text-gray-500">Set the campaign, destination, publishing, and preview.</p>
               </div>
-              <button onClick={closeModal} className="btn-secondary">Back to list</button>
+              <button type="button" onClick={closeModal} className="btn-secondary w-full sm:w-auto">Back to list</button>
             </div>
 
             <div className="grid gap-8 py-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -573,7 +573,7 @@ export default function PromotionsPage() {
 
               <div>
                 <p className="block text-xs font-medium text-gray-700 mb-2">Display Type</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   {DISPLAY_OPTIONS.map(opt => (
                     <button key={opt.value} type="button" onClick={() => setForm(f => ({ ...f, layout: opt.value }))}
                       className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${form.layout === opt.value ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
@@ -745,7 +745,7 @@ export default function PromotionsPage() {
                 </div>
 
                 <p className="block text-xs font-medium text-gray-700 mb-2">Campaign Mode</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {[
                     { value: 'public', label: 'Public', help: 'Visible to users' },
                     { value: 'dev', label: 'Dev test', help: 'Only local/dev builds' },
@@ -759,7 +759,7 @@ export default function PromotionsPage() {
                 </div>
 
                 <p className="mt-4 block text-xs font-medium text-gray-700 mb-2">Show On</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {PLATFORM_OPTIONS.map(opt => (
                     <button key={opt.value} type="button" onClick={() => togglePlatform(opt.value)}
                       className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${form.platforms.includes(opt.value) ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'}`}>
@@ -778,7 +778,7 @@ export default function PromotionsPage() {
                 </select>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="promotions-start-date-7" className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
                   <input id="promotions-start-date-7" type="date" className="input-field" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
@@ -839,9 +839,9 @@ export default function PromotionsPage() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t border-gray-200 bg-white/95 px-1 py-4 backdrop-blur">
-              <button onClick={closeModal} className="btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+            <div className="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-gray-200 bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={closeModal} className="btn-secondary w-full sm:w-auto">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {editId ? 'Save Changes' : 'Create'}
               </button>
@@ -857,13 +857,13 @@ export default function PromotionsPage() {
           <div className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-white shadow-xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{targetLabel(form.actionType)}</h2>
-              <button onClick={() => setShowTargetSearch(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100">
+              <button type="button" onClick={() => setShowTargetSearch(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100">
                 <X className="size-5" />
               </button>
             </div>
 
             <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   ref={searchInputRef}
                   className="input-field flex-1"
@@ -872,8 +872,8 @@ export default function PromotionsPage() {
                   onChange={e => setTargetQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && searchTargets()}
                 />
-                <button onClick={() => searchTargets()} disabled={searchingTargets}
-                  className="btn-primary flex items-center gap-2 px-4">
+                <button type="button" onClick={() => searchTargets()} disabled={searchingTargets}
+                  className="btn-primary flex items-center justify-center gap-2 px-4">
                   {searchingTargets ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
                 </button>
               </div>

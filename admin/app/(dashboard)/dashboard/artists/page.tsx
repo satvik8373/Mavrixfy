@@ -65,13 +65,13 @@ export default function ArtistsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Artists</h1>
           <p className="mt-1 text-sm text-gray-500">{artists.length} artists total</p>
         </div>
         <button type="button" onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }}
-          className="btn-primary flex items-center gap-2">
+          className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
           <Plus className="size-4" /> Add Artist
         </button>
       </div>
@@ -124,7 +124,7 @@ export default function ArtistsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={closeModal} />
-          <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{editId ? 'Edit Artist' : 'Add Artist'}</h2>
               <button type="button" onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
@@ -153,9 +153,9 @@ export default function ArtistsPage() {
                 <label htmlFor="verified" className="text-sm text-gray-700">Verified artist</label>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
-              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={closeModal} className="btn-secondary w-full sm:w-auto">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {editId ? 'Save Changes' : 'Add Artist'}
               </button>

@@ -93,17 +93,17 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Notifications</h1>
           <p className="mt-1 text-sm text-gray-500">Send push notifications to users</p>
         </div>
-        <button type="button" onClick={() => { setShowModal(true); setSendResult(null); }} className="btn-primary flex items-center gap-2">
+        <button type="button" onClick={() => { setShowModal(true); setSendResult(null); }} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
           <Plus className="size-4" /> New Notification
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         {[
           { label: 'Sent Today',      value: stats.sentToday,      icon: Send,   color: 'text-blue-600',   bg: 'bg-blue-50' },
           { label: 'Total Delivered', value: stats.totalDelivered, icon: Users,  color: 'text-green-600',  bg: 'bg-green-50' },
@@ -135,7 +135,7 @@ export default function NotificationsPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {notifications.map(n => (
-              <div key={n.id} className="flex items-start justify-between px-6 py-4 hover:bg-gray-50">
+              <div key={n.id} className="flex flex-col gap-2 px-6 py-4 hover:bg-gray-50 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
@@ -143,7 +143,7 @@ export default function NotificationsPage() {
                   </div>
                   <p className="mt-0.5 text-xs text-gray-500 truncate">{n.message}</p>
                 </div>
-                <div className="ml-4 text-right flex-shrink-0">
+                <div className="text-left sm:ml-4 sm:flex-shrink-0 sm:text-right">
                   <p className="text-xs text-gray-500">{n.sentAt?.toDate?.().toLocaleDateString()}</p>
                   <p className="mt-0.5 text-xs text-gray-400">{n.delivered || 0} delivered</p>
                 </div>
@@ -156,7 +156,7 @@ export default function NotificationsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">Send Notification</h2>
               <button type="button" onClick={() => setShowModal(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
@@ -193,7 +193,7 @@ export default function NotificationsPage() {
               {/* Platform selector */}
               <div>
                 <p className="block text-xs font-medium text-gray-700 mb-2">Send To</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {PLATFORM_OPTIONS.map(opt => (
                     <button key={opt.value} type="button"
                       onClick={() => setForm(f => ({ ...f, platform: opt.value }))}
@@ -212,9 +212,9 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
-              <button type="button" onClick={handleSend} disabled={saving} className="btn-primary flex items-center gap-2">
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary w-full sm:w-auto">Cancel</button>
+              <button type="button" onClick={handleSend} disabled={saving} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
                 {saving ? 'Sending...' : 'Send'}
               </button>

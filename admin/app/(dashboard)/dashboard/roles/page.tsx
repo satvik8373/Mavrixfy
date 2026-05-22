@@ -82,7 +82,7 @@ export default function RolesPage() {
           <h2 className="text-sm font-semibold text-gray-900">Permission Matrix</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[720px]">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Permission</th>

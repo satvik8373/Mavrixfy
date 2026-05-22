@@ -1,21 +1,34 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { CommandPalette } from '@/components/CommandPalette';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Menu, X } from 'lucide-react';
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { push } = useRouter();
   const { session, loading } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) {
       push('/login');
     }
   }, [session, loading, push]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [sidebarOpen]);
 
   if (loading) {
     return (
@@ -31,9 +44,57 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="ml-64 flex-1">
-        <div className="container mx-auto p-8">
+      <Sidebar className="fixed left-0 top-0 z-40 hidden h-screen lg:flex" />
+
+      <div className="fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/admin-mark.svg"
+            alt="Mavrixfy Admin"
+            width={36}
+            height={36}
+            className="size-9 rounded-lg bg-gray-950 object-cover"
+            priority
+          />
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Mavrixfy</p>
+            <p className="text-xs text-gray-500">Admin Panel</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          aria-label="Open navigation"
+          onClick={() => setSidebarOpen(true)}
+          className="inline-flex size-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm"
+        >
+          <Menu className="size-5" />
+        </button>
+      </div>
+
+      {sidebarOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close navigation overlay"
+            className="absolute inset-0 bg-gray-950/45"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 max-w-[85vw] bg-white shadow-xl">
+            <button
+              type="button"
+              aria-label="Close navigation"
+              onClick={() => setSidebarOpen(false)}
+              className="absolute right-3 top-3 z-10 inline-flex size-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm"
+            >
+              <X className="size-5" />
+            </button>
+            <Sidebar onNavigate={() => setSidebarOpen(false)} />
+          </div>
+        </div>
+      ) : null}
+
+      <main className="min-w-0 flex-1 pt-16 lg:ml-64 lg:pt-0">
+        <div className="mx-auto w-full max-w-screen-2xl px-4 py-5 sm:px-6 lg:p-8">
           {children}
         </div>
       </main>

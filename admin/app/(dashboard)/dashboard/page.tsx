@@ -49,7 +49,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map(({ label, value, icon: Icon, color, bg, href }) => (
           <Link key={label} href={href} className="block rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
             <div className="flex items-center justify-between">
@@ -95,7 +95,7 @@ export default function DashboardPage() {
         <div className="border-b border-gray-200 px-6 py-4">
           <h2 className="text-sm font-semibold text-gray-900">System Status</h2>
         </div>
-        <div className="grid grid-cols-3 divide-x divide-gray-100">
+        <div className="grid divide-y divide-gray-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {[
             { label: 'API', status: 'Operational' },
             { label: 'Database', status: 'Connected' },

@@ -64,12 +64,12 @@ export default function FlagsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Feature Flags</h1>
           <p className="mt-1 text-sm text-gray-500">Control feature rollouts across platforms</p>
         </div>
-        <button type="button" onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+        <button type="button" onClick={() => setShowModal(true)} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
           <Plus className="size-4" /> New Flag
         </button>
       </div>
@@ -84,7 +84,8 @@ export default function FlagsPage() {
             <p className="mt-1 text-xs text-gray-500">Create your first flag to control app features</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left">
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Flag</th>
@@ -125,13 +126,14 @@ export default function FlagsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">New Feature Flag</h2>
               <button type="button" onClick={() => setShowModal(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
@@ -148,7 +150,7 @@ export default function FlagsPage() {
               </div>
               <div>
                 <p className="block text-xs font-medium text-gray-700 mb-2">Platforms</p>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   {PLATFORMS.map(p => (
                     <label key={p} className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={form.platform.includes(p)} onChange={() => togglePlatform(p)}
@@ -164,9 +166,9 @@ export default function FlagsPage() {
                 <label htmlFor="flagEnabled" className="text-sm text-gray-700">Enable immediately</label>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
-              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary w-full sm:w-auto">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 Create Flag
               </button>

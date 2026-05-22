@@ -114,13 +114,13 @@ export default function PlaylistsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Playlists</h1>
           <p className="mt-1 text-sm text-gray-500">{playlists.length} playlists total</p>
         </div>
-        <button onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }}
-          className="btn-primary flex items-center gap-2">
+        <button type="button" onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }}
+          className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
           <Plus className="size-4" /> Create Playlist
         </button>
       </div>
@@ -169,21 +169,21 @@ export default function PlaylistsPage() {
                     <span className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Private</span>
                   )}
                 </div>
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <Music2 className="size-3.5" />
                     <span>{playlist.songs?.length ?? 0} songs</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => { setManagingId(playlist.id); setSongSearch(''); }}
+                  <div className="flex flex-wrap items-center gap-1">
+                    <button type="button" onClick={() => { setManagingId(playlist.id); setSongSearch(''); }}
                       className="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50">
                       Manage Songs
                     </button>
-                    <button onClick={() => openEdit(playlist)}
+                    <button type="button" onClick={() => openEdit(playlist)}
                       className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
                       <Edit className="size-4" />
                     </button>
-                    <button onClick={() => handleDelete(playlist.id)}
+                    <button type="button" onClick={() => handleDelete(playlist.id)}
                       className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700">
                       <Trash2 className="size-4" />
                     </button>
@@ -199,10 +199,10 @@ export default function PlaylistsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={closeModal} />
-          <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{editId ? 'Edit Playlist' : 'Create Playlist'}</h2>
-              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
+              <button type="button" onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               {error && <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -228,9 +228,9 @@ export default function PlaylistsPage() {
                 <label htmlFor="isPublic" className="text-sm text-gray-700">Public playlist</label>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button onClick={closeModal} className="btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={closeModal} className="btn-secondary w-full sm:w-auto">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {editId ? 'Save Changes' : 'Create'}
               </button>
@@ -243,13 +243,13 @@ export default function PlaylistsPage() {
       {managingId && managingPlaylist && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={() => setManagingId(null)} />
-          <div className="relative flex w-full max-w-lg flex-col rounded-lg border border-gray-200 bg-white shadow-xl" style={{ maxHeight: '80vh' }}>
+          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <div>
                 <h2 className="text-base font-semibold text-gray-900">Manage Songs</h2>
                 <p className="text-xs text-gray-500">{managingPlaylist.name} · {managingPlaylist.songs?.length ?? 0} songs</p>
               </div>
-              <button onClick={() => setManagingId(null)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
+              <button type="button" onClick={() => setManagingId(null)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-4 py-3 border-b border-gray-100">
               <div className="relative">
@@ -276,7 +276,7 @@ export default function PlaylistsPage() {
                       <p className="text-sm font-medium text-gray-900 truncate">{song.title}</p>
                       <p className="text-xs text-gray-500 truncate">{song.artist}</p>
                     </div>
-                    <button onClick={() => toggleSong(managingId, song.id, inPlaylist)}
+                    <button type="button" onClick={() => toggleSong(managingId, song.id, inPlaylist)}
                       className={`flex-shrink-0 rounded-md p-1.5 transition-colors ${inPlaylist
                         ? 'text-red-500 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}>
                       {inPlaylist ? <MinusCircle className="size-5" /> : <PlusCircle className="size-5" />}
@@ -286,7 +286,7 @@ export default function PlaylistsPage() {
               })}
             </div>
             <div className="border-t border-gray-200 px-6 py-3 text-right">
-              <button onClick={() => setManagingId(null)} className="btn-primary">Finish editing songs</button>
+              <button type="button" onClick={() => setManagingId(null)} className="btn-primary w-full sm:w-auto">Finish editing songs</button>
             </div>
           </div>
         </div>

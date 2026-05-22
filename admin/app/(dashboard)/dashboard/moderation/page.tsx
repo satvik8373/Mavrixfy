@@ -43,7 +43,7 @@ export default function ModerationPage() {
         <p className="mt-1 text-sm text-gray-500">Review reported content and manage takedowns</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         {[
           { label: 'Pending', value: pending, icon: AlertTriangle, color: 'text-yellow-600', bg: 'bg-yellow-50' },
           { label: 'Approved', value: approved, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
@@ -78,7 +78,8 @@ export default function ModerationPage() {
             <p className="mt-1 text-xs text-gray-500">Reported content will appear here</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Content</th>
@@ -114,6 +115,7 @@ export default function ModerationPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
