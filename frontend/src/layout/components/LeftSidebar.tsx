@@ -15,7 +15,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePlaylistStore } from '@/stores/usePlaylistStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { CreatePlaylistDialog } from '../../components/playlist/CreatePlaylistDialog';
-import { getLikedSongsCount } from '@/services/likedSongsService';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 // Removed Mavrixfy section per request
 
@@ -196,6 +195,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
     const loadLikedSongsCount = async () => {
         if (isActuallyAuthenticated) {
             try {
+                const { getLikedSongsCount } = await import('@/services/likedSongsService');
                 const count = await getLikedSongsCount();
                 dispatchSidebar({ type: 'liked_count', count });
             } catch (error) {

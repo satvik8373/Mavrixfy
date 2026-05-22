@@ -195,6 +195,7 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
       {state.showScrollbar && (
         <div
           role="button"
+          aria-label="Scroll page"
           tabIndex={0}
           onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
           className={cn(
@@ -209,6 +210,7 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
           {/* Scrollbar Thumb */}
           <div
             role="button"
+            aria-label="Drag page scrollbar"
             tabIndex={0}
             onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
             ref={scrollThumbRef}

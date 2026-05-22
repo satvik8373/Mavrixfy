@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { detectAudioOutputDeviceType, type AudioOutputDeviceType } from '@/lib/audioOutputDevice';
-import { audioManager } from '@/utils/audioManager';
 
 const DEFAULT_DEVICE_LABEL = 'This web browser';
 
@@ -12,7 +11,8 @@ interface AudioOutputState {
   deviceType: AudioOutputDeviceType;
 }
 
-const getAudioElement = (): HTMLAudioElement | null => {
+const getAudioElement = async (): Promise<HTMLAudioElement | null> => {
+  const { audioManager } = await import('@/utils/audioManager');
   return audioManager.getCurrentNodeForOutput();
 };
 
@@ -64,7 +64,7 @@ export const useAudioOutputDevice = (isActive: boolean): AudioOutputState => {
         return;
       }
 
-      const audioEl = getAudioElement();
+      const audioEl = await getAudioElement();
       const sinkId =
         audioEl && 'sinkId' in audioEl
           ? String((audioEl as HTMLAudioElement & { sinkId?: string }).sinkId || '')

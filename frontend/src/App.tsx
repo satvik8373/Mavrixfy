@@ -1,13 +1,11 @@
 import { RouterProvider, createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
-import { Suspense, lazy, useReducer, useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
-import { audioManager } from './utils/audioManager';
-import { startRecommendationSessionTracking } from './services/recommendationService';
 
 // Only preload absolute structural components
 import MainLayout from './layout/MainLayout';
@@ -42,14 +40,12 @@ const JioSaavnCategoriesPage = lazy(() => import('./pages/jiosaavn/JioSaavnCateg
 // Embed page
 const EmbedPlaylistPage = lazy(() => import('./pages/embed/EmbedPlaylistPage'));
 
-import SplashScreen from './components/SplashScreen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-// DON'T lazy load auth pages to prevent flickering
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ResetPassword from './pages/ResetPassword';
-import VerifyEmail from './pages/VerifyEmail';
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 const CHUNK_RECOVERY_KEY = 'mavrixfy_chunk_recovery_done';
@@ -100,21 +96,14 @@ const NotFoundFallback = () => (
 // Error page for when something goes wrong
 const ErrorFallback = ({ error }: { error?: Error }) => {
 	useEffect(() => {
-		// Error caught by boundary - details available for debugging if needed
-	}, [error]);
-
-	useEffect(() => {
-		if (!isChunkLoadLikeError(error)) return;
+		if (!isChunkLoadLikeError(error)) {
+			sessionStorage.removeItem(CHUNK_RECOVERY_KEY);
+			return;
+		}
 		if (sessionStorage.getItem(CHUNK_RECOVERY_KEY)) return;
 
 		sessionStorage.setItem(CHUNK_RECOVERY_KEY, '1');
 		void performHardRefresh();
-	}, [error]);
-
-	useEffect(() => {
-		if (!isChunkLoadLikeError(error)) {
-			sessionStorage.removeItem(CHUNK_RECOVERY_KEY);
-		}
 	}, [error]);
 
 	return (
@@ -192,19 +181,19 @@ const router = createBrowserRouter(
 		},
 		{
 			path: '/login',
-			element: <Login />
+			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><Login /></Suspense>
 		},
 		{
 			path: '/register',
-			element: <Register />
+			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><Register /></Suspense>
 		},
 		{
 			path: '/reset-password',
-			element: <ResetPassword />
+			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ResetPassword /></Suspense>
 		},
 		{
 			path: '/verify-email',
-			element: <VerifyEmail />
+			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><VerifyEmail /></Suspense>
 		},
 		{
 			path: '/privacy',
@@ -329,61 +318,14 @@ const router = createBrowserRouter(
 );
 
 function AppContent() {
-	const [{ showSplash, appReady }, dispatchAppBoot] = useReducer(
-		(_state: { showSplash: boolean; appReady: boolean }, nextState: { showSplash: boolean; appReady: boolean }) => nextState,
-		{ showSplash: true, appReady: false }
-	);
-	// Auth loading state is handled internally by useAuth hook
-
-	// Initialize app and handle splash screen - minimal delay
+	// Initialize app and release the route shell as soon as boot work is scheduled.
 	useEffect(() => {
-		let splashTimeoutId: ReturnType<typeof setTimeout> | undefined;
-
-		const initializeApp = async () => {
-			try {
-				// Clear any Firebase auth redirect state to prevent errors
-				clearAuthRedirectState();
-
-				// Initialize performance optimizations immediately
-				performanceService.addResourceHints();
-
-				// Clean up offline data and sync
-				cleanupOfflineData().catch(() => { });
-
-				// Minimal splash time - 200ms only
-				splashTimeoutId = setTimeout(() => {
-					dispatchAppBoot({ showSplash: false, appReady: true });
-				}, 200);
-
-			} catch (error) {
-				dispatchAppBoot({ showSplash: false, appReady: true });
-			}
-		};
-
-		initializeApp();
-
-		return () => {
-			if (splashTimeoutId) {
-				clearTimeout(splashTimeoutId);
-			}
-		};
+		// Clear any Firebase auth redirect state to prevent errors.
+		clearAuthRedirectState();
+		performanceService.addResourceHints();
+		cleanupOfflineData().catch(() => { });
 	}, []);
 
-	// Show minimal splash screen
-	if (showSplash) {
-		return (
-			<div className="fixed inset-0 bg-[#121212]">
-				<SplashScreen />
-			</div>
-		);
-	}
-
-	// Don't render router until app is ready
-	if (!appReady) {
-		return <div className="min-h-screen bg-[#121212]" />;
-	}
-
-	// Main app content - no suspense wrapper to avoid delays
 	return (
 		<div className="min-h-screen bg-[#121212]">
 			<RouterProvider
@@ -418,7 +360,23 @@ function AppContent() {
 
 function App() {
 	useEffect(() => {
-		startRecommendationSessionTracking();
+		let started = false;
+		const interactionEvents = ['pointerdown', 'keydown', 'touchstart'];
+		const startTracking = async () => {
+			if (started) return;
+			started = true;
+			interactionEvents.forEach((eventName) => window.removeEventListener(eventName, startTracking));
+			const { startRecommendationSessionTracking } = await import('./services/recommendationService');
+			startRecommendationSessionTracking();
+		};
+
+		interactionEvents.forEach((eventName) => {
+			window.addEventListener(eventName, startTracking, { once: true, passive: true });
+		});
+
+		return () => {
+			interactionEvents.forEach((eventName) => window.removeEventListener(eventName, startTracking));
+		};
 	}, []);
 
 	// Set CSS variable for viewport height to handle mobile browsers
@@ -440,15 +398,22 @@ function App() {
 	}, []);
 
 	useEffect(() => {
+		let audioManagerPromise: Promise<typeof import('./utils/audioManager')> | null = null;
+		const resumeAudio = async () => {
+			audioManagerPromise ??= import('./utils/audioManager');
+			const { audioManager } = await audioManagerPromise;
+			void audioManager.resumeIfPausedUnexpectedly();
+		};
+
 		const handleVisibilityChange = () => {
 			if (document.visibilityState !== 'visible') return;
-			void audioManager.resumeIfPausedUnexpectedly();
+			void resumeAudio();
 		};
 
 		// Resume after tab switch, screen unlock, network reconnect, or any tap
 		// pointerup covers iOS PWA interruptions (calls, Siri, etc.) that
 		// visibilitychange alone doesn't catch
-		const handleResume = () => void audioManager.resumeIfPausedUnexpectedly();
+		const handleResume = () => void resumeAudio();
 
 		document.addEventListener('visibilitychange', handleVisibilityChange);
 		window.addEventListener('focus', handleResume);

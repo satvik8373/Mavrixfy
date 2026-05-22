@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Bell, X } from 'lucide-react';
-import { registerWebPush, getNotificationPermission } from '@/services/webPushService';
 import { useAuth } from '@/contexts/AuthContext';
+
+const getNotificationPermission = () => {
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission;
+};
 
 export function NotificationPermissionBanner() {
   const { user } = useAuth();
@@ -14,7 +18,9 @@ export function NotificationPermissionBanner() {
 
     if (perm === 'granted') {
       // Already granted — silently ensure token is registered, no banner needed
-      registerWebPush(user.id).catch(() => {});
+      void import('@/services/webPushService')
+        .then(({ registerWebPush }) => registerWebPush(user.id))
+        .catch(() => {});
       return;
     }
 
@@ -30,6 +36,7 @@ export function NotificationPermissionBanner() {
   async function handleEnable() {
     if (!user?.id) return;
     setShow(false); // hide immediately to avoid double-click
+    const { registerWebPush } = await import('@/services/webPushService');
     const result = await registerWebPush(user.id);
     if (result.status !== 'granted') {
       // Permission denied by user — don't show again

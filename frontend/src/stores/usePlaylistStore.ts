@@ -1,7 +1,8 @@
 import { createWithEqualityFn as create } from 'zustand/traditional';
 import { Playlist } from '../types';
-import * as playlistService from '../services/playlistService';
 import { useMusicStore } from '../stores/useMusicStore';
+
+const loadPlaylistService = () => import('../services/playlistService');
 
 interface PlaylistStore {
   playlists: Playlist[];
@@ -59,6 +60,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       set({ isLoading: true });
       try {
+        const playlistService = await loadPlaylistService();
         const [userPlaylists, publicPlaylists] = await Promise.all([
           playlistService.getUserPlaylists({ limit: 50, page: 1 }),
           playlistService.getPublicPlaylists({ limit: 50, page: 1 })
@@ -79,6 +81,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       set({ isLoading: true });
       try {
+        const playlistService = await loadPlaylistService();
         const userPlaylists = await playlistService.getUserPlaylists({ limit: 50, page: 1 });
         
         const merged = new Map<string, Playlist>();
@@ -98,6 +101,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       set({ isLoading: true });
       try {
+        const playlistService = await loadPlaylistService();
         const featuredPlaylists = await playlistService.getFeaturedPlaylists();
         set({ featuredPlaylists, isLoading: false });
       } catch {
@@ -112,6 +116,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       set({ isLoading: true });
       try {
+        const playlistService = await loadPlaylistService();
         const publicPlaylists = await playlistService.getPublicPlaylists({ limit: 50, page: 1 });
         const merged = new Map<string, Playlist>();
         publicPlaylists.forEach(p => merged.set(p._id, p));
@@ -129,6 +134,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       set({ isLoading: true });
       try {
+        const playlistService = await loadPlaylistService();
         const playlist = await playlistService.getPlaylistById(id);
         set({ currentPlaylist: playlist, isLoading: false });
         return playlist;
@@ -149,6 +155,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       const { playlistsService } = await import('../services/firestore');
       playlistsService.clearCache();
       
+      const playlistService = await loadPlaylistService();
       const playlist = await playlistService.getPlaylistById(id);
       set({ currentPlaylist: playlist, isLoading: false });
       return playlist;
@@ -187,6 +194,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
     try {
       set({ isCreating: true });
       try {
+        const playlistService = await loadPlaylistService();
         const playlist = await playlistService.createPlaylist(name, description, isPublic, imageUrl);
         const userPlaylists = [...get().userPlaylists, playlist];
         set({ userPlaylists, isCreating: false });
@@ -204,6 +212,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   updatePlaylist: async (id: string, data: { name?: string; description?: string; isPublic?: boolean; imageUrl?: string }) => {
     try {
       set({ isUpdating: true });
+      const playlistService = await loadPlaylistService();
       const updatedPlaylist = await playlistService.updatePlaylist(id, data);
       const playlists = get().playlists.map(p => (p._id === id ? updatedPlaylist : p));
       const userPlaylists = get().userPlaylists.map(p => (p._id === id ? updatedPlaylist : p));
@@ -216,6 +225,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
   deletePlaylist: async (id: string) => {
     try {
       set({ isDeleting: true });
+      const playlistService = await loadPlaylistService();
       await playlistService.deletePlaylist(id);
       const playlists = get().playlists.filter(p => p._id !== id);
       const userPlaylists = get().userPlaylists.filter(p => p._id !== id);
@@ -251,6 +261,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
       }
 
       try {
+        const playlistService = await loadPlaylistService();
         const updatedPlaylist = await playlistService.addSongToPlaylist(playlistId, song);
         set({ currentPlaylist: updatedPlaylist });
         const userPlaylists = get().userPlaylists.map(p => (p._id === playlistId ? updatedPlaylist : p));
@@ -269,13 +280,17 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const userPlaylistsUpdated = get().userPlaylists.map(p => (p._id === playlistId ? updatedPlaylist : p));
         const playlistsUpdated = get().playlists.map(p => (p._id === playlistId ? updatedPlaylist : p));
         set({ userPlaylists: userPlaylistsUpdated, playlists: playlistsUpdated });
-        try { playlistService.updatePlaylist(playlistId, { imageUrl: song.imageUrl }); } catch {}
+        try {
+          const playlistService = await loadPlaylistService();
+          void playlistService.updatePlaylist(playlistId, { imageUrl: song.imageUrl });
+        } catch {}
       }
     } catch {}
   },
 
   removeSongFromPlaylist: async (playlistId: string, songId: string) => {
     try {
+      const playlistService = await loadPlaylistService();
       const updatedPlaylist = await playlistService.removeSongFromPlaylist(playlistId, songId);
       set({ currentPlaylist: updatedPlaylist });
     } catch {}

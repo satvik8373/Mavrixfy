@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import ColorThief from 'colorthief';
+import { getOptimizedArtworkUrl } from '@/services/cloudinaryService';
 
 export interface AlbumColors {
   primary: string;
@@ -19,7 +19,24 @@ export interface AlbumColors {
   brightness: number;
 }
 
-const colorThief = new ColorThief();
+type ColorThiefInstance = {
+  getColor: (sourceImage: HTMLImageElement) => number[];
+  getPalette: (sourceImage: HTMLImageElement, colorCount?: number) => number[][];
+};
+
+const albumColorsCache = new Map<string, AlbumColors>();
+let colorThiefPromise: Promise<ColorThiefInstance> | null = null;
+
+function loadColorThief(): Promise<ColorThiefInstance> {
+  if (!colorThiefPromise) {
+    colorThiefPromise = import('colorthief').then((module) => {
+      const ColorThief = module.default;
+      return new ColorThief() as ColorThiefInstance;
+    });
+  }
+
+  return colorThiefPromise;
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -327,15 +344,30 @@ export const useAlbumColors = (imageUrl: string | undefined, isLikedSongs: boole
   useEffect(() => {
     if (!imageUrl) return;
 
+    const cacheKey = `${isLikedSongs ? 'liked' : 'album'}:${imageUrl}`;
+    const cachedColors = albumColorsCache.get(cacheKey);
+    if (cachedColors) {
+      setColors(cachedColors);
+      return;
+    }
+
+    let isCancelled = false;
+    const colorSourceUrl = getOptimizedArtworkUrl(imageUrl, {
+      width: 96,
+      height: 96,
+      crop: 'fill',
+    });
     const img = new Image();
     img.crossOrigin = 'Anonymous';
 
-    img.onload = () => {
+    img.onload = async () => {
       try {
+        const colorThief = await loadColorThief();
+        if (isCancelled) return;
+
         // Dominant color keeps the UI matched to the overall cover artwork.
         const dominantColor = colorThief.getColor(img) as number[];
-        // Get extended palette for maximum color analysis
-        const palette = colorThief.getPalette(img, 32) as number[][]; // Increased from 16 to 32 colors
+        const palette = colorThief.getPalette(img, 16) as number[][];
 
         // Professional color selection algorithm with more color candidates
         let bestColor = palette[0] || dominantColor;
@@ -407,7 +439,7 @@ export const useAlbumColors = (imageUrl: string | undefined, isLikedSongs: boole
           '--album-brightness': `${result.brightness}%`,
         } as React.CSSProperties;
 
-        setColors({
+        const nextColors = {
           primary: primaryCss,
           secondary: secondaryCss,
           accent: result.accent,
@@ -423,7 +455,12 @@ export const useAlbumColors = (imageUrl: string | undefined, isLikedSongs: boole
           dominantHue: result.dominantHue,
           saturation: result.saturation,
           brightness: result.brightness,
-        });
+        };
+
+        albumColorsCache.set(cacheKey, nextColors);
+        if (!isCancelled) {
+          setColors(nextColors);
+        }
       } catch (error) {
         // ColorThief failed, using fallback
       }
@@ -433,7 +470,13 @@ export const useAlbumColors = (imageUrl: string | undefined, isLikedSongs: boole
       // Keep default/previous colors
     };
 
-    img.src = imageUrl;
+    img.src = colorSourceUrl;
+
+    return () => {
+      isCancelled = true;
+      img.onload = null;
+      img.onerror = null;
+    };
   }, [imageUrl, isLikedSongs]);
 
   return colors;

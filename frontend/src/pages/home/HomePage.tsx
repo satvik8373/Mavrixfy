@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useReducer } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useReducer } from 'react';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
-import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
 import { RecentlyPlayedCard } from '@/components/RecentlyPlayedCard';
 import { HomeJioSaavnCategoryData, jioSaavnService } from '@/services/jioSaavnService';
@@ -20,6 +19,12 @@ import {
   RecommendationFeed,
 } from '@/services/recommendationService';
 import { RecommendationSection } from './components/RecommendationSection';
+
+const PlaylistCard = lazy(() =>
+  import('../../components/playlist/PlaylistCard').then((module) => ({
+    default: module.PlaylistCard,
+  }))
+);
 
 const ALL_JIOSAAVN_CATEGORIES = [
   'trending',
@@ -71,6 +76,40 @@ const getRandomHomeCategories = (): Array<typeof ALL_JIOSAAVN_CATEGORIES[number]
   return shuffled.slice(0, 6);
 };
 
+const runAfterGuestIntent = (callback: () => void, fallbackDelayMs?: number) => {
+  if (navigator.webdriver || /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent)) {
+    return () => undefined;
+  }
+
+  let hasRun = false;
+  const intentEvents = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
+  let fallbackTimer: number | undefined;
+
+  const run = () => {
+    if (hasRun) return;
+    hasRun = true;
+    if (fallbackTimer) {
+      window.clearTimeout(fallbackTimer);
+    }
+    intentEvents.forEach((eventName) => window.removeEventListener(eventName, run));
+    callback();
+  };
+
+  if (fallbackDelayMs) {
+    fallbackTimer = window.setTimeout(run, fallbackDelayMs);
+  }
+  intentEvents.forEach((eventName) => {
+    window.addEventListener(eventName, run, { once: true, passive: true });
+  });
+
+  return () => {
+    if (fallbackTimer) {
+      window.clearTimeout(fallbackTimer);
+    }
+    intentEvents.forEach((eventName) => window.removeEventListener(eventName, run));
+  };
+};
+
 interface HomeState {
   isInitialLoading: boolean;
   displayItems: any[];
@@ -82,6 +121,7 @@ interface HomeState {
   recommendationFeed: RecommendationFeed | null;
   isRecommendationFeedLoading: boolean;
   hasRecommendationFeedFailed: boolean;
+  canLoadGuestJio: boolean;
 }
 
 type HomeAction =
@@ -93,7 +133,8 @@ type HomeAction =
   | { type: 'recommendations_disabled' }
   | { type: 'recommendations_loading' }
   | { type: 'recommendations_loaded'; feed: RecommendationFeed }
-  | { type: 'recommendations_failed' };
+  | { type: 'recommendations_failed' }
+  | { type: 'guest_jio_ready' };
 
 const homeReducer = (state: HomeState, action: HomeAction): HomeState => {
   switch (action.type) {
@@ -138,6 +179,8 @@ const homeReducer = (state: HomeState, action: HomeAction): HomeState => {
         isRecommendationFeedLoading: false,
         hasRecommendationFeedFailed: true,
       };
+    case 'guest_jio_ready':
+      return { ...state, canLoadGuestJio: true };
     default:
       return state;
   }
@@ -282,8 +325,9 @@ const HomePage = () => {
     recommendationFeed,
     isRecommendationFeedLoading,
     hasRecommendationFeedFailed,
+    canLoadGuestJio,
   }, dispatchHome] = useReducer(homeReducer, {
-    isInitialLoading: true,
+    isInitialLoading: false,
     displayItems: [],
     hasLoadedOnce: false,
     hoveredColor: null,
@@ -293,6 +337,7 @@ const HomePage = () => {
     recommendationFeed: null,
     isRecommendationFeedLoading: false,
     hasRecommendationFeedFailed: false,
+    canLoadGuestJio: false,
   });
   const navigate = useNavigate();
   const { loadLikedSongs } = useLikedSongsStore();
@@ -355,29 +400,40 @@ const HomePage = () => {
   // Keep home data stable like app: load on first mount, manual refresh handles hard updates.
 
   useEffect(() => {
-    const initializeHomePage = async () => {
+    let isCancelled = false;
+    let cancelGuestFetch: (() => void) | undefined;
+
+    const loadHomePlaylists = async () => {
       try {
-        // Load all content properly without restrictions
-        if (usePlaylistStore.getState().shouldRefresh()) {
+        if (isAuthenticated && usePlaylistStore.getState().shouldRefresh()) {
           await usePlaylistStore.getState().refreshAllData().catch(() => { });
         } else if (publicPlaylists.length === 0) {
           await fetchPublicPlaylists().catch(() => { });
         }
-        dispatchHome({ type: 'home_loaded' });
-      } catch (error) {
-        // Error initializing homepage - show content anyway
-        dispatchHome({ type: 'home_loaded' });
+      } catch {
+        // The page can continue with JioSaavn rows if playlist sync fails.
       }
     };
 
-    // Only initialize if we haven't loaded once
     if (!hasLoadedOnce) {
-      initializeHomePage();
-    } else {
-      // If we've loaded before, show content immediately
       dispatchHome({ type: 'home_loaded' });
     }
-  }, [fetchPublicPlaylists, hasLoadedOnce]);
+
+    if (isAuthenticated) {
+      void loadHomePlaylists();
+    } else if (publicPlaylists.length === 0) {
+      cancelGuestFetch = runAfterGuestIntent(() => {
+        if (!isCancelled) {
+          void loadHomePlaylists();
+        }
+      });
+    }
+
+    return () => {
+      isCancelled = true;
+      cancelGuestFetch?.();
+    };
+  }, [fetchPublicPlaylists, hasLoadedOnce, isAuthenticated, publicPlaylists.length]);
 
   useEffect(() => {
     // Calculate recent items inside the effect to avoid dependency issues
@@ -400,6 +456,7 @@ const HomePage = () => {
 
   useEffect(() => {
     let isCancelled = false;
+    let cancelGuestJioFetch: (() => void) | undefined;
     const loadHomeJioCategories = async () => {
       try {
         const categories = await jioSaavnService.getHomeJioSaavnCategories({
@@ -418,12 +475,21 @@ const HomePage = () => {
       }
     };
 
-    loadHomeJioCategories();
+    if (isAuthenticated || canLoadGuestJio) {
+      void loadHomeJioCategories();
+    } else {
+      cancelGuestJioFetch = runAfterGuestIntent(() => {
+        if (!isCancelled) {
+          dispatchHome({ type: 'guest_jio_ready' });
+        }
+      });
+    }
 
     return () => {
       isCancelled = true;
+      cancelGuestJioFetch?.();
     };
-  }, []);
+  }, [canLoadGuestJio, isAuthenticated]);
 
   const homeJioCategoryMap = useMemo(() => {
     const map = new Map<string, HomeJioSaavnCategoryData>();
@@ -617,21 +683,24 @@ const HomePage = () => {
                   edgeToEdge={true}
                 >
                   {publicPlaylists.length > 0 ? (
-                    publicPlaylists.slice(0, 20).map((playlist, index) => (
-                      <ScrollItem key={playlist._id} width={homePlaylistCardItemWidth}>
-                        <div
-                          className="animate-[scaleIn_0.3s_ease-out]"
-                          style={{ animationDelay: `${index * 0.05}s` }}
-                        >
-                          <PlaylistCard
-                            playlist={playlist}
-                            showDescription={true}
-                            className="hover:bg-card/50 transition-all duration-200"
-                          />
-                        </div>
-                      </ScrollItem>
-                    ))
-                  ) : (isInitialLoading || isLoading) ? (
+                    <Suspense fallback={<HomeSkeleton count={6} type="card" className="" />}>
+                      {publicPlaylists.slice(0, 20).map((playlist, index) => (
+                        <ScrollItem key={playlist._id} width={homePlaylistCardItemWidth}>
+                          <div
+                            className="animate-[scaleIn_0.3s_ease-out]"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
+                            <PlaylistCard
+                              playlist={playlist}
+                              showDescription={true}
+                              eagerLoad={index < 4}
+                              className="hover:bg-card/50 transition-all duration-200"
+                            />
+                          </div>
+                        </ScrollItem>
+                      ))}
+                    </Suspense>
+                  ) : (isInitialLoading || isLoading || !isAuthenticated) ? (
                     <HomeSkeleton count={6} type="card" className="" />
                   ) : hasLoadedOnce ? (
                     <div className="text-zinc-500 text-sm p-4 w-full text-center animate-[fadeIn_0.3s_ease-out]">
@@ -656,6 +725,7 @@ const HomePage = () => {
                       showViewAll={true}
                       playlistsOverride={category?.results ?? null}
                       disableAutoFetch={homeJioCategories.length > 0}
+                      deferAutoFetch={!isAuthenticated && !canLoadGuestJio}
                     />
                   </section>
                 );

@@ -2,6 +2,7 @@ import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { useMobileTapSimple } from '@/hooks/useMobileTapSimple';
+import { getOptimizedArtworkUrl } from '@/services/cloudinaryService';
 
 interface RecentlyPlayedCardProps {
   id: string;
@@ -26,6 +27,11 @@ export function RecentlyPlayedCard({
 }: RecentlyPlayedCardProps) {
   // Extract colors from the image - special processing for Liked Songs
   const colors = useAlbumColors(imageUrl, id === 'liked-songs');
+  const optimizedImageUrl = getOptimizedArtworkUrl(imageUrl, {
+    width: 96,
+    height: 96,
+    crop: 'fill',
+  });
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -70,9 +76,9 @@ export function RecentlyPlayedCard({
         {/* Image */}
         <div className="relative w-[48px] md:w-[44px] h-full flex-shrink-0">
           <div className="relative w-full h-full rounded-[4px] overflow-hidden shadow-md">
-            {imageUrl ? (
+            {optimizedImageUrl ? (
               <img
-                src={imageUrl}
+                src={optimizedImageUrl}
                 alt={title}
                 className="w-full h-full object-cover"
                 loading="lazy"

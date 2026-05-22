@@ -275,11 +275,13 @@ const MainLayout = () => {
       style={{ height: 'calc(var(--vh, 1dvh) * 100)' }}
     >
       {/* Header with login - hidden on mobile */}
-      <div className="hidden md:block flex-shrink-0 relative z-[100]">
-        <Suspense fallback={null}>
-          <Header />
-        </Suspense>
-      </div>
+      {!isMobile && (
+        <div className="hidden md:block flex-shrink-0 relative z-[100]">
+          <Suspense fallback={null}>
+            <Header />
+          </Suspense>
+        </div>
+      )}
 
       {/* Main content area */}
       <div
@@ -304,6 +306,7 @@ const MainLayout = () => {
             {/* Resize handle */}
             <div
               role="button"
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Resize sidebar'}
               tabIndex={0}
               onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
               onMouseDown={handleMouseDown}
@@ -317,12 +320,14 @@ const MainLayout = () => {
         {/* Main content */}
         <div className="flex-1 h-full overflow-hidden">
           <CustomScrollbar className="h-full mobile-scroll-fix bg-transparent md:rounded-lg">
-            <Outlet />
-            {!isMobile && !hideDesktopFooter && (
-              <Suspense fallback={null}>
-                <DesktopFooter />
-              </Suspense>
-            )}
+            <main id="main-content" className="min-h-full">
+              <Outlet />
+              {!isMobile && !hideDesktopFooter && (
+                <Suspense fallback={null}>
+                  <DesktopFooter />
+                </Suspense>
+              )}
+            </main>
           </CustomScrollbar>
         </div>
 

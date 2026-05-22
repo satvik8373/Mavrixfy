@@ -2,7 +2,6 @@ import React, { useReducer, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { JioSaavnPlaylistCard } from './JioSaavnPlaylistCard';
 import { JioSaavnPlaylist, jioSaavnService, PlaylistCategory } from '@/services/jioSaavnService';
-import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
@@ -16,6 +15,7 @@ interface JioSaavnPlaylistsSectionProps {
   showViewAll?: boolean;
   playlistsOverride?: JioSaavnPlaylist[] | null;
   disableAutoFetch?: boolean;
+  deferAutoFetch?: boolean;
 }
 
 type CachedPlaylistPayload = {
@@ -173,6 +173,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   showViewAll = true,
   playlistsOverride = null,
   disableAutoFetch = false,
+  deferAutoFetch = false,
 }) => {
   const category = jioSaavnService.getCategoryById(categoryId) || null;
   const [state, dispatchSection] = useReducer(playlistsSectionReducer, {
@@ -186,7 +187,8 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       const cached = readCachedPlaylists(categoryId);
       return cached?.data?.slice(0, limit) || [];
     })() as JioSaavnPlaylist[],
-    isLoading: false,
+    // Reserve row space before the fetch effect runs so rows below do not shift in.
+    isLoading: !Array.isArray(playlistsOverride) && (!disableAutoFetch || deferAutoFetch),
     error: null as string | null,
   });
   const { playlists, isLoading, error } = state;
@@ -263,6 +265,16 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       return;
     }
 
+    if (deferAutoFetch) {
+      dispatchSection({
+        type: 'sync',
+        playlists: [],
+        isLoading: true,
+        error: null,
+      });
+      return;
+    }
+
     if (disableAutoFetch) {
       dispatchSection({
         type: 'sync',
@@ -280,7 +292,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
 
     const ctxSignature = getContextSignature(categoryId);
     fetchPlaylists({ forceRefresh: true, ctxSignature });
-  }, [categoryId, disableAutoFetch, limit, playlistsOverride, fetchPlaylists]);
+  }, [categoryId, deferAutoFetch, disableAutoFetch, limit, playlistsOverride, fetchPlaylists]);
 
 
 
@@ -364,15 +376,14 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
               {error}. Check your internet connection and try again.
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
             onClick={handleRefresh}
-            className="text-muted-foreground hover:text-foreground ml-4"
+            className="ml-4 inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Retry
-          </Button>
+          </button>
         </div>
       </SectionWrapper>
     );
@@ -394,6 +405,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         showArrows={true}
         snapToItems={false}
         edgeToEdge={true}
+        className="min-h-[217px]"
       >
         {isLoading ? (
           // Loading skeleton

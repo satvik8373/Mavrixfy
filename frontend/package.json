@@ -11,6 +11,8 @@
     "build:optimized": "node scripts/build-optimized.js",
     "vercel-build": "node -e \"console.log('Frontend already built by root Vercel buildCommand')\"",
     "preview": "vite preview",
+    "preview:lighthouse": "vite preview --host 127.0.0.1 --port 4173",
+    "lighthouse:home": "npm run build && node scripts/run-home-lighthouse.mjs",
     "start": "vite preview --port $PORT",
     "deploy": "vercel deploy --prod",
     "deploy:mobile": "npm run build:mobile && npx cap sync",

@@ -16,7 +16,7 @@ const SplashScreen = ({}: SplashScreenProps) => {
       >
         {/* Optimized logo with fade-in animation */}
         <img
-          src="/mavrixfy.png"
+          src="/mavrixfy-icons/mavrixfy-icon-maskable-192.png"
           alt="Mavrixfy"
           className="absolute inset-0 w-full h-full object-contain animate-fade-in"
           aria-label="Mavrixfy logo"

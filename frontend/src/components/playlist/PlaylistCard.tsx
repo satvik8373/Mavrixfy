@@ -1,12 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { Playlist } from '../../types';
 import { usePlayerStore } from '../../stores/usePlayerStore';
-import { useState } from 'react';
-import { EditPlaylistDialog } from './EditPlaylistDialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Play } from 'lucide-react';
 import { useMobileTapSimple } from '../../hooks/useMobileTapSimple';
+import { getOptimizedArtworkUrl } from '@/services/cloudinaryService';
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -23,7 +22,6 @@ export function PlaylistCard({
 }: PlaylistCardProps) {
   const navigate = useNavigate();
   const { setCurrentSong } = usePlayerStore();
-  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const handleCardClick = () => {
     if (playlist.songs.length === 0) {
@@ -48,16 +46,21 @@ export function PlaylistCard({
   const { isMobile, handleTap, handleTouchStart } = useMobileTapSimple({
     onTap: handleCardClick,
   });
+  const coverUrl = playlist.imageUrl
+    ? getOptimizedArtworkUrl(playlist.imageUrl, {
+        width: 192,
+        height: 192,
+        crop: 'fill',
+      })
+    : '/default-playlist.jpg';
 
   return (
-    <>
-      {/* Consistent playlist card design */}
-      <div
-        className={cn(
-          "group relative w-full rounded-md p-1 md:p-2 transition-all duration-200 hover:bg-white/5 active:scale-95",
-          className
-        )}
-      >
+    <div
+      className={cn(
+        "group relative w-full rounded-md p-1 md:p-2 transition-all duration-200 hover:bg-white/5 active:scale-95",
+        className
+      )}
+    >
         <button
           type="button"
           className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
@@ -71,7 +74,7 @@ export function PlaylistCard({
           <div className="relative w-full aspect-square mb-2 md:mb-3">
             <div className="w-full h-full rounded-[4px] overflow-hidden shadow-lg">
               <img
-                src={playlist.imageUrl || '/default-playlist.jpg'}
+                src={coverUrl}
                 alt={playlist.name}
                 className="w-full h-full object-cover rounded-[4px]"
                 onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
@@ -106,16 +109,6 @@ export function PlaylistCard({
             )}
           </div>
         </div>
-      </div>
-
-      {/* Edit Dialog */}
-      {showEditDialog && (
-        <EditPlaylistDialog
-          playlist={playlist}
-          isOpen={showEditDialog}
-          onClose={() => setShowEditDialog(false)}
-        />
-      )}
-    </>
+    </div>
   );
 }

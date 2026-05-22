@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, Library, Heart, LogIn, User, Play, Pause, ListMusic, Bell, Bluetooth, Smartphone, Car, Tv, Headphones, Speaker, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,16 +8,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { shallow } from 'zustand/shallow';
 
-import SongDetailsView from '@/components/SongDetailsView';
-import QueueDrawer from '@/components/QueueDrawer';
-import AudioOutputPicker from '@/components/AudioOutputPicker';
-import { signOut } from '@/services/hybridAuthService';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
-import { WhatsNewDialog } from '@/components/WhatsNewDialog';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import { PingPongScroll } from '@/components/PingPongScroll';
 import { useAudioOutputDevice } from '@/hooks/useAudioOutputDevice';
 import type { AudioOutputDeviceType } from '@/lib/audioOutputDevice';
+
+const SongDetailsView = lazy(() => import('@/components/SongDetailsView'));
+const QueueDrawer = lazy(() => import('@/components/QueueDrawer'));
+const AudioOutputPicker = lazy(() => import('@/components/AudioOutputPicker'));
+const WhatsNewDialog = lazy(() =>
+  import('@/components/WhatsNewDialog').then((module) => ({ default: module.WhatsNewDialog }))
+);
 
 
 const MOOD_ICON_MASK_STYLE = {
@@ -591,6 +593,7 @@ const MobileNav = () => {
       navigate('/', { replace: true });
 
       // Then perform the actual logout
+      const { signOut } = await import('@/services/hybridAuthService');
       const result = await signOut();
       if (!result.success) {
         // Error during logout
@@ -651,23 +654,37 @@ const MobileNav = () => {
 
   return (
     <>
-      <WhatsNewDialog open={showWhatsNew} onOpenChange={(val) => setState(prev => ({ ...prev, showWhatsNew: val }))} />
+      {showWhatsNew && (
+        <Suspense fallback={null}>
+          <WhatsNewDialog open={showWhatsNew} onOpenChange={(val) => setState(prev => ({ ...prev, showWhatsNew: val }))} />
+        </Suspense>
+      )}
 
-      {/* Song Details View — always mounted so AnimatePresence can animate exit */}
-      <SongDetailsView
-        isOpen={showSongDetails}
-        onClose={() => setState(prev => ({ ...prev, showSongDetails: false }))}
-      />
+      {showSongDetails && (
+        <Suspense fallback={null}>
+          <SongDetailsView
+            isOpen={showSongDetails}
+            onClose={() => setState(prev => ({ ...prev, showSongDetails: false }))}
+          />
+        </Suspense>
+      )}
 
-      {/* Queue Drawer */}
-      <QueueDrawer
-        isOpen={showQueue}
-        onClose={() => setState(prev => ({ ...prev, showQueue: false }))}
-      />
-      <AudioOutputPicker
-        isOpen={showOutputPicker}
-        onClose={() => setState(prev => ({ ...prev, showOutputPicker: false }))}
-      />
+      {showQueue && (
+        <Suspense fallback={null}>
+          <QueueDrawer
+            isOpen={showQueue}
+            onClose={() => setState(prev => ({ ...prev, showQueue: false }))}
+          />
+        </Suspense>
+      )}
+      {showOutputPicker && (
+        <Suspense fallback={null}>
+          <AudioOutputPicker
+            isOpen={showOutputPicker}
+            onClose={() => setState(prev => ({ ...prev, showOutputPicker: false }))}
+          />
+        </Suspense>
+      )}
 
       <style>{`
         /* Floating Nav & Player Custom CSS */

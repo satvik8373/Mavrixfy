@@ -1,6 +1,7 @@
 import { Song } from '@/types';
 import { Button } from '@/components/ui/button';
 import PlayButton from './PlayButton';
+import { getOptimizedArtworkUrl } from '@/services/cloudinaryService';
 
 type SectionGridProps = {
   title: string;
@@ -29,7 +30,11 @@ const SectionGrid = ({ songs, title, isLoading }: SectionGridProps) => {
             <div className="relative mb-4">
               <div className="aspect-square rounded-md shadow-lg overflow-hidden">
                 <img
-                  src={song.imageUrl}
+                  src={getOptimizedArtworkUrl(song.imageUrl, {
+                    width: 360,
+                    height: 360,
+                    crop: 'fill',
+                  })}
                   alt={song.title}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   loading={index < 4 ? "eager" : "lazy"}

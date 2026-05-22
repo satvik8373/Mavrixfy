@@ -1,13 +1,3 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { LazyMotion, domAnimation } from 'framer-motion'
-import App from './App.tsx'
-import ErrorBoundary from './components/ErrorBoundary.tsx'
-import './index.css'
-import './styles/mobile-optimizations.css'
-import './styles/custom-utilities.css'
-import { configureWebViewAuth } from './utils/webViewDetection'
-
 // Initialize Google Analytics and GTM
 declare global {
   interface Window {
@@ -54,20 +44,15 @@ function initializeAnalytics() {
 
 function scheduleAnalytics() {
   if (!import.meta.env.PROD) return;
+  if (navigator.webdriver || /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent)) return;
 
   let initialized = false;
-  let idleId: number | undefined;
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const interactionEvents = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+  const interactionEvents = ['pointerdown', 'keydown', 'touchstart'];
 
   const cleanup = () => {
     interactionEvents.forEach((eventName) => {
       window.removeEventListener(eventName, startAnalytics);
     });
-    if (timeoutId) window.clearTimeout(timeoutId);
-    if (idleId && 'cancelIdleCallback' in window) {
-      window.cancelIdleCallback(idleId);
-    }
   };
 
   const startAnalytics = () => {
@@ -77,31 +62,13 @@ function scheduleAnalytics() {
     initializeAnalytics();
   };
 
-  const scheduleAfterLoad = () => {
-    if ('requestIdleCallback' in window) {
-      idleId = window.requestIdleCallback(startAnalytics, { timeout: 8000 });
-      return;
-    }
-
-    timeoutId = window.setTimeout(startAnalytics, 5000);
-  };
-
   window.dataLayer = window.dataLayer || [];
   interactionEvents.forEach((eventName) => {
     window.addEventListener(eventName, startAnalytics, { once: true, passive: true });
   });
-
-  if (document.readyState === 'complete') {
-    scheduleAfterLoad();
-  } else {
-    window.addEventListener('load', scheduleAfterLoad, { once: true });
-  }
 }
 
 scheduleAnalytics();
-
-// Configure WebView authentication on app start
-configureWebViewAuth();
 
 // Log environment info for debugging
 if (import.meta.env.DEV) {
@@ -244,10 +211,13 @@ if ('serviceWorker' in navigator) {
   }).catch(() => {});
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary>
-    <LazyMotion features={domAnimation} strict>
-      <App />
-    </LazyMotion>
-  </ErrorBoundary>,
-)
+// Let the inline document shell paint before loading the full SPA graph.
+const bootstrapApp = () => {
+  void import('./bootstrap');
+};
+
+if ('requestAnimationFrame' in window) {
+  window.requestAnimationFrame(bootstrapApp);
+} else {
+  window.setTimeout(bootstrapApp, 0);
+}

@@ -42,7 +42,7 @@ interface OptimizationOptions {
   width?: number;
   height?: number;
   crop?: 'fill' | 'scale' | 'fit' | 'limit' | 'thumb';
-  quality?: number;
+  quality?: number | 'auto';
   format?: 'auto' | 'webp' | 'jpg' | 'png' | 'avif';
   blur?: number;
   radius?: number | 'max';
@@ -93,6 +93,57 @@ export const getOptimizedImageUrl = (
     : '';
 
   return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${transformationString}${publicId}`;
+};
+
+/**
+ * Inserts Cloudinary transformations into a full Cloudinary URL without losing
+ * folders or version segments.
+ */
+export const getOptimizedCloudinaryUrl = (
+  imageUrl: string,
+  options: OptimizationOptions = {}
+): string => {
+  if (!imageUrl || !imageUrl.includes('res.cloudinary.com') || !imageUrl.includes('/image/upload/')) {
+    return imageUrl;
+  }
+
+  const transformations = [];
+
+  if (options.width) transformations.push(`w_${options.width}`);
+  if (options.height) transformations.push(`h_${options.height}`);
+  if (options.crop) transformations.push(`c_${options.crop}`);
+  if (options.quality) transformations.push(`q_${options.quality}`);
+  if (options.format) transformations.push(`f_${options.format}`);
+  if (options.blur) transformations.push(`e_blur:${options.blur}`);
+  if (options.radius) transformations.push(`r_${options.radius}`);
+  if (options.effect) transformations.push(`e_${options.effect}`);
+  if (options.background) transformations.push(`b_${options.background}`);
+
+  if (transformations.length === 0) return imageUrl;
+
+  return imageUrl.replace('/image/upload/', `/image/upload/${transformations.join(',')}/`);
+};
+
+export const getOptimizedArtworkUrl = (
+  imageUrl: string | undefined,
+  options: OptimizationOptions = {}
+): string => {
+  if (!imageUrl) return '';
+
+  if (imageUrl.includes('res.cloudinary.com')) {
+    return getOptimizedCloudinaryUrl(imageUrl, {
+      quality: 'auto',
+      format: 'auto',
+      ...options,
+    });
+  }
+
+  if (/(?:c|aac|cdnx)\.saavncdn\.com/.test(imageUrl)) {
+    const size = options.width && options.width <= 160 ? 150 : 500;
+    return imageUrl.replace(/_\d+x\d+(\.[a-zA-Z0-9]+)(\?.*)?$/, `_${size}x${size}$1$2`);
+  }
+
+  return imageUrl;
 };
 
 /**

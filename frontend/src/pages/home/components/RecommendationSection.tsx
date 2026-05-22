@@ -4,6 +4,7 @@ import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll'
 import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { RecommendationItem, RecommendationSection as RecommendationSectionType } from '@/services/recommendationService';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
+import { getOptimizedArtworkUrl } from '@/services/cloudinaryService';
 
 interface RecommendationSectionProps {
   section: RecommendationSectionType;
@@ -35,7 +36,7 @@ export const RecommendationSection = ({ section }: RecommendationSectionProps) =
   return (
     <SectionWrapper title={section.title} subtitle={section.subtitle}>
       <HorizontalScroll itemWidth={CARD_WIDTH} gap={10} showArrows snapToItems={false} edgeToEdge>
-        {playlists.map((item) => (
+        {playlists.map((item, index) => (
           <ScrollItem key={item.id} width={CARD_WIDTH}>
             <button
               type="button"
@@ -45,10 +46,15 @@ export const RecommendationSection = ({ section }: RecommendationSectionProps) =
               <span className="relative mb-2 block aspect-square w-full overflow-hidden rounded-[4px] bg-white/5 shadow-lg md:mb-3">
                 {item.imageUrl ? (
                   <img
-                    src={item.imageUrl}
+                    src={getOptimizedArtworkUrl(item.imageUrl, {
+                      width: 320,
+                      height: 320,
+                      crop: 'fill',
+                    })}
                     alt={item.title}
                     className="h-full w-full object-cover"
-                    loading="lazy"
+                    loading={index < 2 ? 'eager' : 'lazy'}
+                    {...(index < 2 ? { fetchPriority: 'high' as const } : {})}
                   />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center">

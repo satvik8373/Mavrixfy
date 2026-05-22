@@ -1,5 +1,6 @@
 import { useMusicStore } from '@/stores/useMusicStore';
 import PlayButton from './PlayButton';
+import { getOptimizedArtworkUrl } from '@/services/cloudinaryService';
 
 const FeaturedSection = () => {
   const { isLoading, featuredSongs, error } = useMusicStore();
@@ -18,7 +19,11 @@ const FeaturedSection = () => {
          hover:bg-zinc-700/50 transition-colors group cursor-pointer relative"
         >
           <img
-            src={song.imageUrl}
+            src={getOptimizedArtworkUrl(song.imageUrl, {
+              width: 160,
+              height: 160,
+              crop: 'fill',
+            })}
             alt={song.title}
             className="w-16 sm:w-20 h-16 sm:h-20 object-cover flex-shrink-0"
             loading="eager"

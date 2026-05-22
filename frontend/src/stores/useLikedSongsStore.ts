@@ -1,8 +1,9 @@
 import { createWithEqualityFn as create } from 'zustand/traditional';
 import { persist } from 'zustand/middleware';
 import { Song } from '../types';
-import * as likedSongsFirestoreService from '@/services/likedSongsService';
 import { useAuthStore } from './useAuthStore';
+
+const loadLikedSongsFirestoreService = () => import('@/services/likedSongsService');
 
 // Local backup service for offline or error scenarios
 const localLikedSongsService = {
@@ -73,6 +74,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           if (isAuthenticated) {
             try {
               // Fetch from Firestore sorted by most recent first
+              const likedSongsFirestoreService = await loadLikedSongsFirestoreService();
               const firebaseSongs = await likedSongsFirestoreService.loadLikedSongs();
               songs = firebaseSongs; // The service now returns Song[] directly with correct IDs
             } catch (firebaseError) {
@@ -178,14 +180,16 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
             // Pass the song's likedAt date if it exists (for Mavrixfy imports)
-            likedSongsFirestoreService.addLikedSong(
-              songToSave, 
-              'mavrixfy', 
-              undefined, 
-              songToSave.likedAt
-            ).catch(() => {
-              // Error handled silently
-            });
+            void loadLikedSongsFirestoreService()
+              .then((likedSongsFirestoreService) => likedSongsFirestoreService.addLikedSong(
+                songToSave,
+                'mavrixfy',
+                undefined,
+                songToSave.likedAt
+              ))
+              .catch(() => {
+                // Error handled silently
+              });
           }
 
           // Notify listeners through event - but throttle to prevent excessive updates
@@ -247,6 +251,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
             try {
+              const likedSongsFirestoreService = await loadLikedSongsFirestoreService();
               await likedSongsFirestoreService.removeLikedSong(songId);
             } catch (firestoreError) {
               // Revert optimistic update if Firestore fails

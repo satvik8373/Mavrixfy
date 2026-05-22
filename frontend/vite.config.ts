@@ -170,8 +170,16 @@ export default defineConfig(({ mode }) => {
 			},
 			rollupOptions: {
 				output: {
-					// Keep React dependency ordering under Rollup's default control.
-					manualChunks: undefined,
+					manualChunks(id) {
+						if (!id.includes('node_modules')) return undefined;
+						if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/.test(id)) return 'react-vendor';
+						if (/[\\/]node_modules[\\/](@?firebase|firebase)[\\/]/.test(id)) return 'firebase';
+						if (id.includes('node_modules/framer-motion')) return 'motion';
+						if (id.includes('node_modules/@radix-ui')) return 'radix-ui';
+						if (id.includes('node_modules/howler')) return 'audio';
+						if (id.includes('node_modules/axios')) return 'network';
+						return undefined;
+					},
 					chunkFileNames: 'assets/js/[name]-[hash].js',
 					assetFileNames: (assetInfo) => {
 						if (!assetInfo.name) return 'assets/[name]-[hash][extname]';

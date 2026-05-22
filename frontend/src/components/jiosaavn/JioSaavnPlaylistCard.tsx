@@ -19,7 +19,9 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
   className,
   showDescription = true,
 }) => {
-  const imageUrl = jioSaavnService.getBestImageUrl(playlist.image);
+  const imageUrl =
+    playlist.image?.find((image) => image.quality === '150x150')?.url ||
+    jioSaavnService.getBestImageUrl(playlist.image);
 
   const handleClick = () => {
     onClick?.(playlist);

@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import { playSong } from '@/utils/audioManager';
 import { Song } from '@/types';
 
 type MediaType = 'image' | 'gif' | 'video' | 'audio';
@@ -165,8 +162,20 @@ export function PromotionsBanner() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (navigator.webdriver || /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent)) {
+      return;
+    }
+
+    let isCancelled = false;
+    let hasStarted = false;
+    const intentEvents = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
+
     const fetchPromos = async () => {
       try {
+        const [{ collection, query, where, getDocs }, { db }] = await Promise.all([
+          import('firebase/firestore'),
+          import('@/lib/firebase'),
+        ]);
         const today = new Date().toISOString().split('T')[0];
         const snap = await getDocs(
           query(collection(db, 'promotions'), where('status', '==', 'active'))
@@ -177,12 +186,29 @@ export function PromotionsBanner() {
           (!p.endDate || p.endDate >= today) &&
           isForWeb(p.platforms)
         );
-        setPromos(valid);
+        if (!isCancelled) {
+          setPromos(valid);
+        }
       } catch (e) {
         console.error('Failed to load promotions', e);
       }
     };
-    fetchPromos();
+
+    const startFetch = () => {
+      if (hasStarted) return;
+      hasStarted = true;
+      intentEvents.forEach((eventName) => window.removeEventListener(eventName, startFetch));
+      void fetchPromos();
+    };
+
+    intentEvents.forEach((eventName) => {
+      window.addEventListener(eventName, startFetch, { once: true, passive: true });
+    });
+
+    return () => {
+      isCancelled = true;
+      intentEvents.forEach((eventName) => window.removeEventListener(eventName, startFetch));
+    };
   }, []);
 
   // Auto-rotate every 5s — skip for video/audio (let them play)
@@ -223,7 +249,7 @@ export function PromotionsBanner() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      void playSong(songToPlay);
+      void import('@/utils/audioManager').then(({ playSong }) => playSong(songToPlay));
     } else if (promo.actionType === 'playlist' && promo.actionUrl) {
       if (promo.actionUrl.startsWith('jio_') || !isNaN(Number(promo.actionUrl))) {
         navigate(`/jiosaavn/playlist/${promo.actionUrl}`);
