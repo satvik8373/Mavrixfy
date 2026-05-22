@@ -170,22 +170,8 @@ export default defineConfig(({ mode }) => {
 			},
 			rollupOptions: {
 				output: {
-					manualChunks(id) {
-						if (!id.includes('node_modules')) return undefined;
-
-						if (id.includes('firebase')) return 'vendor-firebase';
-						if (id.includes('framer-motion')) return 'vendor-motion';
-						if (id.includes('@mui') || id.includes('@emotion')) return 'vendor-mui';
-						if (id.includes('react-dom') || id.includes('react-router-dom') || id.includes(`${path.sep}react${path.sep}`)) {
-							return 'vendor-react';
-						}
-						if (id.includes('howler')) return 'vendor-audio';
-						if (id.includes('three')) return 'vendor-three';
-						if (id.includes('recharts')) return 'vendor-charts';
-						if (id.includes('lodash')) return 'vendor-utils';
-
-						return 'vendor';
-					},
+					// Keep React dependency ordering under Rollup's default control.
+					manualChunks: undefined,
 					chunkFileNames: 'assets/js/[name]-[hash].js',
 					assetFileNames: (assetInfo) => {
 						if (!assetInfo.name) return 'assets/[name]-[hash][extname]';
