@@ -2,8 +2,3 @@ User-agent: *
 Allow: /
 
 Sitemap: https://mavrixfy.site/sitemap.xml
-
-# Privacy Policy
-Allow: /privacy
-Allow: /terms
-Allow: /about
