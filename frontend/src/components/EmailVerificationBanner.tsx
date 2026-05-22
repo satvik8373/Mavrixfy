@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { auth } from '@/lib/firebase';
 
 const EmailVerificationBanner = () => {
-  const [isVerified, setIsVerified] = useState(true);
+  const [isVerified, setIsVerified] = useState<boolean | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
@@ -14,7 +14,6 @@ const EmailVerificationBanner = () => {
   }, []);
 
   const checkVerificationStatus = async () => {
-    setChecking(true);
     try {
       const verified = await checkEmailVerified();
       setIsVerified(verified);
@@ -55,8 +54,8 @@ const EmailVerificationBanner = () => {
     }
   };
 
-  // Don't show banner if email is verified or user is not logged in
-  if (checking || isVerified || !auth.currentUser) {
+  // Don't show banner if email is verified (true or undefined during check) or user is not logged in
+  if (checking || isVerified === true || isVerified === undefined || !auth.currentUser) {
     return null;
   }
 

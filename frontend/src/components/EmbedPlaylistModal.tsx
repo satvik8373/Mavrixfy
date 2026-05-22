@@ -99,11 +99,13 @@ const EmbedPlaylistModal = ({
     }
   };
 
-  useEffect(() => {
+  const prevIsOpenRef = useRef(isOpen);
+  if (isOpen !== prevIsOpenRef.current) {
+    prevIsOpenRef.current = isOpen;
     if (!isOpen) {
       setState(prev => ({ ...prev, copied: false, showCode: false }));
     }
-  }, [isOpen]);
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -186,6 +188,7 @@ const EmbedPlaylistModal = ({
                 value={widthPercentage}
                 onChange={(e) => setState(prev => ({ ...prev, widthPercentage: Number(e.target.value) }))}
                 className="w-24 accent-[#1DB954]"
+                aria-label="Width percentage"
               />
               <span className="text-sm text-white w-12">{widthPercentage}%</span>
             </div>

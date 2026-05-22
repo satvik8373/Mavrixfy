@@ -1,0 +1,236 @@
+﻿[1mreact-doctor[22m [2mv0.2.2[22m
+
+[32mΓ£ö[39m Select projects to scan [2mΓÇ║[22m mavrixfy-frontend
+[2mScanning E:\Mavrixfy\Mavrixfy-web\frontend...[22m
+
+
+
+  [33mΓÜá[39m [33mreact-doctor/prefer-tag-over-role             [39m [90m├ù41[39m
+[90m      Prefer the semantic `<button>` element over `role="button"` on a generic tag.[39m
+[90m      ΓåÆ Replace `role` with the semantic HTML element when one exists.[39m
+[90m      src/components/MoodPlaylistDisplay.tsx:124[39m
+[90m      src/components/playlist/SwipeCard.tsx:90[39m
+[90m      src/components/playlist/AddToPlaylistDialog.tsx:81[39m
+[90m      src/components/MoodPlaylistDisplayMobile.tsx:144[39m
+[90m      src/components/playlist/EditPlaylistDialog.tsx:71[39m
+[90m      src/components/MoodPlaylistLoading.tsx:24[39m
+[90m      src/components/QueueDrawer.tsx:175[39m
+[90m      src/components/EmbedPreview.tsx:190[39m
+[90m      src/components/ShareSong.tsx:37[39m
+[90m      src/components/ui/CustomScrollbar.tsx:197[39m
+[90m      src/components/ui/CustomScrollbar.tsx:211[39m
+[90m      src/components/SongDetailsView.tsx:113[39m
+[90m      src/components/SongDetailsView.tsx:176[39m
+[90m      src/components/SongDetailsView.tsx:287[39m
+[90m      src/components/SongDetailsView.tsx:411[39m
+[90m      src/components/SongDetailsView.tsx:480[39m
+[90m      src/components/SongDetailsView.tsx:1379[39m
+[90m      src/components/playlist/PlaylistCard.tsx:56[39m
+[90m      src/pages/liked-songs/LikedSongsPage.tsx:129[39m
+[90m      src/layout/MainLayout.tsx:306[39m
+[90m      src/layout/components/MobileNav.tsx:374[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:332[39m
+[90m      src/pages/LibraryPage.tsx:149[39m
+[90m      src/pages/LibraryPage.tsx:194[39m
+[90m      src/pages/LibraryPage.tsx:250[39m
+[90m      src/pages/LibraryPage.tsx:295[39m
+[90m      src/pages/LibraryPage.tsx:351[39m
+[90m      src/pages/LibraryPage.tsx:396[39m
+[90m      src/pages/LibraryPage.tsx:622[39m
+[90m      src/pages/LibraryPage.tsx:729[39m
+[90m      src/layout/components/PlaybackControls.tsx:1327[39m
+[90m      src/layout/components/PlaybackControls.tsx:1414[39m
+[90m      src/layout/components/PlaybackControls.tsx:1510[39m
+[90m      src/layout/components/PlaybackControls.tsx:1636[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:184[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:210[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:490[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:178[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:1136[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:88[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:190[39m
+
+  [33mΓÜá[39m [33mreact-doctor/exhaustive-deps                  [39m [90m├ù24[39m
+[90m      The ref value `containerRef.current` will likely have changed by the time this effect cleanup function runs. Copy it to a variable inside the hook callback and use that variable in cleanup.[39m
+[90m      ΓåÆ List every value the hook callback captures in its dependency array.[39m
+[90m      src/components/ui/FloatingLines.tsx:288[39m
+[90m      src/components/PingPongScroll.tsx:26[39m
+[90m      src/components/EmbedPreview.tsx:62[39m
+[90m      src/components/ui/CustomScrollbar.tsx:144[39m
+[90m      src/components/SongDetailsView.tsx:909[39m
+[90m      src/components/SongDetailsView.tsx:912[39m
+[90m      src/contexts/AuthContext.tsx:254[39m
+[90m      src/contexts/AuthContext.tsx:303[39m
+[90m      src/pages/liked-songs/LikedSongsPage.tsx:414[39m
+[90m      src/pages/home/HomePage.tsx:380[39m
+[90m      src/layout/MainLayout.tsx:101[39m
+[90m      src/layout/MainLayout.tsx:103[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:264[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:277[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:575[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:533[39m
+[90m      src/layout/components/LeftSidebar.tsx:166[39m
+[90m      src/layout/components/LeftSidebar.tsx:194[39m
+[90m      src/layout/components/PlaybackControls.tsx:615[39m
+[90m      src/layout/components/PlaybackControls.tsx:1053[39m
+[90m      src/layout/components/PlaybackControls.tsx:1065[39m
+[90m      src/pages/VerifyEmail.tsx:169[39m
+[90m      src/pages/search/SearchPage.tsx:189[39m
+[90m      src/hooks/useMobileTapSimple.ts:31[39m
+
+  [33mΓÜá[39m [33mreact-doctor/control-has-associated-label     [39m [90m├ù21[39m
+[90m      A control must be associated with a text label ΓÇö add visible text, `aria-label`, or `aria-labelledby`.[39m
+[90m      ΓåÆ Every interactive control must have an accessible label.[39m
+[90m      src/components/PromotionsBanner.tsx:86[39m
+[90m      src/components/PromotionsBanner.tsx:127[39m
+[90m      src/components/PromotionsBanner.tsx:310[39m
+[90m      src/components/playlist/SongFileUploader.tsx:372[39m
+[90m      src/components/playlist/SongFileUploader.tsx:453[39m
+[90m      src/components/ui/CustomScrollbar.tsx:210[39m
+[90m      src/components/EmbedPlaylistModal.tsx:248[39m
+[90m      src/components/SongDetailsView.tsx:175[39m
+[90m      src/components/SongDetailsView.tsx:479[39m
+[90m      src/components/SongDetailsView.tsx:1378[39m
+[90m      src/layout/MainLayout.tsx:305[39m
+[90m      src/pages/ProfilePage.tsx:111[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:944[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1203[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1293[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1566[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1847[39m
+[90m      src/pages/AccountDeletion.tsx:128[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:183[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:209[39m
+[90m      src/features/admin/components/AdminCommandPalette.tsx:76[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-event-handler                 [39m [90m├ù11[39m
+[90m      Avoid using props and effects as an event handler. Instead, move the handler to the parent component.[39m
+[90m      ΓåÆ Move the side effect into the event handler that triggers it, instead of guarding on its state inside a useEffect. See https://react.dev/learn/you-might-not-need-an-effect#sharing-logic-between-event-handlers[39m
+[90m      src/components/jiosaavn/JioSaavnPlaylistsSection.tsx:198[39m
+[90m      src/components/jiosaavn/JioSaavnPlaylistsSection.tsx:208[39m
+[90m      src/App.tsx:115[39m
+[90m      src/components/MobileOptimizedImage.tsx:78[39m
+[90m      src/components/MobileOptimizedImage.tsx:78[39m
+[90m      src/components/playlist/AddToPlaylistDialog.tsx:24[39m
+[90m      src/components/playlist/EditPlaylistDialog.tsx:159[39m
+[90m      src/components/QueueDrawer.tsx:45[39m
+[90m      src/components/playlist/SongFileUploader.tsx:690[39m
+[90m      src/layout/components/PlaybackControls.tsx:1068[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:68[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-giant-component               [39m [90m├ù9[39m
+[90m      Component "MoodPlaylistGenerator" is 461 lines ΓÇö consider breaking it into smaller focused components[39m
+[90m      ΓåÆ Extract logical sections into focused components: `<UserHeader />`, `<UserActions />`, etc.[39m
+[90m      src/components/MoodPlaylistGenerator.tsx:236[39m
+[90m      src/components/playlist/SongFileUploader.tsx:674[39m
+[90m      src/components/SongDetailsView.tsx:583[39m
+[90m      src/pages/home/HomePage.tsx:268[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:620[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:470[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:337[39m
+[90m      src/layout/components/PlaybackControls.tsx:237[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:288[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-initialize-state              [39m [90m├ù7[39m
+[90m      Avoid initializing state in an effect. Instead, initialize "isAndroid"'s `useState()` with "<expression>(userAgent)". For SSR hydration, prefer `useSyncExternalStore()`.[39m
+[90m      ΓåÆ Pass the initial value directly to useState() instead of setting it from a mount-only useEffect. For SSR hydration, prefer useSyncExternalStore().[39m
+[90m      src/components/Header.tsx:204[39m
+[90m      src/components/PromotionsBanner.tsx:185[39m
+[90m      src/components/MoodPlaylistDisplayMobile.tsx:65[39m
+[90m      src/components/RecentlyPlayed.tsx:45[39m
+[90m      src/components/QueueDrawer.tsx:39[39m
+[90m      src/components/EmailVerificationBanner.tsx:13[39m
+[90m      src/components/MoodPlaylistGeneratorMobile.tsx:60[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-derived-state                 [39m [90m├ù7[39m
+[90m      Avoid storing derived state. Compute "state" directly during render, optionally with `useMemo` if it's expensive.[39m
+[90m      ΓåÆ Compute derived state inline during render (or with useMemo if expensive) instead of mirroring it into useState via a useEffect. See https://react.dev/learn/you-might-not-need-an-effect#updating-state-based-on-props-or-state[39m
+[90m      src/components/playlist/EditPlaylistDialog.tsx:165[39m
+[90m      src/hooks/useOptimizedImage.ts:89[39m
+[90m      src/hooks/useOptimizedImage.ts:123[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:119[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:537[39m
+[90m      src/layout/components/PlaybackControls.tsx:1047[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:69[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-multi-comp                    [39m [90m├ù6[39m
+[90m      Declare only one React component per file. Found extra component: AlertTitle.[39m
+[90m      ΓåÆ Move secondary components into their own files.[39m
+[90m      src/components/ui/alert.tsx:29[39m
+[90m      src/components/ui/alert.tsx:42[39m
+[90m      src/components/ui/avatar.tsx:18[39m
+[90m      src/components/ui/avatar.tsx:30[39m
+[90m      src/components/ui/tabs.tsx:23[39m
+[90m      src/components/ui/tabs.tsx:38[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-pass-data-to-parent           [39m [90m├ù6[39m
+[90m      Avoid passing data to parents in an effect. Instead, fetch the data in the parent and pass it down to the child as a prop.[39m
+[90m      ΓåÆ Fetch the data in the parent and pass it to the child as a prop (or return it from the hook), instead of pushing it back up via a prop callback inside a useEffect. See https://react.dev/learn/you-might-not-need-an-effect#passing-data-to-the-parent[39m
+[90m      src/components/jiosaavn/JioSaavnPlaylistsSection.tsx:199[39m
+[90m      src/components/jiosaavn/JioSaavnPlaylistsSection.tsx:209[39m
+[90m      src/components/jiosaavn/JioSaavnPlaylistsSection.tsx:218[39m
+[90m      src/components/jiosaavn/JioSaavnPlaylistsSection.tsx:224[39m
+[90m      src/components/playlist/EditPlaylistDialog.tsx:160[39m
+[90m      src/hooks/useOptimizedImage.ts:89[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-adjust-state-on-prop-change   [39m [90m├ù6[39m
+[90m      Avoid adjusting state when a prop changes. Instead, adjust the state directly during render, or refactor your state to avoid this need entirely.[39m
+[90m      ΓåÆ Adjust the state inline during render instead of via a useEffect, or refactor the state to avoid the need entirely. See https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes[39m
+[90m      src/components/ui/FloatingLines.tsx:303[39m
+[90m      src/components/ui/FloatingLines.tsx:397[39m
+[90m      src/components/OptimizedImage.tsx:131[39m
+[90m      src/components/QueueDrawer.tsx:46[39m
+[90m      src/components/QueueDrawer.tsx:47[39m
+[90m      src/features/admin/components/AdminCommandPalette.tsx:37[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-cascading-set-state           [39m [90m├ù3[39m
+[90m      8 setState calls in a single useEffect ΓÇö consider using useReducer or deriving state[39m
+[90m      ΓåÆ Combine into useReducer: `const [state, dispatch] = useReducer(reducer, initialState)`[39m
+[90m      src/layout/components/PlaybackControls.tsx:348[39m
+[90m      src/layout/components/PlaybackControls.tsx:1055[39m
+[90m      src/layout/components/PlaybackControls.tsx:1067[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-chain-state-updates           [39m [90m├ù3[39m
+[90m      Avoid chaining state changes. When possible, update all relevant state simultaneously.[39m
+[90m      ΓåÆ Update all related state simultaneously inside the event handler that originally fires, instead of reacting to one state update in a useEffect that writes another state. See https://react.dev/learn/you-might-not-need-an-effect#chains-of-computations[39m
+[90m      src/layout/components/PlaybackControls.tsx:1069[39m
+[90m      src/layout/components/PlaybackControls.tsx:1070[39m
+[90m      src/layout/components/PlaybackControls.tsx:1071[39m
+
+  [33mΓÜá[39m [33mreact-doctor/prefer-useReducer                [39m [90m├ù2[39m
+[90m      Component "AdminDashboardPage" has 7 useState calls ΓÇö consider useReducer for related state[39m
+[90m      ΓåÆ Group related state: `const [state, dispatch] = useReducer(reducer, { field1, field2, ... })`[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:337[39m
+[90m      src/layout/components/PlaybackControls.tsx:237[39m
+
+  [33mΓÜá[39m [33mreact-doctor/design-no-redundant-padding-axes[39m
+[90m      px-6 py-6 ΓåÆ use the shorthand p-6[39m
+[90m      ΓåÆ Collapse `px-N py-N` to `p-N` when both axes match. Keep them split only when one axis varies at a breakpoint (`py-2 md:py-3`)[39m
+[90m      src/layout/components/PlaybackControls.tsx:1472[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-pure-black-background[39m
+[90m      Pure black background (bg-black) looks harsh ΓÇö use a near-black tinted toward your brand hue (e.g. bg-gray-950)[39m
+[90m      ΓåÆ Tint the background slightly toward your brand hue ΓÇö e.g. `#0a0a0f` or Tailwind's `bg-gray-950`. Pure black looks harsh on modern displays[39m
+[90m      src/layout/components/PlaybackControls.tsx:1543[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-reset-all-state-on-prop-change[39m
+[90m      Avoid resetting all state when a prop changes. Instead, if "open" is a key, pass it as `key` so React will reset the component's state.[39m
+[90m      ΓåÆ Pass the prop as `key` so React resets the component when the prop changes, instead of manually resetting every state value in a useEffect. See https://react.dev/learn/you-might-not-need-an-effect#resetting-all-state-when-a-prop-changes[39m
+[90m      src/features/admin/components/AdminCommandPalette.tsx:35[39m
+
+  [32mΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ[39m  [32m90[39m [2m/ 100[22m [32mGreat[39m
+  [32mΓöé Γùá Γùá Γöé[39m  [32mΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê[39m[2mΓûæΓûæΓûæΓûæΓûæ[22m
+  [32mΓöé  Γû╜  Γöé[39m  React Doctor [2m(www.react.doctor)[22m
+  [32mΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ[39m
+
+  [33m149 issues[39m [2macross 51/225 files  in 4.6s[22m
+[90m  Full diagnostics written to C:\Users\ASUS\AppData\Local\Temp\react-doctor-247ea123-9dfa-491a-9e5f-22af09c4b8d3[39m
+
+  [1mΓåÆ Share your results:[22m [36mhttps://www.react.doctor/share?p=mavrixfy-frontend&s=90&w=149&f=51[39m
+
+  [1mΓåÆ Catch these issues on every PR:[22m [36mhttps://react.review[39m
+  [2mReact Review is a GitHub App built on React Doctor, and it runs on each pull request,[22m
+  [2mposts new issues as inline review comments, and tracks your team's score over time.[22m
+
+
+

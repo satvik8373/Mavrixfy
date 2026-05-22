@@ -98,7 +98,7 @@ export default function NotificationsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Notifications</h1>
           <p className="mt-1 text-sm text-gray-500">Send push notifications to users</p>
         </div>
-        <button onClick={() => { setShowModal(true); setSendResult(null); }} className="btn-primary flex items-center gap-2">
+        <button type="button" onClick={() => { setShowModal(true); setSendResult(null); }} className="btn-primary flex items-center gap-2">
           <Plus className="size-4" /> New Notification
         </button>
       </div>
@@ -159,7 +159,7 @@ export default function NotificationsPage() {
           <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">Send Notification</h2>
-              <button onClick={() => setShowModal(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
+              <button type="button" onClick={() => setShowModal(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               {error && <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -213,8 +213,8 @@ export default function NotificationsPage() {
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
-              <button onClick={handleSend} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
+              <button type="button" onClick={handleSend} disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
                 {saving ? 'Sending...' : 'Send'}
               </button>

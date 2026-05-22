@@ -109,8 +109,6 @@ export const PingPongScroll = ({
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
             }
-            lastTime.current = null;
-            pauseUntil.current = null;
         };
     }, [text, velocity, delay]);
 

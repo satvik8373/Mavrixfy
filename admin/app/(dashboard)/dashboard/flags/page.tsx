@@ -69,7 +69,7 @@ export default function FlagsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Feature Flags</h1>
           <p className="mt-1 text-sm text-gray-500">Control feature rollouts across platforms</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+        <button type="button" onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
           <Plus className="size-4" /> New Flag
         </button>
       </div>
@@ -108,7 +108,7 @@ export default function FlagsPage() {
                     </div>
                   </td>
                   <td className="p-4 text-center">
-                    <button onClick={() => toggleFlag(flag.id)} disabled={toggling === flag.id}
+                    <button type="button" onClick={() => toggleFlag(flag.id)} disabled={toggling === flag.id}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${flag.enabled ? 'bg-blue-600' : 'bg-gray-200'}`}>
                       {toggling === flag.id
                         ? <Loader2 className="mx-auto size-3 animate-spin text-white" />
@@ -117,7 +117,7 @@ export default function FlagsPage() {
                     </button>
                   </td>
                   <td className="p-4 text-right">
-                    <button onClick={() => handleDelete(flag.id)} className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700">
+                    <button type="button" onClick={() => handleDelete(flag.id)} className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700">
                       <Trash2 className="size-4" />
                     </button>
                   </td>
@@ -134,7 +134,7 @@ export default function FlagsPage() {
           <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">New Feature Flag</h2>
-              <button onClick={() => setShowModal(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
+              <button type="button" onClick={() => setShowModal(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               {error && <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -165,8 +165,8 @@ export default function FlagsPage() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 Create Flag
               </button>

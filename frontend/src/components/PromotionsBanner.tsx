@@ -91,11 +91,14 @@ function VideoMedia({ url }: { url: string }) {
         loop
         muted={muted}
         playsInline
-      />
+      >
+        <track kind="captions" />
+      </video>
       {/* Mute toggle */}
       <button type="button"
         onClick={(e) => { e.stopPropagation(); setMuted(m => !m); }}
         className="absolute top-2 right-2 z-20 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"
+        aria-label={muted ? 'Unmute video' : 'Mute video'}
       >
         {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
       </button>
@@ -121,7 +124,9 @@ function AudioMedia({ url }: { url: string }) {
 
   return (
     <>
-      <audio ref={audioRef} src={url} loop onEnded={() => setPlaying(false)} />
+      <audio ref={audioRef} src={url} loop onEnded={() => setPlaying(false)}>
+        <track kind="captions" />
+      </audio>
       {/* Audio visualizer background */}
       <div className="absolute inset-0 bg-gradient-to-r from-purple-900 via-indigo-900 to-pink-900">
         <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-30">
@@ -155,7 +160,7 @@ function AudioMedia({ url }: { url: string }) {
 // ── Main Banner ─────────────────────────────────────────────────────────────
 
 export function PromotionsBanner() {
-  const [promos, setPromos] = useState<Promotion[]>([]);
+  const [promos, setPromos] = useState<Promotion[] | undefined>(undefined);
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
 
@@ -182,7 +187,7 @@ export function PromotionsBanner() {
 
   // Auto-rotate every 5s — skip for video/audio (let them play)
   useEffect(() => {
-    if (promos.length <= 1) return;
+    if (!promos || promos.length <= 1) return;
     const type = getMediaType(promos[current]);
     if (type === 'video' || type === 'audio') return;
     const timer = setInterval(() => {
@@ -191,7 +196,7 @@ export function PromotionsBanner() {
     return () => clearInterval(timer);
   }, [promos, current]);
 
-  if (!promos.length) return null;
+  if (!promos || !promos.length) return null;
 
   const promo = promos[current];
   const mediaType = getMediaType(promo);
@@ -244,20 +249,19 @@ export function PromotionsBanner() {
     <div className="px-4 md:px-6 mb-2">
       {/* 16:5 aspect ratio */}
       <div
-        onClick={executePromotionAction}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            executePromotionAction(e);
-          }
-        }}
-        role="button"
-        tabIndex={0}
         className={`relative w-full rounded-xl overflow-hidden bg-gradient-to-r from-purple-900/60 to-pink-900/60 ${
-          isClickable ? 'cursor-pointer hover:opacity-95 active:scale-[0.99] transition-all' : ''
+          isClickable ? 'hover:opacity-95 active:scale-[0.99] transition-all' : ''
         }`}
         style={{ paddingTop: '31.25%' }}
       >
+        {isClickable && (
+          <button
+            type="button"
+            className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
+            onClick={executePromotionAction}
+            aria-label={`Open promotion: ${promo.title}`}
+          />
+        )}
         {/* Media layer */}
         {mediaUrl && (
           <>

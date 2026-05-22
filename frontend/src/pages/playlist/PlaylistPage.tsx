@@ -62,13 +62,9 @@ const readJsonStorage = <T,>(key: string, fallback: T): T => {
 };
 
 function ClientPlaylistDate({ value }: { value?: string | number | Date }) {
-  const [text, setText] = useState('3 days ago');
-
-  useEffect(() => {
-    if (value) {
-      setText(new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }));
-    }
-  }, [value]);
+  const text = value 
+    ? new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) 
+    : '3 days ago';
 
   return <>{text}</>;
 }

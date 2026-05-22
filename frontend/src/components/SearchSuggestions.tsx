@@ -21,7 +21,13 @@ export const SearchSuggestions = ({
   isVisible,
   onSelectSong
 }: SearchSuggestionsProps) => {
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      return readRecentSearches().slice(0, 5); // Keep only last 5
+    } catch {
+      return [];
+    }
+  });
   const [trendingSearches] = useState<string[]>([
     'Arijit Singh',
     'Bollywood Hits',
@@ -36,15 +42,6 @@ export const SearchSuggestions = ({
   // Support both prop names for backward compatibility
   const searchQuery = currentQuery ?? query ?? '';
   const handleSelect = onSelect ?? onSelectSong ?? (() => { });
-
-  // Load recent searches from localStorage
-  useEffect(() => {
-    try {
-      setRecentSearches(readRecentSearches().slice(0, 5)); // Keep only last 5
-    } catch (error) {
-      // Failed to load recent searches
-    }
-  }, []);
 
   // If isVisible prop is provided and false, don't render
   // This must be after all hooks to follow the Rules of Hooks

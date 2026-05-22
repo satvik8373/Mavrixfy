@@ -53,17 +53,19 @@ export function PlaylistCard({
     <>
       {/* Consistent playlist card design */}
       <div
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
         className={cn(
-          "group relative w-full rounded-md cursor-pointer p-1 md:p-2 transition-all duration-200 hover:bg-white/5 active:scale-95",
+          "group relative w-full rounded-md p-1 md:p-2 transition-all duration-200 hover:bg-white/5 active:scale-95",
           className
         )}
-        onClick={!isMobile ? handleCardClick : undefined}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={isMobile ? handleTap : undefined}
       >
+        <button
+          type="button"
+          className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
+          onClick={!isMobile ? handleCardClick : undefined}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={isMobile ? handleTap : undefined}
+          aria-label={`Open playlist ${playlist.name}`}
+        />
         <div className="relative">
           {/* Playlist Image - Consistent aspect ratio */}
           <div className="relative w-full aspect-square mb-2 md:mb-3">
@@ -79,7 +81,7 @@ export function PlaylistCard({
             </div>
 
             {/* Play Button - Desktop Only */}
-            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden md:block">
+            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hidden md:block z-[2]">
               <button type="button"
                 onClick={handlePlayClick}
                 className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 hover:scale-105 flex items-center justify-center shadow-2xl transition-all duration-200"

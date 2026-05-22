@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase-client';
 import { Users, Search, Shield, Ban, Loader2 } from 'lucide-react';
@@ -114,7 +115,7 @@ export default function UsersPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {user.photoURL ? (
-                          <img src={user.photoURL} alt={name} className="size-9 rounded-full object-cover" />
+                          <Image src={user.photoURL} alt={name} width={36} height={36} className="size-9 rounded-full object-cover" unoptimized />
                         ) : (
                           <div className="flex size-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
                             {name.charAt(0).toUpperCase()}
@@ -133,10 +134,10 @@ export default function UsersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Manage role">
+                        <button type="button" className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Manage role">
                           <Shield className="size-4" />
                         </button>
-                        <button className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700" title="Ban user">
+                        <button type="button" className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700" title="Ban user">
                           <Ban className="size-4" />
                         </button>
                       </div>

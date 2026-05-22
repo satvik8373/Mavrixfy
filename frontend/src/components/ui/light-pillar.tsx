@@ -28,7 +28,7 @@ export const LightPillar: React.FC<LightPillarProps> = ({
   className = '',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,6 +38,8 @@ export const LightPillar: React.FC<LightPillarProps> = ({
     if (!ctx) return;
 
     let rotation = pillarRotation;
+
+    let animationId: number;
 
     const resize = () => {
       canvas.width = canvas.offsetWidth;
@@ -99,7 +101,7 @@ export const LightPillar: React.FC<LightPillarProps> = ({
 
       ctx.globalCompositeOperation = 'source-over';
 
-      animationRef.current = requestAnimationFrame(drawPillar);
+      animationId = requestAnimationFrame(drawPillar);
     };
 
     resize();
@@ -109,8 +111,8 @@ export const LightPillar: React.FC<LightPillarProps> = ({
 
     return () => {
       window.removeEventListener('resize', resize);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+      if (animationId) {
+        cancelAnimationFrame(animationId);
       }
     };
   }, [topColor, bottomColor, intensity, rotationSpeed, interactive, glowAmount, pillarWidth, pillarHeight, noiseIntensity, pillarRotation]);

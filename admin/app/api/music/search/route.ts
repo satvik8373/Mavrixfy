@@ -169,12 +169,17 @@ function parseDownloadUrls(downloadUrl?: JioSaavnSong['downloadUrl']): MediaUrl[
 
 function normalizeImages(image: JioSaavnSong['image'], imageUrl?: string): Array<{ quality: string; url: string }> {
   if (Array.isArray(image)) {
-    return image
-      .map((item, index) => ({
-        quality: item.quality || `${index + 1}`,
-        url: mediaUrl(item),
-      }))
-      .filter(item => Boolean(item.url));
+    const result: Array<{ quality: string; url: string }> = [];
+    image.forEach((item, index) => {
+      const url = mediaUrl(item);
+      if (url) {
+        result.push({
+          quality: item.quality || `${index + 1}`,
+          url,
+        });
+      }
+    });
+    return result;
   }
 
   const url = typeof image === 'string' ? image : imageUrl || '';
@@ -182,12 +187,17 @@ function normalizeImages(image: JioSaavnSong['image'], imageUrl?: string): Array
 }
 
 function normalizeDownloads(downloadUrl?: JioSaavnSong['downloadUrl']): Array<{ quality: string; url: string }> {
-  return parseDownloadUrls(downloadUrl)
-    .map((item, index) => ({
-      quality: item.quality || `${index + 1}`,
-      url: mediaUrl(item),
-    }))
-    .filter(item => Boolean(item.url));
+  const result: Array<{ quality: string; url: string }> = [];
+  parseDownloadUrls(downloadUrl).forEach((item, index) => {
+    const url = mediaUrl(item);
+    if (url) {
+      result.push({
+        quality: item.quality || `${index + 1}`,
+        url,
+      });
+    }
+  });
+  return result;
 }
 
 function bestAudio(downloads: Array<{ quality: string; url: string }>, fallback = ''): string {
@@ -227,12 +237,17 @@ function tokenize(value: string): string[] {
 function splitArtists(value: string): string[] {
   return decodeHtmlEntities(value)
     .split(/\s*(?:,|;|\/|\||&|feat(?:uring)?|ft\.?)\s*/i)
-    .map(part => asString(part))
-    .filter(Boolean);
+    .flatMap(part => {
+      const s = asString(part);
+      return s ? [s] : [];
+    });
 }
 
 function normalizePrimaryArtists(song: JioSaavnSong): string {
-  const fromStructured = song.artists?.primary?.map(item => decodeHtmlEntities(item.name || '')).filter(Boolean) || [];
+  const fromStructured = song.artists?.primary?.flatMap(item => {
+    const name = decodeHtmlEntities(item.name || '');
+    return name ? [name] : [];
+  }) || [];
   if (fromStructured.length > 0) return fromStructured.join(', ');
 
   const fromFlat = splitArtists(song.primaryArtists || song.artist || '');
@@ -245,9 +260,10 @@ function generateQueryVariants(query: string): string[] {
   const withoutQualifiers = tokens.filter(token => !QUERY_QUALIFIER_TOKENS.has(token));
   const withoutTrailingVersion = withoutQualifiers.filter(token => token !== 'ver');
 
-  const prefixes = [5, 4, 3, 2]
-    .map(size => tokens.slice(0, size).join(' '))
-    .filter(Boolean);
+  const prefixes = [5, 4, 3, 2].flatMap(size => {
+    const prefix = tokens.slice(0, size).join(' ');
+    return prefix ? [prefix] : [];
+  });
 
   return Array.from(
     new Set(
@@ -257,9 +273,10 @@ function generateQueryVariants(query: string): string[] {
         withoutQualifiers.join(' '),
         withoutTrailingVersion.join(' '),
         ...prefixes,
-      ]
-        .map(value => value.trim())
-        .filter(Boolean)
+      ].flatMap(value => {
+        const v = value.trim();
+        return v ? [v] : [];
+      })
     )
   );
 }
@@ -327,9 +344,10 @@ function extractJioSaavnData(json: any): { total: number; results: JioSaavnSong[
 function normalizeSearchResults(payload: any, provider: ProviderConfig): NormalizedSong[] {
   const { results } = extractJioSaavnData(payload);
 
-  return results
-    .map((song: JioSaavnSong) => normalizeJioSaavnSong(song, provider.source, provider.label))
-    .filter((song: NormalizedSong | null): song is NormalizedSong => Boolean(song));
+  return results.flatMap((song: JioSaavnSong) => {
+    const norm = normalizeJioSaavnSong(song, provider.source, provider.label);
+    return norm ? [norm] : [];
+  });
 }
 
 function normalizeGlobalSearchResults(payload: any, provider: ProviderConfig): NormalizedSong[] {
@@ -344,9 +362,10 @@ function normalizeGlobalSearchResults(payload: any, provider: ProviderConfig): N
     return normalizeSearchResults(payload, provider);
   }
 
-  return combined
-    .map((song: JioSaavnSong) => normalizeJioSaavnSong(song, provider.source, provider.label))
-    .filter((song: NormalizedSong | null): song is NormalizedSong => Boolean(song));
+  return combined.flatMap((song: JioSaavnSong) => {
+    const norm = normalizeJioSaavnSong(song, provider.source, provider.label);
+    return norm ? [norm] : [];
+  });
 }
 
 async function fetchJson(url: string): Promise<any> {
@@ -464,11 +483,17 @@ function releaseTime(song: NormalizedSong): number {
   return Number.isNaN(time) ? song.year || 0 : time;
 }
 
+function strIncludes(str: string, search: string): boolean {
+  return str.indexOf(search) !== -1;
+}
+
 function searchScore(song: NormalizedSong, query: string): number {
   const original = comparable(query);
   const originalTokens = tokenize(query);
+  const originalTokensSet = new Set(originalTokens);
   const baseTokens = originalTokens.filter(token => !QUERY_QUALIFIER_TOKENS.has(token));
   const qualifierTokens = originalTokens.filter(token => QUERY_QUALIFIER_TOKENS.has(token));
+  const qualifierTokensSet = new Set(qualifierTokens);
   const title = comparable(song.title);
   const artist = comparable(song.artist);
   const album = comparable(song.album.name || '');
@@ -481,41 +506,41 @@ function searchScore(song: NormalizedSong, query: string): number {
 
   if (title === original) score += 200;
   if (title.startsWith(original) && original) score += 120;
-  if (corpus.includes(original) && original) score += 30;
-  if (baseTokens.length > 0 && baseTokens.every(token => title.includes(token))) score += 20;
-  if (baseTokens.length > 0 && baseTokens.every(token => corpus.includes(token))) score += 16;
+  if (strIncludes(corpus, original) && original) score += 30;
+  if (baseTokens.length > 0 && baseTokens.every(token => strIncludes(title, token))) score += 20;
+  if (baseTokens.length > 0 && baseTokens.every(token => strIncludes(corpus, token))) score += 16;
 
   for (const token of baseTokens) {
     if (title === token) score += 40;
-    else if (title.includes(token)) score += 24;
-    else if (artist.includes(token)) score += 8;
-    else if (album.includes(token)) score += 6;
-    else if (corpus.includes(token)) score += 4;
+    else if (strIncludes(title, token)) score += 24;
+    else if (strIncludes(artist, token)) score += 8;
+    else if (strIncludes(album, token)) score += 6;
+    else if (strIncludes(corpus, token)) score += 4;
   }
 
   for (const token of qualifierTokens) {
-    if (title.includes(token)) score += 35;
-    else if (album.includes(token)) score += 18;
-    else if (corpus.includes(token)) score += 10;
+    if (strIncludes(title, token)) score += 35;
+    else if (strIncludes(album, token)) score += 18;
+    else if (strIncludes(corpus, token)) score += 10;
     else score -= 10;
   }
 
   for (const token of titleTokens) {
-    if (QUERY_QUALIFIER_TOKENS.has(token) && !qualifierTokens.includes(token)) {
+    if (QUERY_QUALIFIER_TOKENS.has(token) && !qualifierTokensSet.has(token)) {
       score -= 35;
     }
   }
 
   for (const token of titleTokens) {
     const penalty = NOISY_RESULT_TOKEN_PENALTIES[token];
-    if (penalty && !originalTokens.includes(token)) score -= penalty;
+    if (penalty && !originalTokensSet.has(token)) score -= penalty;
   }
 
   return score;
 }
 
 function sortSongs(songs: NormalizedSong[], query: string): NormalizedSong[] {
-  return [...songs].sort((a, b) => {
+  return songs.slice().sort((a, b) => {
     const byScore = searchScore(b, query) - searchScore(a, query);
     if (byScore !== 0) return byScore;
 
@@ -530,9 +555,9 @@ function sortSongs(songs: NormalizedSong[], query: string): NormalizedSong[] {
 }
 
 async function hydrateSongsWithAudio(candidates: NormalizedSong[], limit: number): Promise<NormalizedSong[]> {
-  const unresolvedIds = candidates
-    .filter(song => !song.streamUrl && song.saavnId)
-    .map(song => song.saavnId);
+  const unresolvedIds = candidates.flatMap(song =>
+    (!song.streamUrl && song.saavnId) ? [song.saavnId] : []
+  );
 
   if (unresolvedIds.length === 0) return [];
 

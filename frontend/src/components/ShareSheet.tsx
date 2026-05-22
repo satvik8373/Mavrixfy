@@ -44,8 +44,9 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
   });
   const { isGenerating, selectedPlatform, previewCard, showEmbedModal } = state;
 
-  // Reset state when dialog closes
-  useEffect(() => {
+  const prevIsOpenRef = useRef(isOpen);
+  if (isOpen !== prevIsOpenRef.current) {
+    prevIsOpenRef.current = isOpen;
     if (!isOpen) {
       setState(prev => ({
         ...prev,
@@ -54,7 +55,7 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
         isGenerating: false,
       }));
     }
-  }, [isOpen]);
+  }
 
   const handlePlatformClick = async (platform: SharePlatform) => {
     if (!isPlatformAvailable(platform)) {

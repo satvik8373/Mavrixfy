@@ -22,27 +22,31 @@ const readRecentlyPlayed = (): RecentItem[] => {
 };
 
 export function RecentlyPlayed() {
-  const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
+  const [recentItems, setRecentItems] = useState<RecentItem[]>(() => {
+    try {
+      const items = readRecentlyPlayed();
+      items.sort((a, b) => b.date - a.date);
+      return items.slice(0, 8);
+    } catch {
+      return [];
+    }
+  });
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const { setCurrentSong } = usePlayerStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load recently played items from localStorage
     const loadRecentItems = () => {
       try {
         const items = readRecentlyPlayed();
         if (items.length > 0) {
-          // Sort by most recently played
           items.sort((a, b) => b.date - a.date);
-          setRecentItems(items.slice(0, 8)); // Show 8 most recent items
+          setRecentItems(items.slice(0, 8));
         }
       } catch (error) {
         // Error loading recently played items
       }
     };
-
-    loadRecentItems();
 
     // Listen for updates to recently played
     const handleRecentlyPlayedUpdated = () => loadRecentItems();
@@ -112,15 +116,17 @@ export function RecentlyPlayed() {
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-1.5">
         {recentItems.map(item => (
           <div
-            role="button"
-            tabIndex={0}
-            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
             key={item.id}
-            className="group relative h-[64px] rounded overflow-hidden transition-all duration-300 cursor-pointer border border-border/60 hover:border-border/80"
-            onClick={() => handleItemClick(item)}
+            className="group relative h-[64px] rounded overflow-hidden transition-all duration-300 border border-border/60 hover:border-border/80"
             onMouseEnter={() => setHoveredItemId(item.id)}
             onMouseLeave={() => setHoveredItemId(null)}
           >
+            <button
+              type="button"
+              className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
+              onClick={() => handleItemClick(item)}
+              aria-label={`Play ${item.title}`}
+            />
             <div className="absolute inset-0 bg-muted/95 dark:bg-[#292929] scale-110 group-hover:scale-100 transition-transform duration-300" />
             <div className="relative flex items-center h-full">
               {/* Square thumbnail on the left */}

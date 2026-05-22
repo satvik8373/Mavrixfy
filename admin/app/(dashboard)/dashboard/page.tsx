@@ -7,7 +7,7 @@ import { Music2, ListMusic, Users, Activity, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
-  const [metrics, setMetrics] = useState({ songs: 0, playlists: 0, users: 0 });
+  const [metrics, setMetrics] = useState<{ songs: number; playlists: number; users: number } | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,9 +29,9 @@ export default function DashboardPage() {
   }, []);
 
   const stats = [
-    { label: 'Total Songs', value: metrics.songs, icon: Music2, color: 'text-blue-600', bg: 'bg-blue-50', href: '/dashboard/songs' },
-    { label: 'Playlists', value: metrics.playlists, icon: ListMusic, color: 'text-purple-600', bg: 'bg-purple-50', href: '/dashboard/playlists' },
-    { label: 'Users', value: metrics.users, icon: Users, color: 'text-green-600', bg: 'bg-green-50', href: '/dashboard/users' },
+    { label: 'Total Songs', value: metrics?.songs ?? 0, icon: Music2, color: 'text-blue-600', bg: 'bg-blue-50', href: '/dashboard/songs' },
+    { label: 'Playlists', value: metrics?.playlists ?? 0, icon: ListMusic, color: 'text-purple-600', bg: 'bg-purple-50', href: '/dashboard/playlists' },
+    { label: 'Users', value: metrics?.users ?? 0, icon: Users, color: 'text-green-600', bg: 'bg-green-50', href: '/dashboard/users' },
     { label: 'Status', value: 'Online', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', href: '/dashboard/analytics' },
   ];
 

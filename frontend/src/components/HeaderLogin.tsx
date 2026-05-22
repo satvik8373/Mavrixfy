@@ -46,16 +46,14 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
   }, []); // EMPTY dependencies - only run once on mount
 
   // Update cached auth state when it changes
-  useEffect(() => {
-    if (isActuallyAuthenticated !== cachedAuth && (user || userId)) {
-      try {
-        localStorage.setItem('cached_auth_state:v1', JSON.stringify(isActuallyAuthenticated));
-        setCachedAuth(isActuallyAuthenticated);
-      } catch (e) {
-        // Error saving cached auth state
-      }
+  if (isActuallyAuthenticated !== cachedAuth && (user || userId)) {
+    try {
+      localStorage.setItem('cached_auth_state:v1', JSON.stringify(isActuallyAuthenticated));
+      setCachedAuth(isActuallyAuthenticated);
+    } catch (e) {
+      // Error saving cached auth state
     }
-  }, [isActuallyAuthenticated, cachedAuth, user, userId]);
+  }
 
   const handleLogout = useCallback(async () => {
     try {

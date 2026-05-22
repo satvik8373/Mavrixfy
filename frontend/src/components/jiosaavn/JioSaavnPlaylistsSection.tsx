@@ -222,9 +222,9 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
 
     const ctxSignature = getContextSignature(categoryId);
     fetchPlaylists({ forceRefresh: true, ctxSignature });
-  }, [categoryId, disableAutoFetch, limit, playlistsOverride]);
+  }, [categoryId, disableAutoFetch, limit, playlistsOverride, fetchPlaylists]);
 
-  const fetchPlaylists = async (opts?: { forceRefresh?: boolean; ctxSignature?: string }) => {
+  const fetchPlaylists = React.useCallback(async (opts?: { forceRefresh?: boolean; ctxSignature?: string }) => {
     const forceRefresh = opts?.forceRefresh ?? false;
     const ctxSignature = opts?.ctxSignature ?? getContextSignature(categoryId);
 
@@ -254,6 +254,15 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       }
       
       // Always shuffle results for variety and randomness
+      const shufflePlaylistsArray = (playlists: JioSaavnPlaylist[]): JioSaavnPlaylist[] => {
+        const shuffled = [...playlists];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      };
+      
       data = shufflePlaylistsArray(data);
       
       // Limit the results if needed
@@ -272,17 +281,9 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
       dispatchSection({ type: 'failed' });
       toast.error('Failed to load playlists');
     }
-  };
+  }, [categoryId, limit]);
 
-  // Helper to shuffle playlists
-  const shufflePlaylistsArray = (playlists: JioSaavnPlaylist[]): JioSaavnPlaylist[] => {
-    const shuffled = [...playlists];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
+
 
   const handlePlaylistClick = (playlist: JioSaavnPlaylist) => {
     // Add to recently played

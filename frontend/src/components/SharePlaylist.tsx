@@ -41,7 +41,7 @@ export const SharePlaylist = ({ playlist, trigger, onShare }: SharePlaylistProps
   return (
     <>
       {trigger ? (
-        <div role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} onClick={() => { setIsOpen(true); onShare?.(); }}>{trigger}</div>
+        <button type="button" className="appearance-none bg-transparent border-none p-0 text-left cursor-pointer" onClick={() => { setIsOpen(true); onShare?.(); }}>{trigger}</button>
       ) : (
         <Button
           variant="ghost"

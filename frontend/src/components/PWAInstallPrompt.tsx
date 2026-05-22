@@ -70,10 +70,10 @@ const PWAInstallPrompt = () => {
   if (!visible) return null;
 
   return (
-    <div
-      role="dialog"
+    <dialog
+      open
       aria-label="Install Mavrixfy"
-      className="fixed bottom-0 left-0 right-0 z-[200] px-4 pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-[200] px-4 pb-safe border-none bg-transparent p-0 max-w-none outline-none"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
     >
       <div className="bg-zinc-900 border border-white/10 rounded-2xl p-4 flex items-center gap-3 shadow-2xl max-w-md mx-auto">
@@ -111,7 +111,7 @@ const PWAInstallPrompt = () => {
           <X size={16} />
         </button>
       </div>
-    </div>
+    </dialog>
   );
 };
 

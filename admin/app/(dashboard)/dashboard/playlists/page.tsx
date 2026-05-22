@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import {
   collection, getDocs, query, orderBy, limit,
   deleteDoc, doc, addDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove
@@ -145,7 +146,7 @@ export default function PlaylistsPage() {
           {filtered.map(playlist => (
             <div key={playlist.id} className="rounded-lg border border-gray-200 bg-white shadow-sm">
               {playlist.imageUrl ? (
-                <img src={playlist.imageUrl} alt={playlist.name} className="h-40 w-full rounded-t-lg object-cover" />
+                <Image src={playlist.imageUrl} alt={playlist.name} width={400} height={160} className="h-40 w-full rounded-t-lg object-cover" unoptimized />
               ) : (
                 <div className="flex h-40 w-full items-center justify-center rounded-t-lg bg-gray-100">
                   <ListMusic className="size-10 text-gray-300" />
@@ -265,7 +266,7 @@ export default function PlaylistsPage() {
                 return (
                   <div key={song.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
                     {song.imageUrl ? (
-                      <img src={song.imageUrl} alt={song.title} className="size-9 rounded-md object-cover flex-shrink-0" />
+                      <Image src={song.imageUrl} alt={song.title} width={36} height={36} className="size-9 rounded-md object-cover flex-shrink-0" unoptimized />
                     ) : (
                       <div className="flex size-9 flex-shrink-0 items-center justify-center rounded-md bg-gray-100">
                         <Music2 className="size-4 text-gray-400" />

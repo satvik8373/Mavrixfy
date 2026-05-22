@@ -255,7 +255,7 @@ export default function FloatingLines({
   mixBlendMode = 'screen'
 }: FloatingLinesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [renderFallback, setRenderFallback] = useState(false);
+  const [renderFallback, setRenderFallback] = useState(() => !supportsWebGL());
   const targetMouseRef = useRef(new Vector2(-1000, -1000));
   const currentMouseRef = useRef(new Vector2(-1000, -1000));
   const targetInfluenceRef = useRef(0);
@@ -289,10 +289,7 @@ export default function FloatingLines({
     if (!containerRef.current || renderFallback) return;
     const triggerFallback = () => setRenderFallback(true);
 
-    if (!supportsWebGL()) {
-      triggerFallback();
-      return;
-    }
+
 
     const scene = new Scene();
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);

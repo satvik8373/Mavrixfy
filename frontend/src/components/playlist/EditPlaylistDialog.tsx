@@ -67,12 +67,11 @@ const PlaylistImageSection = ({
 }: PlaylistImageSectionProps) => {
   return (
     <div className="flex flex-col items-center justify-center mb-4">
-      <div 
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
-        className="relative w-40 h-40 rounded-md overflow-hidden bg-gray-100 cursor-pointer group"
+      <button 
+        type="button"
+        className="relative w-40 h-40 rounded-md overflow-hidden bg-gray-100 cursor-pointer group border-none p-0 outline-none"
         onClick={handleImageClick}
+        aria-label="Change playlist image"
       >
         {imagePreview ? (
           <img 
@@ -93,7 +92,7 @@ const PlaylistImageSection = ({
             <ContentLoading text={`Uploading... ${uploadProgress}%`} height="h-full" />
           </div>
         )}
-      </div>
+      </button>
       <input
         type="file"
         ref={fileInputRef}
@@ -101,6 +100,7 @@ const PlaylistImageSection = ({
         accept="image/*"
         onChange={handleImageChange}
         disabled={isSubmitting || isUploading}
+        aria-label="Upload playlist cover image"
       />
       <div className="mt-2 text-center">
         <p className="text-xs text-muted-foreground">
@@ -132,14 +132,15 @@ const PlaylistImageSection = ({
 
 export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDialogProps) {
   const [state, setState] = useState({
-    imagePreview: playlist.imageUrl || getPlaceholderImageUrl(playlist.name),
+    imagePreviewOverride: null as string | null,
     isUploading: false,
     uploadProgress: 0,
     isSubmitting: false,
     imageError: '',
     imageFile: null as File | null,
   });
-  const { imagePreview, isUploading, uploadProgress, isSubmitting, imageError, imageFile } = state;
+  const { imagePreviewOverride, isUploading, uploadProgress, isSubmitting, imageError, imageFile } = state;
+  const imagePreview = imagePreviewOverride || playlist.imageUrl || getPlaceholderImageUrl(playlist.name);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { updatePlaylist } = usePlaylistStore();
 
@@ -161,11 +162,6 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
         description: playlist.description || '',
         isPublic: playlist.isPublic !== undefined ? playlist.isPublic : true,
       });
-      setState(prev => ({
-        ...prev,
-        imagePreview: playlist.imageUrl || getPlaceholderImageUrl(playlist.name),
-        imageError: '',
-      }));
     }
   }, [playlist, reset]);
 
@@ -196,7 +192,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
     setState(prev => ({
       ...prev,
       imageFile: file,
-      imagePreview: previewUrl,
+      imagePreviewOverride: previewUrl,
       imageError: '',
     }));
   };
@@ -236,7 +232,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
       
       // Show success and update preview
       toast.success('Direct upload successful!');
-      setState(prev => ({ ...prev, imagePreview: result.secure_url }));
+      setState(prev => ({ ...prev, imagePreviewOverride: result.secure_url }));
     } catch (error: any) {
       toast.error(`Direct upload failed: ${error.message || 'Unknown error'}`);
     } finally {
@@ -320,7 +316,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
       ...prev,
       imageFile: null,
       imageError: '',
-      imagePreview: playlist.imageUrl || getPlaceholderImageUrl(playlist.name),
+      imagePreviewOverride: null,
     }));
     onClose();
   };

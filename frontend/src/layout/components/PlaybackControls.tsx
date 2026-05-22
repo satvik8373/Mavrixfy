@@ -21,8 +21,9 @@ const formatTime = (seconds: number) => {
 	return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
+const numberFormatter = new Intl.NumberFormat("en-US");
 const formatNumber = (value: number) => {
-	return new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(value)));
+	return numberFormatter.format(Math.max(0, Math.round(value)));
 };
 
 const getSeededRange = (seedText: string, min: number, max: number) => {
@@ -263,22 +264,27 @@ export const PlaybackControls = () => {
 	const lastFullscreenScrollYRef = useRef(0);
 	const fullscreenUpcomingSongs = queue.slice(currentIndex + 1);
 	const fullscreenRelatedSongs = queue
-		.map((song, index) => ({ song, index }))
-		.filter(({ song, index }) => {
-			if (!song) return false;
+		.reduce<{ song: any; index: number }[]>((acc, song, index) => {
+			if (!song) return acc;
 			const isCurrent = index === currentIndex || song._id === currentSong?._id;
-			return !isCurrent;
-		})
+			if (!isCurrent) acc.push({ song, index });
+			return acc;
+		}, [])
 		.slice(0, 24);
 	const artistNames = (currentSong?.artist || "")
 		.split(",")
-		.map(name => name.trim())
-		.filter(Boolean);
+		.flatMap(name => {
+			const trimmed = name.trim();
+			return trimmed ? [trimmed] : [];
+		});
 	const primaryArtist = artistNames[0] || currentSong?.artist || "Unknown Artist";
 	const creditArtists = Array.from(new Set([
 		primaryArtist,
 		...artistNames.slice(1),
-		...fullscreenRelatedSongs.flatMap(({ song }) => (song.artist || "").split(",").map(name => name.trim()).filter(Boolean)),
+		...fullscreenRelatedSongs.flatMap(({ song }) => (song.artist || "").split(",").flatMap(name => {
+			const trimmed = name.trim();
+			return trimmed ? [trimmed] : [];
+		})),
 	])).slice(0, 4);
 	const artistMonthlyListeners = getSeededRange(primaryArtist, 1800000, 92000000);
 	const nextQueueSong = fullscreenUpcomingSongs[0] || null;
@@ -306,7 +312,6 @@ export const PlaybackControls = () => {
 		transform: "translateZ(0)",
 		backfaceVisibility: "hidden",
 		WebkitBackfaceVisibility: "hidden",
-		willChange: "background",
 	} as const;
 	const fullscreenTopControlsStyle = {
 		backgroundColor: "transparent",
@@ -316,7 +321,6 @@ export const PlaybackControls = () => {
 		opacity: 1,
 		transform: "translate3d(0, 0, 0)",
 		filter: "saturate(1)",
-		willChange: "transform",
 	} as const;
 	const fullscreenSurfaceStyle = {
 		background: "rgba(20, 20, 28, 0.5)",
@@ -1237,11 +1241,13 @@ export const PlaybackControls = () => {
 									style={{ minHeight: "max(430px, calc(100dvh - 320px))" }}
 								>
 									<div
-										className="flex-1 min-w-0 flex items-center justify-center"
+										className={cn(
+											"flex-1 min-w-0 flex items-center justify-center",
+											fullscreenHeroProgress > 0 && fullscreenHeroProgress < 1 && "will-change-transform"
+										)}
 										style={{
 											transform: `translate3d(0, ${-4 - 16 * fullscreenHeroProgress}px, 0) scale(${1 - 0.08 * fullscreenHeroProgress})`,
 											transformOrigin: "center top",
-											willChange: "transform",
 										}}
 									>
 										<div className={cn(
@@ -1288,7 +1294,7 @@ export const PlaybackControls = () => {
 
 											<div className="px-2 pb-3">
 												<p className="text-[11px] uppercase tracking-[0.18em] text-white/45 mb-1.5">Now Playing</p>
-												<div className="flex items-center gap-3 px-1.5 py-1.5">
+												<div className="flex items-center gap-3 p-1.5">
 													<img
 														src={currentSong?.imageUrl}
 														alt={currentSong?.title}
@@ -1301,7 +1307,7 @@ export const PlaybackControls = () => {
 												</div>
 											</div>
 
-											<div className="flex-1 min-h-0 overflow-y-auto px-1.5 py-1.5 space-y-1.5">
+											<div className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1.5">
 												{fullscreenUpcomingSongs.length === 0 ? (
 													<div className="h-full min-h-[180px] grid place-items-center text-center px-3">
 														<div>
@@ -1368,7 +1374,7 @@ export const PlaybackControls = () => {
 								<div className="space-y-8 pt-4 pb-8" style={fullscreenDetailsStyle}>
 								<section>
 									<div className="mb-4">
-										<h3 className="text-3xl md:text-4xl leading-none font-bold tracking-[-0.025em] text-white/88">
+										<h3 className="text-3xl md:text-4xl leading-none font-semibold tracking-[-0.025em] text-white/88">
 											Related music videos
 										</h3>
 									</div>
@@ -1449,7 +1455,7 @@ export const PlaybackControls = () => {
 												}}
 											/>
 											<div className="absolute inset-0 p-6 flex flex-col justify-between">
-												<p className="text-3xl leading-none font-bold text-white/90">About the artist</p>
+												<p className="text-3xl leading-none font-semibold text-white/90">About the artist</p>
 												<div>
 													<p className="text-2xl leading-tight font-semibold text-white">{primaryArtist}</p>
 													<p className="text-lg leading-tight text-white/85 mt-1">{formatNumber(artistMonthlyListeners)} monthly listeners</p>
@@ -1463,9 +1469,9 @@ export const PlaybackControls = () => {
 										</div>
 									</section>
 
-									<section className="rounded-2xl border border-white/10 px-6 py-6" style={fullscreenSurfaceStyle}>
+									<section className="rounded-2xl border border-white/10 p-6" style={fullscreenSurfaceStyle}>
 										<div className="flex items-center justify-between mb-4">
-											<h3 className="text-3xl leading-none font-bold text-white/90">Credits</h3>
+											<h3 className="text-3xl leading-none font-semibold text-white/90">Credits</h3>
 											<button
 												type="button"
 												className="text-sm leading-tight font-semibold text-white/65 hover:text-white transition-colors"
@@ -1488,7 +1494,7 @@ export const PlaybackControls = () => {
 
 								<section className="rounded-2xl border border-white/10 px-6 py-5" style={fullscreenSurfaceStyle}>
 									<div className="flex items-center justify-between mb-3">
-										<h3 className="text-3xl leading-none font-bold text-white/90">Next in queue</h3>
+										<h3 className="text-3xl leading-none font-semibold text-white/90">Next in queue</h3>
 										<button
 											type="button"
 											onClick={() => setIsFullscreenQueueOpen(true)}
@@ -1536,7 +1542,7 @@ export const PlaybackControls = () => {
 			{/* Desktop Player */}
 			<footer
 				ref={playerRef}
-				className="h-[90px] px-4 hidden sm:block transition-opacity duration-300 bg-black text-foreground border-t border-white/5 relative z-[120]"
+				className="h-[90px] px-4 hidden sm:block transition-opacity duration-300 bg-zinc-950 text-foreground border-t border-white/5 relative z-[120]"
 				style={{ opacity: isTransitioning ? 0.95 : 1 }}
 			>
 				<div className="flex justify-between items-center h-full max-w-[1800px] mx-auto py-2">
@@ -1627,6 +1633,18 @@ export const PlaybackControls = () => {
 							<div className="w-full relative group">
 								<div
 									className="relative w-full cursor-pointer py-1"
+									role="slider"
+									aria-label="Seek time"
+									aria-valuenow={currentTime}
+									aria-valuemax={duration}
+									tabIndex={0}
+									onKeyDown={(e) => {
+										if (e.key === 'ArrowRight') {
+											seekToPosition(Math.min(duration, currentTime + 5));
+										} else if (e.key === 'ArrowLeft') {
+											seekToPosition(Math.max(0, currentTime - 5));
+										}
+									}}
 									onClick={(e) => {
 										const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
 										const offsetX = e.clientX - rect.left;

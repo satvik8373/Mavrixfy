@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { collection, getDocs, query, limit, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase-client';
 import { Mic2, Plus, Search, Edit, Trash2, CheckCircle, Loader2, X, Check } from 'lucide-react';
@@ -69,7 +70,7 @@ export default function ArtistsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Artists</h1>
           <p className="mt-1 text-sm text-gray-500">{artists.length} artists total</p>
         </div>
-        <button onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }}
+        <button type="button" onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }}
           className="btn-primary flex items-center gap-2">
           <Plus className="size-4" /> Add Artist
         </button>
@@ -94,7 +95,7 @@ export default function ArtistsPage() {
           {filtered.map(artist => (
             <div key={artist.id} className="rounded-lg border border-gray-200 bg-white p-5 text-center shadow-sm hover:shadow-md transition-shadow">
               {artist.imageUrl ? (
-                <img src={artist.imageUrl} alt={artist.name} className="mx-auto size-20 rounded-full object-cover" />
+                <Image src={artist.imageUrl} alt={artist.name} width={80} height={80} className="mx-auto size-20 rounded-full object-cover" unoptimized />
               ) : (
                 <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-gray-100">
                   <Mic2 className="size-8 text-gray-400" />
@@ -108,10 +109,10 @@ export default function ArtistsPage() {
                 {artist.bio && <p className="mt-1 line-clamp-2 text-xs text-gray-500">{artist.bio}</p>}
               </div>
               <div className="mt-4 flex items-center justify-center gap-2">
-                <button onClick={() => openEdit(artist)} className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50">
+                <button type="button" onClick={() => openEdit(artist)} className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50">
                   <Edit className="size-4" />
                 </button>
-                <button onClick={() => handleDelete(artist.id)} className="rounded-md border border-gray-200 p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700">
+                <button type="button" onClick={() => handleDelete(artist.id)} className="rounded-md border border-gray-200 p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700">
                   <Trash2 className="size-4" />
                 </button>
               </div>
@@ -126,7 +127,7 @@ export default function ArtistsPage() {
           <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{editId ? 'Edit Artist' : 'Add Artist'}</h2>
-              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
+              <button type="button" onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               {error && <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -153,8 +154,8 @@ export default function ArtistsPage() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button onClick={closeModal} className="btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {editId ? 'Save Changes' : 'Add Artist'}
               </button>

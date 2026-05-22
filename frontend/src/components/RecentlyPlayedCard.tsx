@@ -45,16 +45,10 @@ export function RecentlyPlayedCard({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
       className={cn(
-        'group relative h-[48px] md:h-[44px] w-full rounded-[4px] overflow-hidden cursor-pointer transition-all duration-300 ease-in-out',
+        'group relative h-[48px] md:h-[44px] w-full rounded-[4px] overflow-hidden transition-all duration-300 ease-in-out',
         'recently-played-card bg-white/10 hover:bg-white/20'
       )}
-      onClick={!isMobile ? handleCardClick : undefined}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={isMobile ? handleTap : undefined}
       onMouseEnter={() => {
         if (colors?.primary) {
           onHoverChange?.(colors.primary);
@@ -62,6 +56,14 @@ export function RecentlyPlayedCard({
       }}
       onMouseLeave={() => onHoverChange?.(null)}
     >
+      <button
+        type="button"
+        className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
+        onClick={!isMobile ? handleCardClick : undefined}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={isMobile ? handleTap : undefined}
+        aria-label={`Open ${title}`}
+      />
 
       {/* Content */}
       <div className="relative flex items-center h-full z-10">

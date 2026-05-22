@@ -13,7 +13,7 @@ interface Song {
 }
 
 export default function DiscoveryPage() {
-  const [topSongs, setTopSongs] = useState<Song[]>([]);
+  const [topSongs, setTopSongs] = useState<Song[]>();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { fetchTopContent(); }, []);
@@ -53,7 +53,7 @@ export default function DiscoveryPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="size-5 animate-spin text-blue-600" />
             </div>
-          ) : topSongs.length === 0 ? (
+          ) : !topSongs || topSongs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <TrendingUp className="size-8 text-gray-300" />
               <p className="mt-2 text-sm text-gray-500">No songs data yet</p>

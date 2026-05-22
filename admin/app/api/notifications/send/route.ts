@@ -37,27 +37,41 @@ async function sendExpoNotifications(
   let delivered = 0;
   let failed = 0;
 
+  const batches = [];
   for (let i = 0; i < messages.length; i += 100) {
-    const batch = messages.slice(i, i + 100);
-    try {
-      const res = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Accept-Encoding': 'gzip, deflate',
-        },
-        body: JSON.stringify(batch),
-      });
-      const result = await res.json() as { data: { status: string }[] };
-      result.data?.forEach(r => {
-        if (r.status === 'ok') delivered++;
-        else failed++;
-      });
-    } catch {
-      failed += batch.length;
-    }
+    batches.push(messages.slice(i, i + 100));
   }
+
+  const results = await Promise.all(
+    batches.map(async (batch) => {
+      try {
+        const res = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip, deflate',
+          },
+          body: JSON.stringify(batch),
+        });
+        const result = await res.json() as { data: { status: string }[] };
+        let bDelivered = 0;
+        let bFailed = 0;
+        result.data?.forEach(r => {
+          if (r.status === 'ok') bDelivered++;
+          else bFailed++;
+        });
+        return { bDelivered, bFailed };
+      } catch {
+        return { bDelivered: 0, bFailed: batch.length };
+      }
+    })
+  );
+
+  results.forEach(({ bDelivered, bFailed }) => {
+    delivered += bDelivered;
+    failed += bFailed;
+  });
 
   return { delivered, failed };
 }
@@ -78,39 +92,51 @@ async function sendWebNotifications(
   const invalidTokens: string[] = [];
   let delivered = 0;
 
+  const batches: string[][] = [];
   for (let i = 0; i < tokens.length; i += 500) {
-    const batch = tokens.slice(i, i + 500);
-    const messages = batch.map(token => ({
-      token,
-      notification: { title, body, ...(imageUrl ? { imageUrl } : {}) },
-      data: {
-        ...(route ? { route } : {}),
-        ...(notificationId ? { notificationId } : {}),
-      },
-      webpush: {
-        notification: {
-          title,
-          badge: 'https://mavrixfy.site/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
-          ...(imageUrl ? { image: imageUrl } : {}),
-          requireInteraction: false,
-          vibrate: [200, 100, 200],
-          tag: 'mavrixfy',
-          renotify: true,
-        },
-        fcmOptions: { link: route ? `https://mavrixfy.site/${route}` : 'https://mavrixfy.site/home' },
-      },
-    }));
-
-    const response = await messaging.sendEach(messages);
-    delivered += response.successCount;
-    response.responses.forEach((res, idx) => {
-      const code = res.error?.code;
-      if (code === 'messaging/invalid-registration-token' ||
-          code === 'messaging/registration-token-not-registered') {
-        invalidTokens.push(batch[idx]);
-      }
-    });
+    batches.push(tokens.slice(i, i + 500));
   }
+
+  const results = await Promise.all(
+    batches.map(async (batch) => {
+      const messages = batch.map(token => ({
+        token,
+        notification: { title, body, ...(imageUrl ? { imageUrl } : {}) },
+        data: {
+          ...(route ? { route } : {}),
+          ...(notificationId ? { notificationId } : {}),
+        },
+        webpush: {
+          notification: {
+            title,
+            badge: 'https://mavrixfy.site/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
+            ...(imageUrl ? { image: imageUrl } : {}),
+            requireInteraction: false,
+            vibrate: [200, 100, 200],
+            tag: 'mavrixfy',
+            renotify: true,
+          },
+          fcmOptions: { link: route ? `https://mavrixfy.site/${route}` : 'https://mavrixfy.site/home' },
+        },
+      }));
+
+      const response = await messaging.sendEach(messages);
+      const bInvalidTokens: string[] = [];
+      response.responses.forEach((res, idx) => {
+        const code = res.error?.code;
+        if (code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/registration-token-not-registered') {
+          bInvalidTokens.push(batch[idx]);
+        }
+      });
+      return { successCount: response.successCount, bInvalidTokens };
+    })
+  );
+
+  results.forEach(({ successCount, bInvalidTokens }) => {
+    delivered += successCount;
+    invalidTokens.push(...bInvalidTokens);
+  });
 
   return { delivered, invalidTokens };
 }
@@ -134,8 +160,10 @@ export async function POST(req: NextRequest) {
     const androidFcmTokens: string[] = []; // Native Android FCM tokens
     const tokenDocRefs: { ref: FirebaseFirestore.DocumentReference; token: string }[] = [];
 
-    for (const userDoc of usersSnap.docs) {
-      const tokensSnap = await userDoc.ref.collection('pushTokens').get();
+    const tokenDocPromises = usersSnap.docs.map(userDoc => userDoc.ref.collection('pushTokens').get());
+    const tokenDocsSnaps = await Promise.all(tokenDocPromises);
+
+    for (const tokensSnap of tokenDocsSnaps) {
       for (const t of tokensSnap.docs) {
         const d = t.data();
         if (!d.enabled) continue;
@@ -184,25 +212,33 @@ export async function POST(req: NextRequest) {
         ? (async () => {
             const messaging = getMessaging(app);
             let delivered = 0;
+            const batches: string[][] = [];
             for (let i = 0; i < androidFcmTokens.length; i += 500) {
-              const batch = androidFcmTokens.slice(i, i + 500);
-              const msgs = batch.map(token => ({
-                token,
-                notification: { title, body: message },
-                data,
-                android: {
-                  priority: 'high' as const,
-                  notification: {
-                    channelId: 'mavrixfy-default',
-                    sound: 'default',
-                    color: '#1DB954',
-                    icon: 'notification_icon',
-                  },
-                },
-              }));
-              const r = await messaging.sendEach(msgs);
-              delivered += r.successCount;
+              batches.push(androidFcmTokens.slice(i, i + 500));
             }
+            const results = await Promise.all(
+              batches.map(async (batch) => {
+                const msgs = batch.map(token => ({
+                  token,
+                  notification: { title, body: message },
+                  data,
+                  android: {
+                    priority: 'high' as const,
+                    notification: {
+                      channelId: 'mavrixfy-default',
+                      sound: 'default',
+                      color: '#1DB954',
+                      icon: 'notification_icon',
+                    },
+                  },
+                }));
+                const r = await messaging.sendEach(msgs);
+                return r.successCount;
+              })
+            );
+            results.forEach(successCount => {
+              delivered += successCount;
+            });
             return { delivered };
           })()
         : Promise.resolve({ delivered: 0 }),
@@ -210,11 +246,14 @@ export async function POST(req: NextRequest) {
 
     // Disable invalid web tokens
     if (webResult.invalidTokens.length > 0) {
-      for (const { ref, token } of tokenDocRefs) {
-        if (webResult.invalidTokens.includes(token)) {
-          await ref.update({ enabled: false });
+      const invalidTokensSet = new Set(webResult.invalidTokens);
+      const updates: Promise<any>[] = [];
+      for (const { token, ref } of tokenDocRefs) {
+        if (invalidTokensSet.has(token)) {
+          updates.push(ref.update({ enabled: false }));
         }
       }
+      await Promise.all(updates);
     }
 
     const totalDelivered = expoResult.delivered + webResult.delivered + androidResult.delivered;

@@ -124,7 +124,7 @@ export function Sidebar() {
                 <p className="truncate text-xs text-gray-500 capitalize">{session.role.replace('_', ' ')}</p>
               </div>
             </div>
-            <button
+            <button type="button"
               onClick={() => signOut()}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >

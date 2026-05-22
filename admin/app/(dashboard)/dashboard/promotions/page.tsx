@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import NextImage from 'next/image';
 import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase-client';
-import { Megaphone, Plus, Edit, Trash2, ImageIcon, Loader2, X, Check, Film, Music, Globe, Smartphone, Image, Upload, Link2, Search, ExternalLink, LayoutGrid } from 'lucide-react';
+import { Megaphone, Plus, Edit, Trash2, ImageIcon, Loader2, X, Check, Film, Music, Globe, Smartphone, Image as GifIcon, Upload, Link2, Search, ExternalLink, LayoutGrid } from 'lucide-react';
 
 type MediaType = 'image' | 'gif' | 'video' | 'audio';
 type Platform  = 'web' | 'app';
@@ -137,14 +138,14 @@ function detectMediaType(url: string): MediaType {
 function MediaTypeIcon({ type }: { type: MediaType }) {
   if (type === 'video') return <Film className="size-4 text-blue-500" />;
   if (type === 'audio') return <Music className="size-4 text-purple-500" />;
-  if (type === 'gif')   return <Image className="size-4 text-pink-500" />;
+  if (type === 'gif')   return <GifIcon className="size-4 text-pink-500" />;
   return <ImageIcon className="size-4 text-gray-400" />;
 }
 
 function MediaPreview({ url, type }: { url: string; type: MediaType }) {
   if (!url) return null;
   if (type === 'image' || type === 'gif')
-    return <img src={url} alt="preview" className="h-16 w-24 rounded-lg object-cover flex-shrink-0" />;
+    return <NextImage src={url} alt="preview" width={96} height={64} className="h-16 w-24 rounded-lg object-cover flex-shrink-0" unoptimized />;
   if (type === 'video')
     return <video src={url} className="h-16 w-24 rounded-lg object-cover flex-shrink-0" muted playsInline />;
   return (
@@ -688,7 +689,7 @@ export default function PromotionsPage() {
                   </p>
                   {form.actionType === 'song' && form.attachedSong ? (
                     <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                      <img src={form.attachedSong.imageUrl} alt="" className="size-12 rounded object-cover" />
+                      <NextImage src={form.attachedSong.imageUrl} alt="" width={48} height={48} className="size-12 rounded object-cover" unoptimized />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{form.attachedSong.title}</p>
                         <p className="text-xs text-gray-500 truncate">{form.attachedSong.artist}</p>
@@ -701,7 +702,7 @@ export default function PromotionsPage() {
                   ) : form.actionType !== 'song' && form.actionUrl ? (
                     <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
                       {form.targetImageUrl ? (
-                        <img src={form.targetImageUrl} alt="" className="size-12 rounded object-cover" />
+                        <NextImage src={form.targetImageUrl} alt="" width={48} height={48} className="size-12 rounded object-cover" unoptimized />
                       ) : (
                         <div className="flex size-12 flex-shrink-0 items-center justify-center rounded bg-gray-100">
                           {form.actionType === 'playlist' ? <LayoutGrid className="size-5 text-gray-500" /> : <Music className="size-5 text-gray-500" />}
@@ -816,7 +817,7 @@ export default function PromotionsPage() {
                 <p className="text-base font-semibold text-gray-900">Preview</p>
                 <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-950">
                   {previewImageUrl ? (
-                    <img src={previewImageUrl} alt="" className="h-40 w-full object-contain bg-gray-950" />
+                    <NextImage src={previewImageUrl} alt="" width={400} height={160} className="h-40 w-full object-contain bg-gray-950" unoptimized />
                   ) : (
                     <div className="flex h-40 w-full items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
                       <ImageIcon className="size-8 text-gray-500" />
@@ -904,7 +905,7 @@ export default function PromotionsPage() {
                     <button key={`${target.actionType}-${target.id}`} type="button" onClick={() => attachTarget(target)}
                       className="w-full flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-left hover:border-blue-400 hover:bg-blue-50 transition-colors">
                       {target.imageUrl ? (
-                        <img src={target.imageUrl} alt="" className="size-12 rounded object-cover flex-shrink-0" />
+                        <NextImage src={target.imageUrl} alt="" width={48} height={48} className="size-12 rounded object-cover flex-shrink-0" unoptimized />
                       ) : (
                         <div className="flex size-12 flex-shrink-0 items-center justify-center rounded bg-gray-100">
                           {target.actionType === 'playlist' ? <LayoutGrid className="size-5 text-gray-500" /> : <Music className="size-5 text-gray-500" />}

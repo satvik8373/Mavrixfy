@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { collection, getDocs, query, orderBy, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase-client';
 import { Music2, Plus, Search, Edit, Trash2, Play, Pause, Loader2, X, Check, RefreshCw, Database, Globe, Upload } from 'lucide-react';
@@ -248,7 +249,6 @@ export default function SongsPage() {
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [searched, setSearched] = useState(false);
-  const [apiPage, setApiPage] = useState(0);
   const [apiTotal, setApiTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -273,6 +273,7 @@ export default function SongsPage() {
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const apiPageRef = useRef(0);
 
   useEffect(() => { fetchFirestoreSongs(); }, []);
 
@@ -424,7 +425,7 @@ export default function SongsPage() {
       const results: ApiSong[] = json?.data?.results || [];
       const total: number = json?.data?.total || 0;
       setApiTotal(total);
-      setApiPage(page);
+      apiPageRef.current = page;
       const normalized = results.map(normalizeApiSong);
       if (append) {
         setApiResults(prev => mergeUniqueSongs(prev, normalized));
@@ -449,7 +450,7 @@ export default function SongsPage() {
       setApiResults([]);
       setSearched(false);
       setApiTotal(0);
-      setApiPage(0);
+      apiPageRef.current = 0;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchApi(val, 0, false), 500);
@@ -612,10 +613,10 @@ export default function SongsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={fetchFirestoreSongs} disabled={fsLoading} className="btn-secondary flex items-center gap-2" title="Refresh catalog">
+          <button type="button" onClick={fetchFirestoreSongs} disabled={fsLoading} className="btn-secondary flex items-center gap-2" title="Refresh catalog">
             <RefreshCw className={`size-4 ${fsLoading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={() => openCreateModal()} className="btn-primary flex items-center gap-2">
+          <button type="button" onClick={() => openCreateModal()} className="btn-primary flex items-center gap-2">
             <Plus className="size-4" /> Add Song
           </button>
         </div>
@@ -632,10 +633,10 @@ export default function SongsPage() {
           className="input-field pl-10 pr-10"
         />
         {searchQuery && (
-          <button onClick={() => {
+          <button type="button" onClick={() => {
             setSearchQuery(''); setViewMode('catalog');
             setApiResults([]); setSearched(false);
-            setApiTotal(0); setApiPage(0);
+            setApiTotal(0); apiPageRef.current = 0;
           }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             <X className="size-4" />
@@ -645,7 +646,7 @@ export default function SongsPage() {
 
       {/* Tab bar */}
       <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit">
-        <button
+        <button type="button"
           onClick={() => { setViewMode('catalog'); setSearchQuery(''); setApiResults([]); setSearched(false); }}
           className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             viewMode === 'catalog' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
@@ -654,7 +655,7 @@ export default function SongsPage() {
           <Database className="size-4" />
           Catalog ({firestoreSongs.length})
         </button>
-        <button
+        <button type="button"
           onClick={() => { setViewMode('search'); if (searchQuery) searchApi(searchQuery, 0, false); }}
           className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             viewMode === 'search' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
@@ -678,7 +679,7 @@ export default function SongsPage() {
             disabled={fsLoading}
           />
           {catalogFilter && (
-            <button onClick={() => setCatalogFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button type="button" onClick={() => setCatalogFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               <X className="size-4" />
             </button>
           )}
@@ -716,7 +717,7 @@ export default function SongsPage() {
               {viewMode === 'catalog' ? 'Click "Add Song" to upload an MP3 or search to import from music APIs' : 'This song may not be available in the connected full-song APIs'}
             </p>
             {viewMode === 'search' && (
-                <button
+                <button type="button"
                   onClick={() => {
                     openCreateModal(searchQuery);
                   }}
@@ -746,9 +747,9 @@ export default function SongsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {song.imageUrl ? (
-                          <img src={song.imageUrl} alt={song.title}
+                          <Image src={song.imageUrl} alt={song.title} width={40} height={40}
                             className="size-10 flex-shrink-0 rounded-md object-cover"
-                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            unoptimized />
                         ) : (
                           <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-md bg-gray-100">
                             <Music2 className="size-5 text-gray-400" />
@@ -775,7 +776,7 @@ export default function SongsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         {song.streamUrl && (
-                          <button
+                          <button type="button"
                             onClick={() => handlePlaySong(song)}
                             className={`rounded-md p-1.5 ${
                               activeSongId === song.id && isAudioPlaying
@@ -793,7 +794,7 @@ export default function SongsPage() {
                         )}
                         {/* API song: show "Add to Catalog" button */}
                         {viewMode === 'search' && !song.inFirestore && song.streamUrl && (
-                          <button
+                          <button type="button"
                             onClick={() => saveApiSongToFirestore(song)}
                             disabled={savingApiId === song.id}
                             className="flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-50"
@@ -811,11 +812,11 @@ export default function SongsPage() {
                         {/* Catalog song: edit + delete */}
                         {viewMode === 'catalog' && (
                           <>
-                            <button onClick={() => openEdit(song)}
+                            <button type="button" onClick={() => openEdit(song)}
                               className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Edit">
                               <Edit className="size-4" />
                             </button>
-                            <button onClick={() => handleDelete(song.id)}
+                            <button type="button" onClick={() => handleDelete(song.id)}
                               className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700" title="Delete">
                               <Trash2 className="size-4" />
                             </button>
@@ -836,8 +837,8 @@ export default function SongsPage() {
             {/* Load more for search results */}
             {viewMode === 'search' && apiResults.length < apiTotal && (
               <div className="border-t border-gray-100 px-4 py-3 text-center">
-                <button
-                  onClick={() => searchApi(searchQuery, apiPage + 1, true)}
+                <button type="button"
+                  onClick={() => searchApi(searchQuery, apiPageRef.current + 1, true)}
                   disabled={loadingMore}
                   className="btn-secondary flex items-center gap-2 mx-auto text-sm"
                 >
@@ -851,7 +852,7 @@ export default function SongsPage() {
               <div className="border-t border-gray-100 bg-blue-50 px-4 py-3">
                 <p className="text-xs text-blue-700">
                   Can't find the song? It may not be available in the connected full-song APIs.{' '}
-                  <button
+                  <button type="button"
                     onClick={() => {
                       openCreateModal(searchQuery);
                     }}
@@ -866,7 +867,9 @@ export default function SongsPage() {
         )}
       </div>
 
-      <audio ref={audioRef} preload="none" className="hidden" />
+      <audio ref={audioRef} preload="none" className="hidden">
+        <track kind="captions" />
+      </audio>
 
       {/* Add / Edit Modal */}
       {showModal && (
@@ -875,7 +878,7 @@ export default function SongsPage() {
           <div className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{editId ? 'Edit Song' : 'Add New Song'}</h2>
-              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
+              <button type="button" onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-4">
               {formError && (
@@ -977,8 +980,8 @@ export default function SongsPage() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
-              <button onClick={closeModal} className="btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {saving ? (uploadingAudio ? 'Uploading MP3...' : (editId ? 'Saving Changes...' : 'Adding Song...')) : (editId ? 'Save Changes' : 'Add Song')}
               </button>

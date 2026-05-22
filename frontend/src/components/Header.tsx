@@ -234,8 +234,8 @@ const Header = ({ className }: HeaderProps) => {
   // Optimized debounced search with request cancellation
   const searchAbortController = useRef<AbortController | null>(null);
 
-  const debouncedSearch = useCallback(
-    debounce((query: string) => {
+  const debouncedSearch = React.useMemo(
+    () => debounce((query: string) => {
       if (query.trim().length >= 2) {
         // Cancel previous request
         if (searchAbortController.current) {

@@ -783,7 +783,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   }, [currentSong, likedSongIds]);
 
   // Optimized seek function with throttling
-  const handleSeek = (clientX: number, rect: DOMRect, immediate = false) => {
+  const handleSeek = React.useCallback((clientX: number, rect: DOMRect, immediate = false) => {
     const offsetX = clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
     const newTime = percentage * duration;
@@ -810,7 +810,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         }
       }, 50);
     }
-  };
+  }, [duration, seekTo]);
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isDragging) return; // Prevent click during drag
@@ -906,7 +906,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isDragging, duration]);
+  }, [isDragging, duration, handleSeek]);
 
   // Cleanup timeouts on unmount and reset image on song change
   useEffect(() => {
