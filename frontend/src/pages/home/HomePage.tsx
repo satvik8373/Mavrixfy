@@ -12,14 +12,7 @@ import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import { updateMetaTags, metaPresets } from '@/utils/metaTags';
 import { PromotionsBanner } from '@/components/PromotionsBanner';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
-import {
-  getRecommendationHomeFeed,
-  recommendationFeedEnabled,
-  RecommendationFeed,
-} from '@/services/recommendationService';
-import { RecommendationSection } from './components/RecommendationSection';
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
-
 
 const ALL_JIOSAAVN_CATEGORIES = [
   'trending',
@@ -104,11 +97,9 @@ interface HomeState {
   likedSongsColor: string | null;
   playerThemeColor: string;
   homeJioCategories: HomeJioSaavnCategoryData[];
-  recommendationFeed: RecommendationFeed | null;
-  isRecommendationFeedLoading: boolean;
-  hasRecommendationFeedFailed: boolean;
   canLoadGuestJio: boolean;
   renderDeferredSections: boolean;
+  isPlaylistsLoading: boolean;
 }
 
 type HomeAction =
@@ -117,12 +108,9 @@ type HomeAction =
   | { type: 'hover_color'; color: string | null; isLikedSongs?: boolean }
   | { type: 'player_theme'; color: string }
   | { type: 'jio_categories'; categories: HomeJioSaavnCategoryData[] }
-  | { type: 'recommendations_disabled' }
-  | { type: 'recommendations_loading' }
-  | { type: 'recommendations_loaded'; feed: RecommendationFeed }
-  | { type: 'recommendations_failed' }
   | { type: 'guest_jio_ready' }
-  | { type: 'render_deferred' };
+  | { type: 'render_deferred' }
+  | { type: 'playlists_loading'; isLoading: boolean };
 
 const homeReducer = (state: HomeState, action: HomeAction): HomeState => {
   switch (action.type) {
@@ -140,37 +128,12 @@ const homeReducer = (state: HomeState, action: HomeAction): HomeState => {
       return { ...state, playerThemeColor: action.color };
     case 'jio_categories':
       return { ...state, homeJioCategories: action.categories };
-    case 'recommendations_disabled':
-      return {
-        ...state,
-        recommendationFeed: null,
-        isRecommendationFeedLoading: false,
-        hasRecommendationFeedFailed: false,
-      };
-    case 'recommendations_loading':
-      return {
-        ...state,
-        isRecommendationFeedLoading: true,
-        hasRecommendationFeedFailed: false,
-      };
-    case 'recommendations_loaded':
-      return {
-        ...state,
-        recommendationFeed: action.feed,
-        isRecommendationFeedLoading: false,
-        hasRecommendationFeedFailed: false,
-      };
-    case 'recommendations_failed':
-      return {
-        ...state,
-        recommendationFeed: null,
-        isRecommendationFeedLoading: false,
-        hasRecommendationFeedFailed: true,
-      };
     case 'guest_jio_ready':
       return { ...state, canLoadGuestJio: true };
     case 'render_deferred':
       return { ...state, renderDeferredSections: true };
+    case 'playlists_loading':
+      return { ...state, isPlaylistsLoading: action.isLoading };
     default:
       return state;
   }
@@ -372,10 +335,8 @@ const HomePage = () => {
     likedSongsColor,
     playerThemeColor,
     homeJioCategories,
-    recommendationFeed,
-    isRecommendationFeedLoading,
-    hasRecommendationFeedFailed,
     canLoadGuestJio,
+    isPlaylistsLoading,
   }, dispatchHome] = useReducer(homeReducer, {
     isInitialLoading: true,
     displayItems: [],
@@ -384,11 +345,9 @@ const HomePage = () => {
     likedSongsColor: null,
     playerThemeColor: 'rgb(60, 40, 120)',
     homeJioCategories: [],
-    recommendationFeed: null,
-    isRecommendationFeedLoading: false,
-    hasRecommendationFeedFailed: false,
     canLoadGuestJio: false,
     renderDeferredSections: true,
+    isPlaylistsLoading: publicPlaylists.length === 0,
   });
   const navigate = useNavigate();
   const { loadLikedSongs } = useLikedSongsStore();
@@ -400,31 +359,6 @@ const HomePage = () => {
   useEffect(() => {
     loadLikedSongs();
   }, [loadLikedSongs]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !recommendationFeedEnabled()) {
-      dispatchHome({ type: 'recommendations_disabled' });
-      return;
-    }
-
-    let isCancelled = false;
-    dispatchHome({ type: 'recommendations_loading' });
-    getRecommendationHomeFeed()
-      .then((feed) => {
-        if (!isCancelled && feed?.sections?.length) {
-          dispatchHome({ type: 'recommendations_loaded', feed });
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          dispatchHome({ type: 'recommendations_failed' });
-        }
-      })
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [isAuthenticated]);
 
   // Update meta tags for home page
   useEffect(() => {
@@ -458,13 +392,29 @@ const HomePage = () => {
 
     const loadHomePlaylists = async () => {
       try {
-        if (isAuthenticated && usePlaylistStore.getState().shouldRefresh()) {
-          await usePlaylistStore.getState().refreshAllData().catch(() => { });
+        dispatchHome({ type: 'playlists_loading', isLoading: true });
+        if (isAuthenticated) {
+          const promises: Promise<any>[] = [];
+          if (usePlaylistStore.getState().shouldRefresh()) {
+            promises.push(usePlaylistStore.getState().refreshAllData());
+          } else {
+            if (publicPlaylists.length === 0) {
+              promises.push(fetchPublicPlaylists());
+            }
+            if (featuredPlaylists.length === 0) {
+              promises.push(fetchFeaturedPlaylists());
+            }
+          }
+          await Promise.all(promises);
         } else if (publicPlaylists.length === 0) {
-          await fetchPublicPlaylists().catch(() => { });
+          await fetchPublicPlaylists();
         }
       } catch {
         // The page can continue with JioSaavn rows if playlist sync fails.
+      } finally {
+        if (!isCancelled) {
+          dispatchHome({ type: 'playlists_loading', isLoading: false });
+        }
       }
     };
 
@@ -486,20 +436,15 @@ const HomePage = () => {
       isCancelled = true;
       cancelGuestFetch?.();
     };
-  }, [fetchPublicPlaylists, hasLoadedOnce, isAuthenticated, publicPlaylists.length]);
+  }, [fetchPublicPlaylists, fetchFeaturedPlaylists, hasLoadedOnce, isAuthenticated, publicPlaylists.length, featuredPlaylists.length]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    if (!hasLoadedOnce && isAuthenticated) {
-      fetchPublicPlaylists();
-      fetchFeaturedPlaylists();
-      
+    if (isAuthenticated) {
       const currentRecentItems = recentlyPlayedService.getDisplayItems([...publicPlaylists, ...featuredPlaylists]);
       dispatchHome({ type: 'display_items', items: currentRecentItems });
-    }
 
-    if (isAuthenticated) {
       interval = setInterval(() => {
         const newItems = recentlyPlayedService.getDisplayItems([...publicPlaylists, ...featuredPlaylists]);
         dispatchHome({ type: 'display_items', items: newItems });
@@ -518,7 +463,7 @@ const HomePage = () => {
       window.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
       if (interval) clearInterval(interval);
     };
-  }, [publicPlaylists, featuredPlaylists, hasLoadedOnce, isAuthenticated, fetchPublicPlaylists, fetchFeaturedPlaylists]);
+  }, [publicPlaylists, featuredPlaylists, isAuthenticated]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -644,53 +589,11 @@ const HomePage = () => {
         <div className="w-full overflow-x-hidden">
           <HomeRecentlyPlayedGrid
             isAuthenticated={isAuthenticated}
-            isLoaded={publicPlaylists.length > 0 || hasLoadedOnce}
+            isLoaded={!isPlaylistsLoading}
             getDisplayedItems={getDisplayedItems}
             handlePlaylistClick={handlePlaylistClick}
             handleColorChange={handleColorChange}
           />
-          {/* Recommendation Feed (New) */}
-          {isAuthenticated && recommendationFeedEnabled() && (
-            isRecommendationFeedLoading ? (
-              <div className="flex flex-col w-full">
-                {[1, 2, 3].map((idx) => (
-                  <SectionWrapper
-                    key={idx}
-                    title="Recommended for you"
-                    subtitle="Personalized recommendations based on your taste"
-                  >
-                    <HorizontalScroll
-                      itemWidth={homePlaylistCardScrollWidth} className="min-h-[238px] md:min-h-[258px]"
-                      gap={10}
-                      showArrows={true}
-                      snapToItems={false}
-                      edgeToEdge={true}
-                    >
-                      <ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />
-                    </HorizontalScroll>
-                  </SectionWrapper>
-                ))}
-              </div>
-            ) : hasRecommendationFeedFailed || (recommendationFeed && recommendationFeed.sections.length === 0) ? (
-              <SectionWrapper
-                title="Recommended for you"
-                subtitle="Personalized recommendations based on your taste"
-              >
-                <div className="min-h-[238px] md:min-h-[258px] flex items-center justify-center w-full rounded-md border border-white/10 bg-white/[0.04] px-4 py-5">
-                  <div className="text-center">
-                    <h2 className="text-lg font-semibold text-white">Recommendations are warming up</h2>
-                    <p className="mt-1 text-sm text-white/55">
-                      Your personalized feed could not load yet. Play a few songs and refresh shortly.
-                    </p>
-                  </div>
-                </div>
-              </SectionWrapper>
-            ) : recommendationFeed ? (
-              recommendationFeed.sections.map((section) => (
-                <RecommendationSection key={section.id} section={section} />
-              ))
-            ) : null
-          )}
               
               {/* Public Playlists Section */}
               <SectionWrapper
@@ -722,7 +625,7 @@ const HomePage = () => {
                         </div>
                       </ScrollItem>
                     ))
-                  ) : (isInitialLoading || isLoading || !isAuthenticated) ? (
+                  ) : (isInitialLoading || isPlaylistsLoading || !isAuthenticated) ? (
                     <ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />
                   ) : hasLoadedOnce ? (
                     <div className="text-zinc-500 text-sm p-4 w-full text-center animate-[fadeIn_0.3s_ease-out]">

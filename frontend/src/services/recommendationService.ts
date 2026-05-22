@@ -1,5 +1,3 @@
-import axiosInstance from '@/lib/axios';
-import { useAuthStore } from '@/stores/useAuthStore';
 import { Song } from '@/types';
 
 export type RecommendationEventType =
@@ -78,38 +76,12 @@ interface EventPayload {
   context?: RecommendationEventContext;
 }
 
-const SESSION_KEY = 'recommendation_session_id:v1';
-const SESSION_STARTED_KEY = 'recommendation_session_started:v1';
-const SESSION_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-const recentPlayStarts = new Map<string, number>();
-let sessionListenersAttached = false;
-
 export const recommendationFeedEnabled = () => {
-  const configuredValue = String(import.meta.env.VITE_RECOMMENDATION_FEED_V1 || '').trim().toLowerCase();
-  return configuredValue !== 'false';
-};
-
-const canTrack = () => {
-  const { isAuthenticated, userId } = useAuthStore.getState();
-  return Boolean(isAuthenticated && userId);
-};
-
-const createSessionId = () => {
-  const random = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `web-${random}`;
+  return false;
 };
 
 export const getRecommendationSessionId = () => {
-  const startedAt = Number(sessionStorage.getItem(SESSION_STARTED_KEY) || 0);
-  const current = sessionStorage.getItem(SESSION_KEY);
-  if (current && startedAt && Date.now() - startedAt < SESSION_MAX_AGE_MS) return current;
-
-  const next = createSessionId();
-  sessionStorage.setItem(SESSION_KEY, next);
-  sessionStorage.setItem(SESSION_STARTED_KEY, String(Date.now()));
-  return next;
+  return 'disabled-recommendation-session';
 };
 
 const getSongSource = (song: Partial<Song> & { source?: string }) => {
@@ -158,26 +130,9 @@ export const recommendationItemFromPlaylist = (playlist: any, source: Recommenda
   };
 };
 
-export const trackRecommendationEvent = async ({
-  eventType,
-  item = null,
-  query = '',
-  context = {},
-}: EventPayload) => {
-  if (!canTrack()) return;
-
-  try {
-    await axiosInstance.post('/recommendations/events', {
-      eventType,
-      sessionId: getRecommendationSessionId(),
-      occurredAt: new Date().toISOString(),
-      item,
-      query,
-      context,
-    });
-  } catch {
-    // Recommendation signals must never interrupt playback or navigation.
-  }
+export const trackRecommendationEvent = async (_payload: EventPayload) => {
+  // Discard all events - no longer tracking recommendations
+  return;
 };
 
 const getPlaybackContext = (progressSeconds = 0, durationSeconds = 0, surface = 'player') => ({
@@ -187,73 +142,22 @@ const getPlaybackContext = (progressSeconds = 0, durationSeconds = 0, surface = 
   surface,
 });
 
-export const trackSongPlayStarted = (song: Song, progressSeconds = 0, durationSeconds = song.duration || 0) => {
-  const item = recommendationItemFromSong(song);
-  if (!item) return;
-
-  const playKey = `${item.source}:${item.contentId}`;
-  const lastStart = recentPlayStarts.get(playKey) || 0;
-  const shouldCountReplay = progressSeconds <= 2 && lastStart > 0 && Date.now() - lastStart > 500;
-  recentPlayStarts.set(playKey, Date.now());
-
-  void trackRecommendationEvent({
-    eventType: 'song_play',
-    item,
-    context: getPlaybackContext(progressSeconds, durationSeconds),
-  });
-
-  if (shouldCountReplay) {
-    void trackRecommendationEvent({
-      eventType: 'song_replay',
-      item,
-      context: getPlaybackContext(progressSeconds, durationSeconds),
-    });
-  }
+export const trackSongPlayStarted = (_song: Song, _progressSeconds = 0, _durationSeconds = 0) => {
+  // Discard - tracking disabled
 };
 
-export const trackSongComplete = (song: Song, durationSeconds = song.duration || 0) => {
-  const item = recommendationItemFromSong(song);
-  if (!item) return;
-
-  void trackRecommendationEvent({
-    eventType: 'song_complete',
-    item,
-    context: getPlaybackContext(durationSeconds, durationSeconds),
-  });
+export const trackSongComplete = (_song: Song, _durationSeconds = 0) => {
+  // Discard - tracking disabled
 };
 
-export const trackSongSkip = (song: Song | null, progressSeconds: number, durationSeconds: number) => {
-  if (!song || durationSeconds <= 0 || progressSeconds / durationSeconds >= 0.9) return;
-  const item = recommendationItemFromSong(song);
-  if (!item) return;
-
-  void trackRecommendationEvent({
-    eventType: 'song_skip',
-    item,
-    context: getPlaybackContext(progressSeconds, durationSeconds),
-  });
+export const trackSongSkip = (_song: Song | null, _progressSeconds: number, _durationSeconds: number) => {
+  // Discard - tracking disabled
 };
 
 export const startRecommendationSessionTracking = () => {
-  if (sessionListenersAttached) return;
-  sessionListenersAttached = true;
-
-  const emitStart = () => {
-    void trackRecommendationEvent({ eventType: 'session_start' });
-  };
-
-  const emitEnd = () => {
-    void trackRecommendationEvent({ eventType: 'session_end' });
-  };
-
-  emitStart();
-  window.addEventListener('pagehide', emitEnd);
-  window.addEventListener('beforeunload', emitEnd);
+  // Discard - tracking disabled
 };
 
 export const getRecommendationHomeFeed = async () => {
-  const response = await axiosInstance.get<{ success: boolean; feed: RecommendationFeed }>('/recommendations/home', {
-    params: { sessionId: getRecommendationSessionId() },
-  });
-  return response.data.feed;
+  return null;
 };
