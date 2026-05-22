@@ -26,9 +26,8 @@ export async function registerWebPush(userId: string): Promise<{ token: string |
     if (permission === 'denied') return { token: null, status: 'denied' };
     if (permission !== 'granted') return { token: null, status: 'dismissed' };
 
-    // Register service worker
-    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
-    await navigator.serviceWorker.ready;
+    // Use the existing service worker (VitePWA) instead of creating a conflicting one
+    const swReg = await navigator.serviceWorker.ready;
     const msg = await getMessagingInstance();
     const token = await getToken(msg, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
 

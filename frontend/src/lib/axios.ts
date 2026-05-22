@@ -5,11 +5,9 @@ import { API_BASE_URL } from "./apiConfig";
 // Avoid importing Firebase eagerly to keep initial bundle small
 // We'll lazy-import inside the interceptor
 
-// Create and configure axios instance
 const axiosInstance = axios.create({
 	baseURL: API_BASE_URL,
-	timeout: 20000,
-	withCredentials: true
+	timeout: 20000
 });
 
 // Function to set auth token for requests

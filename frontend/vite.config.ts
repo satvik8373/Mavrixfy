@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
 					globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,avif}'],
 					globIgnores: ['**/*.{mp3,mp4,m4a,aac,ogg,wav,flac}', '**/firebase-messaging-sw.js'],
 					cleanupOutdatedCaches: true,
+					importScripts: ['/firebase-messaging-sw.js'],
 					runtimeCaching: [
 						{
 							urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
