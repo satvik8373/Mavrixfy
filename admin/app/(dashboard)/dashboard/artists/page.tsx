@@ -122,7 +122,7 @@ export default function ArtistsPage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-[max(1rem,var(--safe-top))] pb-[max(1rem,var(--safe-bottom))]">
           <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={closeModal} />
           <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
@@ -166,3 +166,4 @@ export default function ArtistsPage() {
     </div>
   );
 }
+
