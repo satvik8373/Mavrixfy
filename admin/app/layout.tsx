@@ -9,6 +9,14 @@ export const metadata: Metadata = {
   title: 'Mavrixfy Admin - Control Center',
   description: 'Admin dashboard for managing Mavrixfy music streaming platform',
   robots: 'noindex, nofollow',
+  icons: {
+    icon: [
+      { url: '/admin-mark.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico' },
+    ],
+    shortcut: '/admin-mark.svg',
+    apple: '/mavrixfy.png',
+  },
 };
 
 export default function RootLayout({

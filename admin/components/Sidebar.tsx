@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -68,8 +69,15 @@ export function Sidebar() {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
-          <div className="flex size-10 items-center justify-center rounded-lg bg-blue-600">
-            <Music2 className="size-6 text-white" />
+          <div className="flex size-10 items-center justify-center overflow-hidden rounded-lg bg-gray-950">
+            <Image
+              src="/admin-mark.svg"
+              alt="Mavrixfy Admin"
+              width={40}
+              height={40}
+              className="size-10 object-cover"
+              priority
+            />
           </div>
           <div>
             <h1 className="text-lg font-semibold text-gray-900">Mavrixfy</h1>
@@ -116,11 +124,18 @@ export function Sidebar() {
         <div className="border-t border-gray-200 p-4">
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-                {session.name.charAt(0).toUpperCase()}
+              <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-950">
+                <Image
+                  src="/admin-mark.svg"
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="size-10 object-cover"
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-medium text-gray-900">{session.name}</p>
+                <p className="truncate text-xs text-gray-500">{session.email}</p>
                 <p className="truncate text-xs text-gray-500 capitalize">{session.role.replace('_', ' ')}</p>
               </div>
             </div>

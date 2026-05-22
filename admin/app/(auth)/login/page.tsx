@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Music2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
@@ -53,8 +54,15 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
       <div className="w-full max-w-md">
         <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
-          <div className="flex size-12 items-center justify-center rounded-lg bg-blue-600">
-            <Music2 className="size-6 text-white" />
+          <div className="flex size-12 items-center justify-center overflow-hidden rounded-lg bg-gray-950">
+            <Image
+              src="/admin-mark.svg"
+              alt="Mavrixfy Admin"
+              width={48}
+              height={48}
+              className="size-12 object-cover"
+              priority
+            />
           </div>
 
           <h1 className="mt-6 text-2xl font-semibold text-gray-900">Mavrixfy Admin</h1>
@@ -72,6 +80,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                aria-label="Admin email"
                 required
                 className="input-field mt-1"
                 placeholder="admin@mavrixfy.com"
@@ -88,6 +97,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                aria-label="Admin password"
                 required
                 className="input-field mt-1"
                 placeholder="••••••••"

@@ -4,9 +4,9 @@
   "description": "Mavrixfy Admin Dashboard",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 5173",
+    "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 5173",
+    "start": "next start -p 3001",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
