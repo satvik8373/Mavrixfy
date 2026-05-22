@@ -1,24 +1,20 @@
-import { useEffect, useReducer, useRef, useCallback, memo } from 'react';
+import { Suspense, lazy, useEffect, useReducer, useRef, useCallback, memo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import LeftSidebar from './components/LeftSidebar';
-import { PlaybackControls } from './components/PlaybackControls';
 import MobileNav from './components/MobileNav';
-import Header from '@/components/Header';
 import { usePlayerStore } from '@/stores/usePlayerStore';
-import QueuePanel from '@/components/QueuePanel';
 import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
-import DesktopFooter from '@/components/DesktopFooter';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 
+const LeftSidebar = lazy(() => import('./components/LeftSidebar'));
+const PlaybackControls = lazy(() => import('./components/PlaybackControls'));
+const Header = lazy(() => import('@/components/Header'));
+const QueuePanel = lazy(() => import('@/components/QueuePanel'));
+const DesktopFooter = lazy(() => import('@/components/DesktopFooter'));
+
 // Memoized components to prevent unnecessary re-renders
-const MemoizedLeftSidebar = memo(LeftSidebar);
-const MemoizedPlaybackControls = memo(PlaybackControls);
 const MemoizedMobileNav = memo(MobileNav);
-const MemoizedHeader = memo(Header);
-const MemoizedQueuePanel = memo(QueuePanel);
-const MemoizedDesktopFooter = memo(DesktopFooter);
 
 interface LayoutUiState {
   isMobile: boolean;
@@ -98,7 +94,7 @@ const MainLayout = () => {
     if (document.title !== playbackTitle) {
       document.title = playbackTitle;
     }
-  }, [isPlaying, currentSong?._id, currentSong?.title, currentSong?.artist, pathname]);
+  }, [isPlaying, currentSong, pathname]);
 
   useEffect(() => {
     return () => {
@@ -280,7 +276,9 @@ const MainLayout = () => {
     >
       {/* Header with login - hidden on mobile */}
       <div className="hidden md:block flex-shrink-0 relative z-[100]">
-        <MemoizedHeader />
+        <Suspense fallback={null}>
+          <Header />
+        </Suspense>
       </div>
 
       {/* Main content area */}
@@ -299,7 +297,9 @@ const MainLayout = () => {
             style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` }}
           >
             <div className="h-full bg-[#121212] rounded-lg overflow-hidden">
-              <MemoizedLeftSidebar isCollapsed={isCollapsed} onToggleCollapse={toggleCollapse} />
+              <Suspense fallback={null}>
+                <LeftSidebar isCollapsed={isCollapsed} onToggleCollapse={toggleCollapse} />
+              </Suspense>
             </div>
             {/* Resize handle */}
             <div
@@ -318,7 +318,11 @@ const MainLayout = () => {
         <div className="flex-1 h-full overflow-hidden">
           <CustomScrollbar className="h-full mobile-scroll-fix bg-transparent md:rounded-lg">
             <Outlet />
-            {!hideDesktopFooter && <MemoizedDesktopFooter />}
+            {!isMobile && !hideDesktopFooter && (
+              <Suspense fallback={null}>
+                <DesktopFooter />
+              </Suspense>
+            )}
           </CustomScrollbar>
         </div>
 
@@ -326,14 +330,20 @@ const MainLayout = () => {
         {!isMobile && showQueue && !isDocumentFullscreen && (
           <div className="w-[280px] min-w-[280px] h-full flex-shrink-0">
             <div className="h-full bg-[#121212] rounded-lg overflow-hidden">
-              <MemoizedQueuePanel onClose={handleCloseQueuePanel} />
+              <Suspense fallback={null}>
+                <QueuePanel onClose={handleCloseQueuePanel} />
+              </Suspense>
             </div>
           </div>
         )}
       </div>
 
       {/* Playback controls - visible on desktop only when there's a song */}
-      {currentSong && !isMobile && <MemoizedPlaybackControls />}
+      {currentSong && !isMobile && (
+        <Suspense fallback={null}>
+          <PlaybackControls />
+        </Suspense>
+      )}
 
       {/* Mobile Navigation */}
       <MemoizedMobileNav />

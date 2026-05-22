@@ -6,7 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary.tsx'
 import './index.css'
 import './styles/mobile-optimizations.css'
 import './styles/custom-utilities.css'
-import { configureWebViewAuth, getEnvironmentInfo } from './utils/webViewDetection'
+import { configureWebViewAuth } from './utils/webViewDetection'
 
 // Initialize Google Analytics and GTM
 declare global {
@@ -52,12 +52,53 @@ function initializeAnalytics() {
   }
 }
 
-// Initialize analytics after DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeAnalytics);
-} else {
-  initializeAnalytics();
+function scheduleAnalytics() {
+  if (!import.meta.env.PROD) return;
+
+  let initialized = false;
+  let idleId: number | undefined;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const interactionEvents = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+
+  const cleanup = () => {
+    interactionEvents.forEach((eventName) => {
+      window.removeEventListener(eventName, startAnalytics);
+    });
+    if (timeoutId) window.clearTimeout(timeoutId);
+    if (idleId && 'cancelIdleCallback' in window) {
+      window.cancelIdleCallback(idleId);
+    }
+  };
+
+  const startAnalytics = () => {
+    if (initialized) return;
+    initialized = true;
+    cleanup();
+    initializeAnalytics();
+  };
+
+  const scheduleAfterLoad = () => {
+    if ('requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(startAnalytics, { timeout: 8000 });
+      return;
+    }
+
+    timeoutId = window.setTimeout(startAnalytics, 5000);
+  };
+
+  window.dataLayer = window.dataLayer || [];
+  interactionEvents.forEach((eventName) => {
+    window.addEventListener(eventName, startAnalytics, { once: true, passive: true });
+  });
+
+  if (document.readyState === 'complete') {
+    scheduleAfterLoad();
+  } else {
+    window.addEventListener('load', scheduleAfterLoad, { once: true });
+  }
 }
+
+scheduleAnalytics();
 
 // Configure WebView authentication on app start
 configureWebViewAuth();

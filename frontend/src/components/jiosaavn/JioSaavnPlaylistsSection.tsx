@@ -194,6 +194,64 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   const cardScrollWidth = 160;
   const cardItemWidth = 160;
 
+  const fetchPlaylists = React.useCallback(async (opts?: { forceRefresh?: boolean; ctxSignature?: string }) => {
+    const ctxSignature = opts?.ctxSignature ?? getContextSignature(categoryId);
+
+    try {
+      dispatchSection({ type: 'loading' });
+
+      let data: JioSaavnPlaylist[];
+
+      // Use optimized methods with timeout for better performance
+      const fetchPromise = jioSaavnService.getFreshPlaylistsByCategory(categoryId, limit, true);
+
+      // Add timeout to prevent slow loading
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      try {
+        data = await Promise.race([fetchPromise, timeoutPromise]);
+      } catch (timeoutError) {
+        // Timeout fetching playlists, using fallback
+        // Fast fallback
+        if (categoryId === 'trending') {
+          data = await jioSaavnService.searchPlaylists('trending now', limit, true);
+        } else {
+          data = await jioSaavnService.searchPlaylists(categoryId, limit, true);
+        }
+      }
+
+      // Always shuffle results for variety and randomness
+      const shufflePlaylistsArray = (playlists: JioSaavnPlaylist[]): JioSaavnPlaylist[] => {
+        const shuffled = [...playlists];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      };
+
+      data = shufflePlaylistsArray(data);
+
+      // Limit the results if needed
+      if (data.length > limit) {
+        data = data.slice(0, limit);
+      }
+
+      dispatchSection({ type: 'loaded', playlists: data });
+
+      writeCachedPlaylists(categoryId, {
+        data,
+        updatedAt: Date.now(),
+        ctxSignature,
+      });
+    } catch (err) {
+      dispatchSection({ type: 'failed' });
+      toast.error('Failed to load playlists');
+    }
+  }, [categoryId, limit]);
+
   useEffect(() => {
     if (Array.isArray(playlistsOverride)) {
       dispatchSection({
@@ -223,65 +281,6 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
     const ctxSignature = getContextSignature(categoryId);
     fetchPlaylists({ forceRefresh: true, ctxSignature });
   }, [categoryId, disableAutoFetch, limit, playlistsOverride, fetchPlaylists]);
-
-  const fetchPlaylists = React.useCallback(async (opts?: { forceRefresh?: boolean; ctxSignature?: string }) => {
-    const forceRefresh = opts?.forceRefresh ?? false;
-    const ctxSignature = opts?.ctxSignature ?? getContextSignature(categoryId);
-
-    try {
-      dispatchSection({ type: 'loading' });
-
-      let data: JioSaavnPlaylist[];
-      
-      // Use optimized methods with timeout for better performance
-      const fetchPromise = jioSaavnService.getFreshPlaylistsByCategory(categoryId, limit, true);
-
-      // Add timeout to prevent slow loading
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), 10000)
-      );
-
-      try {
-        data = await Promise.race([fetchPromise, timeoutPromise]);
-      } catch (timeoutError) {
-        // Timeout fetching playlists, using fallback
-        // Fast fallback
-        if (categoryId === 'trending') {
-          data = await jioSaavnService.searchPlaylists('trending now', limit, true);
-        } else {
-          data = await jioSaavnService.searchPlaylists(categoryId, limit, true);
-        }
-      }
-      
-      // Always shuffle results for variety and randomness
-      const shufflePlaylistsArray = (playlists: JioSaavnPlaylist[]): JioSaavnPlaylist[] => {
-        const shuffled = [...playlists];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled;
-      };
-      
-      data = shufflePlaylistsArray(data);
-      
-      // Limit the results if needed
-      if (data.length > limit) {
-        data = data.slice(0, limit);
-      }
-      
-      dispatchSection({ type: 'loaded', playlists: data });
-      
-      writeCachedPlaylists(categoryId, {
-        data,
-        updatedAt: Date.now(),
-        ctxSignature,
-      });
-    } catch (err) {
-      dispatchSection({ type: 'failed' });
-      toast.error('Failed to load playlists');
-    }
-  }, [categoryId, limit]);
 
 
 
