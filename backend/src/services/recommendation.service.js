@@ -549,12 +549,17 @@ const loadCatalogCandidates = async () => {
   };
 };
 
+const withTimeout = (promise, ms) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+]);
+
 const loadJioSaavnCandidates = async () => {
   const settled = await Promise.allSettled([
-    jiosaavnService.searchPlaylists('trending hindi bollywood indian playlists', 24),
-    jiosaavnService.searchPlaylists('new hindi bollywood indian playlists', 24),
-    jiosaavnService.searchPlaylists('punjabi gujarati english hindi trending playlists', 24),
-    jiosaavnService.searchPlaylists('hindi punjabi gujarati english mood playlists', 24),
+    withTimeout(jiosaavnService.searchPlaylists('trending hindi bollywood indian playlists', 16), 6500),
+    withTimeout(jiosaavnService.searchPlaylists('new hindi bollywood indian playlists', 16), 6500),
+    withTimeout(jiosaavnService.searchPlaylists('punjabi gujarati english hindi trending playlists', 16), 6500),
+    withTimeout(jiosaavnService.searchPlaylists('hindi punjabi gujarati english mood playlists', 16), 6500),
   ]);
 
   const [trending, fresh, regional, playlists] = settled.map((result) => result.status === 'fulfilled' ? result.value : null);

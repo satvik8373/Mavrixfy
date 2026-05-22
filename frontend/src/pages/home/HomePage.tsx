@@ -9,7 +9,6 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
 import { SectionWrapper } from '@/components/ui/section-wrapper';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
-import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
 import { updateMetaTags, metaPresets } from '@/utils/metaTags';
 import { PromotionsBanner } from '@/components/PromotionsBanner';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
@@ -19,7 +18,6 @@ import {
   RecommendationFeed,
 } from '@/services/recommendationService';
 import { RecommendationSection } from './components/RecommendationSection';
-
 import { PlaylistCard } from '../../components/playlist/PlaylistCard';
 
 
@@ -252,10 +250,9 @@ const HomeTopBanners = ({ navigate }: HomeTopBannersProps) => {
 interface HomeRecentlyPlayedGridProps {
   isAuthenticated: boolean;
   isLoaded: boolean;
-  getDisplayedItems: () => any[];
-  handlePlaylistClick: (item: any) => void;
+  getDisplayedItems: () => Record<string, any>[];
+  handlePlaylistClick: (item: Record<string, any>) => void;
   handleColorChange: (color: string | null, isLikedSongs?: boolean) => void;
-  navigate: NavigateFunction;
 }
 
 const HomeRecentlyPlayedGrid = ({
@@ -264,7 +261,6 @@ const HomeRecentlyPlayedGrid = ({
   getDisplayedItems,
   handlePlaylistClick,
   handleColorChange,
-  navigate,
 }: HomeRecentlyPlayedGridProps) => {
   if (!isAuthenticated) return null;
 
@@ -294,12 +290,11 @@ const HomeRecentlyPlayedGrid = ({
           imageUrl="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
           subtitle="Playlist"
           type="playlist"
-          isLikedSongs={true}
           onClick={() => handlePlaylistClick({ _id: 'liked-songs', type: 'liked-songs' })}
-          onColorExtracted={(color) => handleColorChange(color, true)}
+          onPlay={() => handlePlaylistClick({ _id: 'liked-songs', type: 'liked-songs' })}
+          onHoverChange={(color) => handleColorChange(color, true)}
         />
-
-        {itemsToRender.map((item: any) => {
+        {itemsToRender.map((item: Record<string, any>) => {
           if (item.isEmpty) {
             return <div key={item.id} className="h-12 md:h-20 invisible pointer-events-none"></div>;
           }
@@ -585,7 +580,7 @@ const HomePage = () => {
   const activeColor = hoveredColor || likedSongsColor || playerThemeColor;
 
   // Handle playlist click - simplified
-  const handlePlaylistClick = (item: any) => {
+  const handlePlaylistClick = (item: Record<string, any>) => {
     if (item._id) {
       if (item.type === 'jiosaavn-playlist') {
         recentlyPlayedService.addJioSaavnPlaylist(item.data || {
@@ -653,7 +648,6 @@ const HomePage = () => {
             getDisplayedItems={getDisplayedItems}
             handlePlaylistClick={handlePlaylistClick}
             handleColorChange={handleColorChange}
-            navigate={navigate}
           />
           {/* Recommendation Feed (New) */}
           {isAuthenticated && recommendationFeedEnabled() && (
