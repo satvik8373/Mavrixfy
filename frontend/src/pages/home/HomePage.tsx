@@ -577,22 +577,31 @@ const HomePage = () => {
             recommendationFeed.sections.map((section) => (
               <RecommendationSection key={section.id} section={section} />
             ))
-          ) : isAuthenticated && recommendationFeedEnabled() && isRecommendationFeedLoading ? (
-            <div className="px-4 md:px-6">
-              <HomeSkeleton count={6} type="card" className="" />
-            </div>
           ) : (
             <>
-              {isAuthenticated && recommendationFeedEnabled() && hasRecommendationFeedFailed && (
-                <section className="px-4 md:px-6 mb-2">
-                  <div className="rounded-md border border-white/10 bg-white/[0.04] px-4 py-5">
-                    <h2 className="text-lg font-semibold text-white">Recommendations are warming up</h2>
-                    <p className="mt-1 text-sm text-white/55">
-                      Your personalized feed could not load yet. Play a few songs and refresh shortly.
-                    </p>
+              {isAuthenticated && recommendationFeedEnabled() && (
+                isRecommendationFeedLoading ? (
+                  <div className="px-4 md:px-6 mb-6 mt-4">
+                    <HomeSkeleton count={1} type="card" className="" />
                   </div>
-                </section>
+                ) : hasRecommendationFeedFailed ? (
+                  <section className="px-4 md:px-6 mb-6 mt-4">
+                    <div className="rounded-md border border-white/10 bg-white/[0.04] px-4 py-5">
+                      <h2 className="text-lg font-semibold text-white">Recommendations are warming up</h2>
+                      <p className="mt-1 text-sm text-white/55">
+                        Your personalized feed could not load yet. Play a few songs and refresh shortly.
+                      </p>
+                    </div>
+                  </section>
+                ) : recommendationFeed && (
+                  <RecommendationSection 
+                    feed={recommendationFeed}
+                    onPlayItem={(item) => handlePlaylistClick(item)}
+                    onHoverChange={handleColorChange}
+                  />
+                )
               )}
+              
               {/* Public Playlists Section */}
               <SectionWrapper
                 title="Made for you"
