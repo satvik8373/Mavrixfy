@@ -118,10 +118,14 @@ class RecentlyPlayedService {
   getDisplayItems(publicPlaylists: any[] = []): any[] {
     const recentItems = this.getPublicRecentlyPlayed();
     const items = [];
+    const seenIds = new Set<string>();
 
     // Add recent items first
     for (const recentItem of recentItems) {
       if (items.length >= 7) break; // Limit to 7 items (+ 1 Liked Songs = 8 total)
+      if (seenIds.has(recentItem.id)) continue;
+      
+      seenIds.add(recentItem.id);
       
       if (recentItem.type === 'playlist') {
         items.push({
@@ -157,19 +161,22 @@ class RecentlyPlayedService {
     // If we don't have enough recent items, add public playlists as fallback
     if (items.length < 7 && publicPlaylists.length > 0) {
       const remainingSlots = 7 - items.length;
-      const recentIds = new Set(items.map(item => item._id));
+      const additional = [];
       
-      const additional = publicPlaylists
-        .filter(p => !recentIds.has(p._id))
-        .slice(0, remainingSlots)
-        .map(p => ({
-          _id: p._id,
-          name: p.name,
-          imageUrl: p.imageUrl,
-          path: `/playlist/${p._id}`,
-          type: 'playlist',
-          isRecent: false
-        }));
+      for (const p of publicPlaylists) {
+        if (additional.length >= remainingSlots) break;
+        if (!seenIds.has(p._id)) {
+          seenIds.add(p._id);
+          additional.push({
+            _id: p._id,
+            name: p.name,
+            imageUrl: p.imageUrl,
+            path: `/playlist/${p._id}`,
+            type: 'playlist',
+            isRecent: false
+          });
+        }
+      }
       
       items.push(...additional);
     }

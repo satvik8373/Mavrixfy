@@ -3,7 +3,7 @@ import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
 import { RecentlyPlayedCard } from '@/components/RecentlyPlayedCard';
 import { HomeJioSaavnCategoryData, jioSaavnService } from '@/services/jioSaavnService';
-import { useNavigate, NavigateFunction } from 'react-router-dom';
+import { useNavigate, NavigateFunction, Link } from 'react-router-dom';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
@@ -205,7 +205,7 @@ const colorToRgba = (color: string, opacity: number) => {
 };
 
 interface HomeTopBannersProps {
-  navigate: any;
+  navigate: NavigateFunction;
 }
 
 const HomeTopBanners = ({ navigate }: HomeTopBannersProps) => {
@@ -277,10 +277,16 @@ const HomeRecentlyPlayedGrid = ({
   // We want exactly 8 cards (Liked Songs + 7 recently played/skeletons)
   const itemsToRender = showSkeletons
     ? Array.from({ length: 7 }).map((_, index) => ({ id: `recently-played-skeleton-${index}`, isSkeleton: true }))
-    : items.slice(0, 7);
+    : [
+        ...items.slice(0, 7),
+        ...Array.from({ length: Math.max(0, 7 - items.length) }).map((_, index) => ({
+          id: `recently-played-empty-${index}`,
+          isEmpty: true,
+        })),
+      ];
 
   return (
-    <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out] pt-4 md:pt-0 min-h-[226px] md:min-h-[94px]">
+    <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out] pt-4 md:pt-0">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-[6px] w-full max-w-full">
         <RecentlyPlayedCard
           id="liked-songs"
@@ -288,12 +294,15 @@ const HomeRecentlyPlayedGrid = ({
           imageUrl="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
           subtitle="Playlist"
           type="playlist"
-          onClick={() => navigate('/liked-songs')}
-          onPlay={() => navigate('/liked-songs')}
-          onHoverChange={(color) => handleColorChange(color, true)}
+          isLikedSongs={true}
+          onClick={() => handlePlaylistClick({ _id: 'liked-songs', type: 'liked-songs' })}
+          onColorExtracted={(color) => handleColorChange(color, true)}
         />
 
         {itemsToRender.map((item: any) => {
+          if (item.isEmpty) {
+            return <div key={item.id} className="h-12 md:h-20 invisible pointer-events-none"></div>;
+          }
           if (item.isSkeleton) {
             return (
               <div 
