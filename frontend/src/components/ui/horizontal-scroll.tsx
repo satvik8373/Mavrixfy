@@ -24,8 +24,10 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
   edgeToEdge = false,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [scrollState, setScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
   const [isHovered, setIsHovered] = useState(false);
 
   // Simple effect that only runs once
@@ -35,8 +37,10 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
 
     const updateScrollButtons = () => {
       const { scrollLeft, scrollWidth, clientWidth } = scrollElement;
-      setCanScrollLeft(scrollLeft > 5);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+      setScrollState({
+        canScrollLeft: scrollLeft > 5,
+        canScrollRight: scrollLeft < scrollWidth - clientWidth - 5,
+      });
     };
 
     // Add event listeners
@@ -74,8 +78,8 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Left Arrow */}
-      {showArrows && canScrollLeft && (
-        <button
+      {showArrows && scrollState.canScrollLeft && (
+        <button type="button"
           onClick={() => scroll('left')}
           className={cn(
             "absolute left-2 top-1/2 -translate-y-1/2 z-30",
@@ -94,8 +98,8 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
       )}
 
       {/* Right Arrow */}
-      {showArrows && canScrollRight && (
-        <button
+      {showArrows && scrollState.canScrollRight && (
+        <button type="button"
           onClick={() => scroll('right')}
           className={cn(
             "absolute right-2 top-1/2 -translate-y-1/2 z-30",

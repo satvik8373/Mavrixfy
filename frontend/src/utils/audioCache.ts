@@ -114,12 +114,13 @@ export const isAudioCached = async (url: string): Promise<boolean> => {
   try {
     // Check across all open caches (Workbox names them dynamically)
     const cacheNames = await caches.keys();
-    for (const name of cacheNames) {
-      const cache = await caches.open(name);
-      const response = await cache.match(url);
-      if (response) return true;
-    }
-    return false;
+    const matches = await Promise.all(
+      cacheNames.map(async (name) => {
+        const cache = await caches.open(name);
+        return cache.match(url);
+      })
+    );
+    return matches.some(Boolean);
   } catch {
     return false;
   }

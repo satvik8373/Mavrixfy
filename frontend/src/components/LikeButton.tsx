@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Check, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,10 @@ interface LikeButtonProps {
     activeColor?: string;
 }
 
+interface LikeButtonState {
+    isProcessing: boolean;
+}
+
 export const LikeButton = ({
     isLiked,
     onToggle,
@@ -17,37 +21,19 @@ export const LikeButton = ({
     iconSize = 20,
     activeColor = "text-green-500"
 }: LikeButtonProps) => {
-    const [isAnimating, setIsAnimating] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const prevIsLiked = useRef(isLiked);
+    const [state, setState] = useState<LikeButtonState>({
+        isProcessing: false
+    });
 
-    // Trigger animation on like state change - but prevent excessive animations
-    useEffect(() => {
-        // Only animate if the liked state actually changed and we're not processing
-        if (isLiked !== prevIsLiked.current && !isProcessing) {
-            prevIsLiked.current = isLiked;
-
-            if (isLiked) {
-                setIsAnimating(true);
-                // Use a simple timeout for animation - this won't cause performance issues
-                // because it's only triggered on actual state changes
-                const timer = setTimeout(() => {
-                    setIsAnimating(false);
-                }, 200); // Shorter animation duration
-                return () => clearTimeout(timer);
-            }
-        }
-    }, [isLiked, isProcessing]);
-
-    const handleClick = (e: React.MouseEvent) => {
+    const handleLikeButtonClick = (e: React.MouseEvent) => {
         // Prevent event bubbling to avoid conflicts
         e.preventDefault();
         e.stopPropagation();
 
         // Prevent multiple rapid clicks
-        if (isProcessing) return;
+        if (state.isProcessing) return;
 
-        setIsProcessing(true);
+        setState(prev => ({ ...prev, isProcessing: true }));
 
         // Haptic feedback if available
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -58,23 +44,23 @@ export const LikeButton = ({
 
         // Reset processing state after a short delay
         setTimeout(() => {
-            setIsProcessing(false);
+            setState(prev => ({ ...prev, isProcessing: false }));
         }, 300);
     };
 
     return (
-        <button
-            onClick={handleClick}
-            disabled={isProcessing}
+        <button type="button"
+            onClick={handleLikeButtonClick}
+            disabled={state.isProcessing}
             className={cn(
                 "transition-transform duration-150 active:scale-95 flex items-center justify-center relative",
                 isLiked ? activeColor : "text-muted-foreground hover:text-foreground",
-                isProcessing && "opacity-70 cursor-not-allowed",
+                state.isProcessing && "opacity-70 cursor-not-allowed",
                 className
             )}
             aria-label={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
         >
-            <div className={cn("relative transition-all duration-200", isAnimating ? "scale-110" : "scale-100")}>
+            <div className={cn("relative transition-all duration-200", isLiked ? "scale-105" : "scale-100")}>
                 {isLiked ? (
                     <div
                         className="rounded-full bg-green-500 flex items-center justify-center transition-all duration-200"

@@ -54,25 +54,25 @@ export function Sidebar() {
 
   if (!session) return null;
 
-  const groupedItems = groupOrder.map((group) => ({
-    group,
-    items: navItems.filter(
+  const groupedItems = groupOrder.flatMap((group) => {
+    const items = navItems.filter(
       (item) =>
         item.group === group &&
         hasPermission(session.role, session.permissions, item.permission)
-    ),
-  })).filter((g) => g.items.length > 0);
+    );
+    return items.length > 0 ? [{ group, items }] : [];
+  });
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-gray-200 bg-white">
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
-            <Music2 className="h-6 w-6 text-white" />
+          <div className="flex size-10 items-center justify-center rounded-lg bg-blue-600">
+            <Music2 className="size-6 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Mavrixfy</h1>
+            <h1 className="text-lg font-semibold text-gray-900">Mavrixfy</h1>
             <p className="text-xs text-gray-500">Admin Panel</p>
           </div>
         </div>
@@ -101,7 +101,7 @@ export function Sidebar() {
                             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                         )}
                       >
-                        <Icon className="h-5 w-5" />
+                        <Icon className="size-5" />
                         {item.label}
                       </Link>
                     );
@@ -116,7 +116,7 @@ export function Sidebar() {
         <div className="border-t border-gray-200 p-4">
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+              <div className="flex size-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
                 {session.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -128,7 +128,7 @@ export function Sidebar() {
               onClick={() => signOut()}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="size-4" />
               Sign out
             </button>
           </div>

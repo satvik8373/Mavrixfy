@@ -2,6 +2,7 @@ import { Howl, Howler } from 'howler';
 import type { Song } from '@/types';
 import { resolveArtist } from '@/lib/resolveArtist';
 import { usePlayerStore } from '@/stores/usePlayerStore';
+import { trackSongComplete, trackSongPlayStarted } from '@/services/recommendationService';
 
 type HowlNode = HTMLAudioElement & {
   setSinkId?: (sinkId: string) => Promise<void>;
@@ -399,6 +400,7 @@ class AudioManager {
           navigator.mediaSession.playbackState = 'playing';
         }
         void this.applyPreferredOutputDevice();
+        trackSongPlayStarted(song, this.getCurrentTime(), howl.duration() || song.duration || 0);
         this.syncPositionState();
         // Preload next track in background after song starts
         this.schedulePreload();
@@ -435,6 +437,7 @@ class AudioManager {
       onend: () => {
         this.detachNativeTimeUpdate();
         usePlayerStore.setState({ currentTime: howl.duration() || 0 });
+        trackSongComplete(song, howl.duration() || song.duration || 0);
         this.handleTrackEnd();
       },
 

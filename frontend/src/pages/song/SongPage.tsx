@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { useMusicStore } from '../../stores/useMusicStore';
@@ -9,79 +9,62 @@ import { toast } from 'sonner';
 import { resolveArtist } from '../../lib/resolveArtist';
 import { PageLoading } from '../../components/ui/loading';
 
+interface SongPageState {
+  song: any | null;
+  loading: boolean;
+  error: string | null;
+}
+
+type SongPageAction =
+  | { type: 'missing_id' }
+  | { type: 'loaded'; song: any }
+  | { type: 'not_found' }
+  | { type: 'failed' };
+
+const songPageReducer = (state: SongPageState, action: SongPageAction): SongPageState => {
+  switch (action.type) {
+    case 'missing_id':
+      return { song: null, loading: false, error: 'No song ID provided' };
+    case 'loaded':
+      return { song: action.song, loading: false, error: null };
+    case 'not_found':
+      return { song: null, loading: false, error: 'Song not found' };
+    case 'failed':
+      return { song: null, loading: false, error: 'Failed to load song' };
+    default:
+      return state;
+  }
+};
+
 const SongPage = () => {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
-  const [song, setSong] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isLiked, setIsLiked] = useState(false);
+  const [{ song, loading, error }, dispatchSongPage] = useReducer(songPageReducer, {
+    song: null,
+    loading: false,
+    error: null,
+  });
   
   const { setCurrentSong, setIsPlaying, playAlbum } = usePlayerStore();
   const { searchIndianSongs } = useMusicStore();
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
-
-  // Update like status when song or likedSongIds changes
-  useEffect(() => {
-    if (!song) return;
-    const songIdToCheck = song._id || (song as any).id;
-    const liked = songIdToCheck ? likedSongIds?.has(songIdToCheck) : false;
-    setIsLiked(!!liked);
-  }, [song, likedSongIds]);
-
-  // Listen for like updates from other components
-  useEffect(() => {
-    const handleLikeUpdate = (e: Event) => {
-      if (!song) return;
-
-      const songIdToCheck = song._id || (song as any).id;
-
-      // Check if this event includes details about which song was updated
-      if (e instanceof CustomEvent && e.detail) {
-        // If we have details and it's not for our current song, ignore
-        if (e.detail.songId && e.detail.songId !== songIdToCheck) {
-          return;
-        }
-
-        // If we have explicit like state in the event, use it
-        if (typeof e.detail.isLiked === 'boolean') {
-          setIsLiked(e.detail.isLiked);
-          return;
-        }
-      }
-
-      // Otherwise do a fresh check from the store
-      const freshCheck = songIdToCheck ? likedSongIds?.has(songIdToCheck) : false;
-      setIsLiked(freshCheck);
-    };
-
-    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
-    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
-
-    return () => {
-      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
-      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
-    };
-  }, [song, likedSongIds]);
+  const currentSongId = song ? song._id || (song as any).id : null;
+  const isLiked = currentSongId ? likedSongIds?.has(currentSongId) : false;
 
   useEffect(() => {
     const loadSong = async () => {
       if (!songId) {
-        setError('No song ID provided');
-        setLoading(false);
+        dispatchSongPage({ type: 'missing_id' });
         return;
       }
 
       try {
-        // Show content immediately, load data in background
-        setLoading(false);
-        
         // First, try to find the song in liked songs
         const likedSongs = await import('../../services/likedSongsService').then(m => m.loadLikedSongs());
         const likedSong = likedSongs.find((s: any) => s._id === songId || (s as any).id === songId);
         
         if (likedSong) {
-          setSong(likedSong);
+          dispatchSongPage({ type: 'loaded', song: likedSong });
           // Set the song but DON'T auto-play - let user decide
           setCurrentSong(likedSong as any);
           // setIsPlaying(true); // Removed unwanted autoplay
@@ -97,19 +80,18 @@ const SongPage = () => {
         );
 
         if (foundSong) {
-          setSong(foundSong);
+          dispatchSongPage({ type: 'loaded', song: foundSong });
           // Set the song but DON'T auto-play - let user decide
           setCurrentSong(foundSong as any);
           // setIsPlaying(true); // Removed unwanted autoplay
         } else {
           // Song not found
-          setError('Song not found');
+          dispatchSongPage({ type: 'not_found' });
           toast.error('Song not found. It may have been removed or is not available.');
         }
       } catch (err) {
-        setError('Failed to load song');
+        dispatchSongPage({ type: 'failed' });
         toast.error('Failed to load song. Please try again.');
-        setLoading(false);
       }
     };
 
@@ -126,9 +108,6 @@ const SongPage = () => {
 
   const handleLike = () => {
     if (song) {
-      // Optimistically update UI
-      setIsLiked(!isLiked);
-      
       toggleLikeSong(song);
       toast.success(isLiked ? 'Removed from liked songs' : 'Added to liked songs');
     }
@@ -144,7 +123,7 @@ const SongPage = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
-          <h1 className="text-2xl font-bold mb-4 text-foreground">Song Not Found</h1>
+          <h1 className="text-2xl font-semibold mb-4 text-foreground">Song Not Found</h1>
           <p className="text-muted-foreground mb-6">
             {error || 'The song you\'re looking for doesn\'t exist or is no longer available.'}
           </p>
@@ -198,7 +177,7 @@ const SongPage = () => {
 
           {/* Song Info */}
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold mb-2 text-foreground">{song.title}</h2>
+            <h2 className="text-2xl font-semibold mb-2 text-foreground">{song.title}</h2>
             <p className="text-lg text-muted-foreground mb-4">
               {resolveArtist(song)}
             </p>

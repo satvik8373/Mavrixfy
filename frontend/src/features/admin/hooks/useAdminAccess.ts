@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import { getIdTokenResult } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -71,35 +71,44 @@ const signedOutSession = (): AdminSession => ({
 
 export const useAdminAccess = (): AdminSession => {
   const { user, loading, isAuthenticated } = useAuth();
-  const [session, setSession] = useState<AdminSession>(() => getPreviewSession() ?? {
-    status: 'checking',
-    role: null,
-    permissions: [],
-    source: 'none',
-    preview: false,
-    name: '',
-    email: '',
-    uid: null,
-  });
+  const [session, dispatchSession] = useReducer<React.Reducer<AdminSession, AdminSession | { status: 'checking' }>, AdminSession>(
+    (currentSession, nextSession) => {
+      if ('status' in nextSession && nextSession.status === 'checking' && !('role' in nextSession)) {
+        return {
+          ...currentSession,
+          status: 'checking',
+          preview: false,
+        };
+      }
+      return nextSession as AdminSession;
+    },
+    {
+      status: 'checking',
+      role: null,
+      permissions: [],
+      source: 'none',
+      preview: false,
+      name: '',
+      email: '',
+      uid: null,
+    },
+    (initial) => getPreviewSession() ?? initial
+  );
 
   useEffect(() => {
     const previewSession = getPreviewSession();
     if (previewSession) {
-      setSession(previewSession);
+      dispatchSession(previewSession);
       return;
     }
 
     if (loading) {
-      setSession((current) => ({
-        ...current,
-        status: 'checking',
-        preview: false,
-      }));
+      dispatchSession({ status: 'checking' });
       return;
     }
 
     if (!isAuthenticated || !user?.id) {
-      setSession(signedOutSession());
+      dispatchSession(signedOutSession());
       return;
     }
 
@@ -142,7 +151,7 @@ export const useAdminAccess = (): AdminSession => {
 
       if (!resolvedRole && !adminDocumentExists) {
         if (!cancelled) {
-          setSession({
+          dispatchSession({
             status: 'denied',
             role: null,
             permissions: [],
@@ -159,7 +168,7 @@ export const useAdminAccess = (): AdminSession => {
 
       if (docStatus === 'disabled' || docStatus === 'revoked') {
         if (!cancelled) {
-          setSession({
+          dispatchSession({
             status: 'denied',
             role: resolvedRole,
             permissions: [],
@@ -179,7 +188,7 @@ export const useAdminAccess = (): AdminSession => {
         : ROLE_PERMISSION_MAP[resolvedRole ?? 'super_admin'];
 
       if (!cancelled) {
-        setSession({
+        dispatchSession({
           status: 'granted',
           role: resolvedRole,
           permissions,

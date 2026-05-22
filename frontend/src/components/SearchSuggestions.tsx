@@ -1,5 +1,6 @@
 import { Clock, TrendingUp, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { readRecentSearches } from '@/utils/searchUtils';
 
 interface SearchSuggestionsProps {
   onSelect?: (query: string) => void;
@@ -8,7 +9,10 @@ interface SearchSuggestionsProps {
   query?: string;
   isVisible?: boolean;
   onSelectSong?: (query: string) => void;
+  onSelectPlaylist?: (id: string) => void;
 }
+
+
 
 export const SearchSuggestions = ({
   onSelect,
@@ -36,11 +40,7 @@ export const SearchSuggestions = ({
   // Load recent searches from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('recent_searches');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setRecentSearches(parsed.slice(0, 5)); // Keep only last 5
-      }
+      setRecentSearches(readRecentSearches().slice(0, 5)); // Keep only last 5
     } catch (error) {
       // Failed to load recent searches
     }
@@ -77,9 +77,9 @@ export const SearchSuggestions = ({
             Recent Searches
           </h3>
           <div className="space-y-2">
-            {recentSearches.map((search, index) => (
-              <button
-                key={index}
+            {recentSearches.map((search) => (
+              <button type="button"
+                key={search}
                 onClick={() => handleSelect(search)}
                 className="w-full text-left px-3 py-2 rounded-md hover:bg-[#282828] transition-colors flex items-center gap-3 group"
               >
@@ -99,9 +99,9 @@ export const SearchSuggestions = ({
             Trending Searches
           </h3>
           <div className="flex flex-wrap gap-2">
-            {trendingSearches.slice(0, 8).map((search, index) => (
-              <button
-                key={index}
+            {trendingSearches.slice(0, 8).map((search) => (
+              <button type="button"
+                key={search}
                 onClick={() => handleSelect(search)}
                 className="px-4 py-2 bg-[#282828] hover:bg-[#3e3e3e] rounded-full text-sm transition-colors"
               >
@@ -119,9 +119,9 @@ export const SearchSuggestions = ({
             Suggestions
           </h3>
           <div className="space-y-2">
-            {filteredSuggestions.map((search, index) => (
-              <button
-                key={index}
+            {filteredSuggestions.map((search) => (
+              <button type="button"
+                key={search}
                 onClick={() => handleSelect(search)}
                 className="w-full text-left px-3 py-2 rounded-md hover:bg-[#282828] transition-colors flex items-center gap-3"
               >
@@ -136,28 +136,8 @@ export const SearchSuggestions = ({
   );
 };
 
-// Helper function to save search to recent searches
-export const saveRecentSearch = (query: string) => {
-  if (!query.trim()) return;
 
-  try {
-    const saved = localStorage.getItem('recent_searches');
-    let searches: string[] = saved ? JSON.parse(saved) : [];
-
-    // Remove if already exists
-    searches = searches.filter(s => s.toLowerCase() !== query.toLowerCase());
-
-    // Add to beginning
-    searches.unshift(query.trim());
-
-    // Keep only last 10
-    searches = searches.slice(0, 10);
-
-    localStorage.setItem('recent_searches', JSON.stringify(searches));
-  } catch (error) {
-    // Failed to save recent search
-  }
-};
 
 // Default export for backward compatibility
 export default SearchSuggestions;
+

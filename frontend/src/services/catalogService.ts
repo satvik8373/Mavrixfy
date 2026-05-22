@@ -22,38 +22,36 @@ export async function getCatalogSongs(forceRefresh = false): Promise<Song[]> {
       snap = await getDocs(collection(db, 'songs'));
     }
 
-    const songs: Song[] = snap.docs
-      .map(d => {
-        const data = d.data();
-        const audioUrl = data.audioUrl || data.streamUrl || data.url || '';
-        if (!audioUrl || !data.title) return null;
+    const songs: Song[] = snap.docs.flatMap(d => {
+      const data = d.data();
+      const audioUrl = data.audioUrl || data.streamUrl || data.url || '';
+      if (!audioUrl || !data.title) return [];
 
-        let imageUrl = data.imageUrl || '';
-        if (!imageUrl && Array.isArray(data.image)) {
-          imageUrl = data.image[data.image.length - 1]?.url || '';
-        }
+      let imageUrl = data.imageUrl || '';
+      if (!imageUrl && Array.isArray(data.image)) {
+        imageUrl = data.image[data.image.length - 1]?.url || '';
+      }
 
-        return {
-          _id: d.id,
-          title: data.title || data.name || '',
-          artist: data.artist || data.primaryArtists || 'Unknown Artist',
-          album: typeof data.album === 'object' ? (data.album?.name || null) : (data.album || null),
-          albumId: null,
-          imageUrl,
-          audioUrl,
-          streamUrl: audioUrl,
-          storagePath: data.storagePath || null,
-          fileName: data.fileName || null,
-          fileSize: data.fileSize || null,
-          mimeType: data.mimeType || null,
-          uploadedAt: data.uploadedAt || null,
-          duration: data.duration ? Number(data.duration) : 0,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-          source: 'catalog',
-        } as Song & { source: string };
-      })
-      .filter((s): s is Song => s !== null);
+      return [{
+        _id: d.id,
+        title: data.title || data.name || '',
+        artist: data.artist || data.primaryArtists || 'Unknown Artist',
+        album: typeof data.album === 'object' ? (data.album?.name || null) : (data.album || null),
+        albumId: null,
+        imageUrl,
+        audioUrl,
+        streamUrl: audioUrl,
+        storagePath: data.storagePath || null,
+        fileName: data.fileName || null,
+        fileSize: data.fileSize || null,
+        mimeType: data.mimeType || null,
+        uploadedAt: data.uploadedAt || null,
+        duration: data.duration ? Number(data.duration) : 0,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        source: 'catalog',
+      } as Song & { source: string }];
+    });
 
     _cache = songs;
     _cacheTime = now;

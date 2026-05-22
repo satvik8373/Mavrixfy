@@ -48,6 +48,7 @@ import otpRoutes from "./routes/otp.route.js";
 import appRoutes from "./routes/app.route.js";
 import versionRoutes from "./routes/version.route.js";
 import smartSearchRoutes from "./routes/smartSearch.route.js";
+import recommendationRoutes from "./routes/recommendation.route.js";
 import { verifyEmailConfig } from "./services/email.service.js";
 
 const __dirname = path.resolve();
@@ -198,6 +199,7 @@ app.use("/api/otp", otpRoutes);
 app.use("/api/app", appRoutes);
 app.use("/api/version", versionRoutes);
 app.use("/api/search", smartSearchRoutes);
+app.use("/api/recommendations", recommendationRoutes);
 
 // Add a root route handler
 app.get('/', (req, res) => {

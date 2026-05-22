@@ -45,7 +45,7 @@ class ErrorBoundary extends Component<Props, State> {
 
     // Try to save error to sessionStorage for recovery
     try {
-      sessionStorage.setItem('last_error', JSON.stringify({
+      sessionStorage.setItem('last_error:v1', JSON.stringify({
         message: error.message,
         isAudioError,
         timestamp: Date.now()
@@ -72,7 +72,7 @@ class ErrorBoundary extends Component<Props, State> {
   private handleReload = () => {
     try {
       // Clear error state from storage
-      sessionStorage.removeItem('last_error');
+      sessionStorage.removeItem('last_error:v1');
       
       // For iOS PWA, use location.href instead of reload() for better compatibility
       const isIOSPWA = ('standalone' in window.navigator) && (window.navigator as any).standalone === true;
@@ -90,7 +90,7 @@ class ErrorBoundary extends Component<Props, State> {
 
   private handleGoHome = () => {
     try {
-      sessionStorage.removeItem('last_error');
+      sessionStorage.removeItem('last_error:v1');
       window.location.href = '/';
     } catch (e) {
       window.location.href = '/';
@@ -108,7 +108,7 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
           <div className="text-center max-w-md">
-            <h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
+            <h1 className="text-4xl font-semibold mb-4 text-foreground">Something went wrong</h1>
             <p className="text-muted-foreground mb-4">
               We're sorry, but there was an error loading this page.
             </p>
@@ -130,13 +130,13 @@ class ErrorBoundary extends Component<Props, State> {
               </details>
             )}
             <div className="flex gap-3 justify-center">
-              <button
+              <button type="button"
                 onClick={this.handleReload}
                 className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Refresh Page
               </button>
-              <button
+              <button type="button"
                 onClick={this.handleGoHome}
                 className="px-6 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
               >
@@ -153,3 +153,4 @@ class ErrorBoundary extends Component<Props, State> {
 }
 
 export default ErrorBoundary;
+

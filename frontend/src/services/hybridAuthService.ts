@@ -356,7 +356,7 @@ export const signOut = async () => {
     // Clear any potential Firebase auth related items
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.includes('firebase') || key.includes('auth'))) {
+      if (key && /firebase|auth/.test(key)) {
         localStorage.removeItem(key);
       }
     }
@@ -364,7 +364,7 @@ export const signOut = async () => {
     // Also clear session storage
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
-      if (key && (key.includes('firebase') || key.includes('auth'))) {
+      if (key && /firebase|auth/.test(key)) {
         sessionStorage.removeItem(key);
       }
     }

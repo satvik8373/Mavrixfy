@@ -1,5 +1,5 @@
 import { RouterProvider, createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
-import { Suspense, lazy, useState, useEffect } from 'react';
+import { Suspense, lazy, useReducer, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 
@@ -7,6 +7,7 @@ import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
 import { audioManager } from './utils/audioManager';
+import { startRecommendationSessionTracking } from './services/recommendationService';
 
 // Only preload absolute structural components
 import MainLayout from './layout/MainLayout';
@@ -87,7 +88,7 @@ const performHardRefresh = async () => {
 const NotFoundFallback = () => (
 	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
 		<div className="text-center max-w-md">
-			<h1 className="text-9xl font-bold text-primary mb-6">404</h1>
+			<h1 className="text-9xl font-semibold text-primary mb-6">404</h1>
 			<h2 className="text-2xl font-semibold mb-4 text-foreground">Page Not Found</h2>
 			<p className="text-muted-foreground mb-8">
 				The page you're looking for doesn't exist or has been moved.
@@ -119,7 +120,7 @@ const ErrorFallback = ({ error }: { error?: Error }) => {
 	return (
 		<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
 			<div className="text-center max-w-md">
-				<h1 className="text-4xl font-bold mb-4 text-foreground">Something went wrong</h1>
+				<h1 className="text-4xl font-semibold mb-4 text-foreground">Something went wrong</h1>
 				<p className="text-muted-foreground mb-8">
 					We're sorry, but there was an error loading this page. Please try refreshing.
 				</p>
@@ -133,7 +134,7 @@ const ErrorFallback = ({ error }: { error?: Error }) => {
 						</pre>
 					</details>
 				)}
-				<button
+				<button type="button"
 					onClick={() => { void performHardRefresh(); }}
 					className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
 				>
@@ -328,12 +329,16 @@ const router = createBrowserRouter(
 );
 
 function AppContent() {
-	const [showSplash, setShowSplash] = useState(true);
-	const [appReady, setAppReady] = useState(false);
+	const [{ showSplash, appReady }, dispatchAppBoot] = useReducer(
+		(_state: { showSplash: boolean; appReady: boolean }, nextState: { showSplash: boolean; appReady: boolean }) => nextState,
+		{ showSplash: true, appReady: false }
+	);
 	// Auth loading state is handled internally by useAuth hook
 
 	// Initialize app and handle splash screen - minimal delay
 	useEffect(() => {
+		let splashTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
 		const initializeApp = async () => {
 			try {
 				// Clear any Firebase auth redirect state to prevent errors
@@ -346,18 +351,22 @@ function AppContent() {
 				cleanupOfflineData().catch(() => { });
 
 				// Minimal splash time - 200ms only
-				setTimeout(() => {
-					setShowSplash(false);
-					setAppReady(true);
+				splashTimeoutId = setTimeout(() => {
+					dispatchAppBoot({ showSplash: false, appReady: true });
 				}, 200);
 
 			} catch (error) {
-				setShowSplash(false);
-				setAppReady(true);
+				dispatchAppBoot({ showSplash: false, appReady: true });
 			}
 		};
 
 		initializeApp();
+
+		return () => {
+			if (splashTimeoutId) {
+				clearTimeout(splashTimeoutId);
+			}
+		};
 	}, []);
 
 	// Show minimal splash screen
@@ -408,6 +417,10 @@ function AppContent() {
 }
 
 function App() {
+	useEffect(() => {
+		startRecommendationSessionTracking();
+	}, []);
+
 	// Set CSS variable for viewport height to handle mobile browsers
 	useEffect(() => {
 		const setVh = () => {

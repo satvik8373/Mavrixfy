@@ -72,7 +72,7 @@ export async function onForegroundMessage(callback: (payload: any) => void) {
           icon: '/mavrixfy-icons/mavrixfy-icon-maskable-192.png',
           image: image,
           data: payload.data,
-        });
+        } as any);
       }
       callback(payload);
     });

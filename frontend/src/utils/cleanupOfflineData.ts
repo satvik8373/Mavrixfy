@@ -52,7 +52,7 @@ export const cleanupOfflineData = async (): Promise<void> => {
         const key = localStorage.key(i);
         if (key) {
           const value = localStorage.getItem(key);
-          if (value && value.includes('blob:')) {
+          if (value && /blob:/.test(value)) {
             try {
               const parsed = JSON.parse(value);
               if (typeof parsed === 'object' && parsed !== null) {
@@ -78,7 +78,7 @@ export const cleanupOfflineData = async (): Promise<void> => {
 
     // Clean up player store if it contains blob URLs
     try {
-      const playerStore = localStorage.getItem('player-store');
+      const playerStore = localStorage.getItem('player-store:v1');
       if (playerStore) {
         const parsed = JSON.parse(playerStore);
         if (parsed && parsed.state) {
@@ -102,7 +102,7 @@ export const cleanupOfflineData = async (): Promise<void> => {
           }
           
           if (hasChanges) {
-            localStorage.setItem('player-store', JSON.stringify(parsed));
+            localStorage.setItem('player-store:v1', JSON.stringify(parsed));
           }
         }
       }
@@ -125,7 +125,10 @@ const cleanBlobUrls = (obj: any): any => {
   }
   
   if (Array.isArray(obj)) {
-    return obj.map(cleanBlobUrls).filter(item => item !== null && item !== '');
+    return obj.flatMap((item) => {
+      const cleanedItem = cleanBlobUrls(item);
+      return cleanedItem !== null && cleanedItem !== '' ? [cleanedItem] : [];
+    });
   }
   
   if (typeof obj === 'object' && obj !== null) {

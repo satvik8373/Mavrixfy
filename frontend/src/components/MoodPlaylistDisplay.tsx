@@ -121,9 +121,12 @@ export const MoodPlaylistDisplay: React.FC<MoodPlaylistDisplayProps> = ({
           >
             {playlist.songs.map((song, index) => (
               <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                 key={song._id || `song-${index}`}
                 onClick={() => onPlay(index)}
-                className="flex items-center gap-3 px-2 py-2 hover:bg-white/10 cursor-pointer group rounded-xl border-b border-white/5 last:border-0 transition-colors"
+                className="flex items-center gap-3 p-2 hover:bg-white/10 cursor-pointer group rounded-xl border-b border-white/5 last:border-0 transition-colors"
               >
                 <span className="w-5 text-center text-xs text-white/40 font-bold group-hover:text-green-400 shrink-0">
                   {index + 1}

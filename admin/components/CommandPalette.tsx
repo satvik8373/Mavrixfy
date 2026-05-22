@@ -15,7 +15,7 @@ interface CommandAction {
 }
 
 export function CommandPalette() {
-  const router = useRouter();
+  const { push } = useRouter();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -36,49 +36,49 @@ export function CommandPalette() {
       label: 'Go to Songs',
       description: 'Manage music catalog',
       icon: Music2,
-      action: () => router.push('/dashboard/songs'),
+      action: () => push('/dashboard/songs'),
     },
     {
       id: 'playlists',
       label: 'Go to Playlists',
       description: 'Manage editorial playlists',
       icon: ListMusic,
-      action: () => router.push('/dashboard/playlists'),
+      action: () => push('/dashboard/playlists'),
     },
     {
       id: 'artists',
       label: 'Go to Artists',
       description: 'Manage artist profiles',
       icon: Mic2,
-      action: () => router.push('/dashboard/artists'),
+      action: () => push('/dashboard/artists'),
     },
     {
       id: 'users',
       label: 'Go to Users',
       description: 'Manage user accounts',
       icon: Users,
-      action: () => router.push('/dashboard/users'),
+      action: () => push('/dashboard/users'),
     },
     {
       id: 'flags',
       label: 'Go to Feature Flags',
       description: 'Toggle platform features',
       icon: Flag,
-      action: () => router.push('/dashboard/flags'),
+      action: () => push('/dashboard/flags'),
     },
     {
       id: 'promotions',
       label: 'Go to Promotions',
       description: 'Manage banners and campaigns',
       icon: Megaphone,
-      action: () => router.push('/dashboard/promotions'),
+      action: () => push('/dashboard/promotions'),
     },
     {
       id: 'notifications',
       label: 'Go to Notifications',
       description: 'Send push notifications',
       icon: Bell,
-      action: () => router.push('/dashboard/notifications'),
+      action: () => push('/dashboard/notifications'),
     },
   ];
 
@@ -86,17 +86,19 @@ export function CommandPalette() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4">
-      <div
+      <button
+        type="button"
+        aria-label="Close command palette"
         className="fixed inset-0 bg-black/40"
         onClick={() => setOpen(false)}
       />
 
       <Command className="relative w-full max-w-xl overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
         <div className="flex items-center border-b border-gray-200 px-4">
-          <Search className="h-4 w-4 text-gray-400" />
+          <Search className="size-4 text-gray-400" />
           <Command.Input
             placeholder="Search commands..."
-            className="w-full bg-transparent px-3 py-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+            className="w-full bg-transparent p-3.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
           />
         </div>
 
@@ -114,8 +116,8 @@ export function CommandPalette() {
                   onSelect={() => { action.action(); setOpen(false); }}
                   className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-sm data-[selected=true]:bg-blue-50"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100">
-                    <Icon className="h-4 w-4 text-gray-600" />
+                  <div className="flex size-8 items-center justify-center rounded-md bg-gray-100">
+                    <Icon className="size-4 text-gray-600" />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{action.label}</p>

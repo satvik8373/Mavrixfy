@@ -172,9 +172,7 @@ const handleCopyLink = async (options: ShareOptions) => {
     // Fallback for older browsers
     const textArea = document.createElement('textarea');
     textArea.value = card.shareUrl;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '0';
+    textArea.style.cssText = 'position: fixed; left: -999999px; top: 0;';
     textArea.setAttribute('readonly', '');
     document.body.appendChild(textArea);
     

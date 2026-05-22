@@ -25,7 +25,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
     <section className={cn("mb-4 w-full overflow-x-hidden", className)}>
       <div className={cn("flex items-center justify-between mb-3 px-4 md:px-6", headerClassName)}>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl md:text-2xl font-bold mb-1 truncate text-white">
+          <h2 className="text-xl md:text-2xl font-semibold mb-1 truncate text-white">
             {title}
           </h2>
           {subtitle && (
@@ -36,7 +36,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
         </div>
         
         {showViewAll && onViewAll && (
-          <button
+          <button type="button"
             onClick={onViewAll}
             className="text-muted-foreground text-sm font-medium hover:text-foreground transition-colors flex items-center gap-1 hover:underline flex-shrink-0 ml-4"
           >

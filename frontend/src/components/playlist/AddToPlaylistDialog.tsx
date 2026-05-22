@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Song, Playlist } from '../../types';
@@ -16,7 +16,7 @@ interface AddToPlaylistDialogProps {
 
 export function AddToPlaylistDialog({ song, isOpen, onClose }: AddToPlaylistDialogProps) {
   const { userPlaylists, fetchUserPlaylists, addSongToPlaylist } = usePlaylistStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const isLoadingRef = useRef(false);
   const [filter, setFilter] = useState('');
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
 
@@ -27,7 +27,8 @@ export function AddToPlaylistDialog({ song, isOpen, onClose }: AddToPlaylistDial
   }, [isOpen, fetchUserPlaylists]);
 
   const handleAddToPlaylist = async (playlist: Playlist) => {
-    setIsLoading(true);
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
     setSelectedPlaylist(playlist);
     try {
       await addSongToPlaylist(playlist._id, song._id);
@@ -38,7 +39,7 @@ export function AddToPlaylistDialog({ song, isOpen, onClose }: AddToPlaylistDial
     } catch (error) {
       // Failed to add song to playlist
     } finally {
-      setIsLoading(false);
+      isLoadingRef.current = false;
     }
   };
 
@@ -77,6 +78,9 @@ export function AddToPlaylistDialog({ song, isOpen, onClose }: AddToPlaylistDial
               <div className="space-y-2">
                 {filteredPlaylists.map(playlist => (
                   <div
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                     key={playlist._id}
                     className="flex items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors cursor-pointer"
                     onClick={() => handleAddToPlaylist(playlist)}

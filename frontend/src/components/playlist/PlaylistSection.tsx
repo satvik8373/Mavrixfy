@@ -41,11 +41,11 @@ export function PlaylistSection({
     <section className={cn("mb-12", className)}>
       {/* Section Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-white text-2xl md:text-[30px] font-bold tracking-tight leading-none">
+        <h2 className="text-white text-2xl md:text-[30px] font-semibold tracking-tight leading-none">
           {title}
         </h2>
         {showSeeAll && onSeeAllClick && (
-          <button
+          <button type="button"
             onClick={onSeeAllClick}
             className="text-[#adadad] text-sm md:text-base font-bold tracking-wider uppercase hover:underline transition-all"
           >

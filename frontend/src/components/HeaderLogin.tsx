@@ -23,24 +23,21 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
   const { user, isAuthenticated, loading: contextLoading, refreshUserData } = useAuth();
   const { isAuthenticated: storeAuthenticated, userId } = useAuthStore();
   const [localLoading, setLocalLoading] = useState(true);
-  const [cachedAuth, setCachedAuth] = useState<boolean | null>(null);
+  const [cachedAuth, setCachedAuth] = useState<boolean | null>(() => {
+    try {
+      const cachedAuthState = localStorage.getItem('cached_auth_state:v1');
+      return cachedAuthState ? JSON.parse(cachedAuthState) : null;
+    } catch {
+      return null;
+    }
+  });
   const navigate = useNavigate();
 
   // Check for authentication from both sources
   const isActuallyAuthenticated = isAuthenticated || storeAuthenticated;
 
-  // On initial load, check cached auth state - ONLY ONCE
+  // Stop showing loading state after 500ms
   useEffect(() => {
-    try {
-      const cachedAuthState = localStorage.getItem('cached_auth_state');
-      if (cachedAuthState) {
-        setCachedAuth(JSON.parse(cachedAuthState));
-      }
-    } catch (e) {
-      // Error loading cached auth state
-    }
-    
-    // Stop showing loading state after 500ms
     const timer = setTimeout(() => {
       setLocalLoading(false);
     }, 500);
@@ -52,7 +49,7 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
   useEffect(() => {
     if (isActuallyAuthenticated !== cachedAuth && (user || userId)) {
       try {
-        localStorage.setItem('cached_auth_state', JSON.stringify(isActuallyAuthenticated));
+        localStorage.setItem('cached_auth_state:v1', JSON.stringify(isActuallyAuthenticated));
         setCachedAuth(isActuallyAuthenticated);
       } catch (e) {
         // Error saving cached auth state
@@ -65,7 +62,7 @@ const HeaderLogin = ({ className }: HeaderLoginProps) => {
       setLocalLoading(true);
       
       // Clean up cached state before logout
-      localStorage.removeItem('cached_auth_state');
+      localStorage.removeItem('cached_auth_state:v1');
       setCachedAuth(false);
       
       await signOut();

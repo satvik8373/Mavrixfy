@@ -91,7 +91,7 @@ function convertSaavnTrack(item: any): IndianSong {
     imageUrl = item.image;
   }
 
-  const rawArtist = item.primaryArtists || item.singers || (item.artistMap?.primary?.map((a: any) => a?.name).filter(Boolean).join(', ')) || resolveArtist(item);
+  const rawArtist = item.primaryArtists || item.singers || (item.artistMap?.primary?.flatMap((a: any) => a?.name ? [a.name] : []).join(', ')) || resolveArtist(item);
 
   return {
     id: item.id,

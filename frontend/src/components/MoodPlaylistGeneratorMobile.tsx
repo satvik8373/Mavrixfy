@@ -107,7 +107,7 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                         className="w-14 h-14 mb-3 object-contain animate-pulse aspect-square"
                         style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 14px rgba(255,255,255,0.35))' }}
                     />
-                    <h2 className="text-2xl font-black text-white tracking-tight leading-none mb-1.5">
+                    <h2 className="text-2xl font-semibold text-white tracking-tight leading-none mb-1.5">
                         AI Mood Generator
                     </h2>
                     <p className="text-[11px] text-white/40 font-medium tracking-widest uppercase">

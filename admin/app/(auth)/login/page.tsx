@@ -7,7 +7,7 @@ import { Music2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
-  const router = useRouter();
+  const { push } = useRouter();
   const { signIn, session, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   if (!loading && session) {
-    router.push('/dashboard');
+    push('/dashboard');
     return null;
   }
 
@@ -26,7 +26,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       toast.success('Welcome back!');
-      router.push('/dashboard');
+      push('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
       if (error.code === 'auth/invalid-credential') {
@@ -44,7 +44,7 @@ export default function LoginPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="size-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -53,11 +53,11 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
       <div className="w-full max-w-md">
         <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
-            <Music2 className="h-6 w-6 text-white" />
+          <div className="flex size-12 items-center justify-center rounded-lg bg-blue-600">
+            <Music2 className="size-6 text-white" />
           </div>
 
-          <h1 className="mt-6 text-2xl font-bold text-gray-900">Mavrixfy Admin</h1>
+          <h1 className="mt-6 text-2xl font-semibold text-gray-900">Mavrixfy Admin</h1>
           <p className="mt-2 text-sm text-gray-600">
             Sign in with your admin account to access the dashboard.
           </p>
@@ -102,8 +102,8 @@ export default function LoginPage() {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing in...
+                  <Loader2 className="size-4 animate-spin" />
+                  Signing in…
                 </>
               ) : (
                 'Sign in'

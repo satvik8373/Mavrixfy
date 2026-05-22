@@ -37,13 +37,13 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Analytics</h1>
         <p className="mt-1 text-sm text-gray-500">Platform insights and performance metrics</p>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader2 className="size-6 animate-spin text-blue-600" />
         </div>
       ) : (
         <>
@@ -56,7 +56,7 @@ export default function AnalyticsPage() {
                     <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
                   </div>
                   <div className={`rounded-lg p-3 ${bg}`}>
-                    <Icon className={`h-6 w-6 ${color}`} />
+                    <Icon className={`size-6 ${color}`} />
                   </div>
                 </div>
               </div>
@@ -69,7 +69,7 @@ export default function AnalyticsPage() {
               <p className="mt-0.5 text-xs text-gray-500">Connect your analytics service to see streaming data</p>
             </div>
             <div className="flex flex-col items-center justify-center py-16">
-              <BarChart3 className="h-10 w-10 text-gray-300" />
+              <BarChart3 className="size-10 text-gray-300" />
               <p className="mt-3 text-sm font-medium text-gray-900">No streaming data yet</p>
               <p className="mt-1 text-xs text-gray-500">Streaming analytics will appear here once connected</p>
             </div>

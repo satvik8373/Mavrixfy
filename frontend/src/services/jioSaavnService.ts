@@ -469,9 +469,11 @@ class JioSaavnService {
         return;
       }
 
-      Object.keys(localStorage)
-        .filter((key) => key.startsWith(`${HOME_CACHE_PREFIX}:`))
-        .forEach((key) => localStorage.removeItem(key));
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith(`${HOME_CACHE_PREFIX}:`)) {
+          localStorage.removeItem(key);
+        }
+      }
     } catch {
       // Silent cache clear failure.
     }
@@ -572,27 +574,24 @@ class JioSaavnService {
       trending2026Terms = this.shuffleArray(trending2026Terms);
     }
 
-    const allPlaylists: JioSaavnPlaylist[] = [];
-
-    // Search with realtime terms
-    for (const term of trending2026Terms.slice(0, 4)) {
-      try {
-        const response = await this.tryMultipleEndpoints<JioSaavnPlaylistResponse>(
+    const trendingResults = await Promise.allSettled(
+      trending2026Terms.slice(0, 4).map((term) =>
+        this.tryMultipleEndpoints<JioSaavnPlaylistResponse>(
           '/search/playlists',
           {
             query: term,
             limit: 6,
             page: forceRefresh ? Math.floor(Math.random() * 3) + 1 : 1
           }
-        );
+        )
+      )
+    );
 
-        if (response.success && response.data?.results) {
-          allPlaylists.push(...response.data.results);
-        }
-      } catch (error) {
-        // Search failed
-      }
-    }
+    const allPlaylists = trendingResults.flatMap((result) =>
+      result.status === 'fulfilled' && result.value.success && result.value.data?.results
+        ? result.value.data.results
+        : []
+    );
 
     return allPlaylists;
   }
@@ -608,20 +607,12 @@ class JioSaavnService {
         'hit songs'
       ];
 
-      const allPlaylists: JioSaavnPlaylist[] = [];
-
-      // Search with fewer terms but get more results per term for speed
-      const searchPromises = trendingTerms.slice(0, 2).map(async (term) => {
-        try {
-          const playlists = await this.searchPlaylists(term, limit);
-          return playlists;
-        } catch (error) {
-          return [];
-        }
-      });
-
-      const results = await Promise.all(searchPromises);
-      results.forEach(playlists => allPlaylists.push(...playlists));
+      const results = await Promise.allSettled(
+        trendingTerms.slice(0, 2).map((term) => this.searchPlaylists(term, limit))
+      );
+      const allPlaylists = results.flatMap((result) =>
+        result.status === 'fulfilled' ? result.value : []
+      );
 
       // Remove duplicates and prioritize trending content
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
@@ -766,14 +757,12 @@ class JioSaavnService {
     const rawTerms = [...category.searchTerms, ...this.getCategoryIntentKeywords(category.id)];
     const seen = new Set<string>();
 
-    return rawTerms
-      .map((term) => this.stripNoiseTags(term))
-      .filter((term) => term.length > 0)
-      .filter((term) => {
+    return rawTerms.flatMap((rawTerm) => {
+      const term = this.stripNoiseTags(rawTerm);
       const normalized = term.toLowerCase();
-      if (!normalized || seen.has(normalized)) return false;
+      if (!normalized || seen.has(normalized)) return [];
       seen.add(normalized);
-      return true;
+      return [term];
     });
   }
 
@@ -896,7 +885,8 @@ class JioSaavnService {
       const freshTerms = searchTerms.filter((term) =>
         term.includes('latest') || term.includes('new') || term.includes('fresh') || term.includes('release')
       );
-      searchTerms = [...freshTerms, ...searchTerms.filter((term) => !freshTerms.includes(term))];
+      const freshTermSet = new Set(freshTerms);
+      searchTerms = [...freshTerms, ...searchTerms.filter((term) => !freshTermSet.has(term))];
 
       // If refreshing, randomize the search terms
       if (forceRefresh) {
@@ -905,17 +895,12 @@ class JioSaavnService {
 
       searchTerms = searchTerms.slice(0, 6);
 
-      const allPlaylists: JioSaavnPlaylist[] = [];
-
-      // Search with fresh terms first
-      for (const term of searchTerms) {
-        try {
-          const playlists = await this.searchPlaylists(term, Math.ceil(limit / 3), forceRefresh);
-          allPlaylists.push(...playlists);
-        } catch (error) {
-          // Failed to search for fresh term - skip
-        }
-      }
+      const searchResults = await Promise.allSettled(
+        searchTerms.map((term) => this.searchPlaylists(term, Math.ceil(limit / 3), forceRefresh))
+      );
+      const allPlaylists = searchResults.flatMap((result) =>
+        result.status === 'fulfilled' ? result.value : []
+      );
 
       // Remove duplicates and sort by freshness
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
@@ -950,18 +935,12 @@ class JioSaavnService {
         searchTerms = this.shuffleArray(this.buildCategorySearchTermPool(category)).slice(0, 5);
       }
 
-      const allPlaylists: JioSaavnPlaylist[] = [];
-      const searchPromises = searchTerms.map(async (term) => {
-        try {
-          const playlists = await this.searchPlaylists(term, Math.ceil(limit / 2), forceRefresh);
-          return playlists;
-        } catch (error) {
-          return [];
-        }
-      });
-
-      const results = await Promise.all(searchPromises);
-      results.forEach(playlists => allPlaylists.push(...playlists));
+      const results = await Promise.allSettled(
+        searchTerms.map((term) => this.searchPlaylists(term, Math.ceil(limit / 2), forceRefresh))
+      );
+      const allPlaylists = results.flatMap((result) =>
+        result.status === 'fulfilled' ? result.value : []
+      );
 
       // Remove duplicates and sort by freshness and relevance
       const uniquePlaylists = this.removeDuplicatePlaylists(allPlaylists);
@@ -997,29 +976,21 @@ class JioSaavnService {
         searchTerms = this.shuffleArray(searchTerms);
       }
 
-      const allPlaylists: JioSaavnPlaylist[] = [];
-
-      // Search with MORE terms to get more results
-      for (const term of searchTerms.slice(0, 8)) { // Increased from 5 to 8 terms
-        try {
-          const playlists = await this.searchPlaylists(term, 15, forceRefresh); // Increased limit per search
-          allPlaylists.push(...playlists);
-        } catch (error) {
-          // Search failed
-        }
-      }
+      const primaryResults = await Promise.allSettled(
+        searchTerms.slice(0, 8).map((term) => this.searchPlaylists(term, 15, forceRefresh))
+      );
+      const allPlaylists = primaryResults.flatMap((result) =>
+        result.status === 'fulfilled' ? result.value : []
+      );
 
       // If still not enough results, try additional generic searches
       if (allPlaylists.length < limit) {
-        const additionalTerms = this.getAdditionalSearchTerms(categoryId);
-        for (const term of additionalTerms) {
-          try {
-            const playlists = await this.searchPlaylists(term, 10, forceRefresh);
-            allPlaylists.push(...playlists);
-          } catch (error) {
-            // Additional search failed
-          }
-        }
+        const additionalResults = await Promise.allSettled(
+          this.getAdditionalSearchTerms(categoryId).map((term) => this.searchPlaylists(term, 10, forceRefresh))
+        );
+        allPlaylists.push(...additionalResults.flatMap((result) =>
+          result.status === 'fulfilled' ? result.value : []
+        ));
       }
 
       // Remove duplicates and sort
@@ -1077,7 +1048,7 @@ class JioSaavnService {
       return freshness + intent + official + density;
     };
 
-    return [...playlists].sort((a, b) => {
+    return playlists.toSorted((a, b) => {
       const scoreDiff = computeScore(b) - computeScore(a);
       if (Math.abs(scoreDiff) > 0.5) return scoreDiff;
 
@@ -1173,30 +1144,29 @@ class JioSaavnService {
       // If there are more songs, try pagination (up to 500 songs max to be safe)
       const maxPages = Math.min(Math.ceil(totalSongs / limit), 10);
 
-      for (page = 2; page <= maxPages; page++) {
-        try {
-          const pageResponse = await this.tryMultipleEndpoints<{ success: boolean, data: JioSaavnPlaylistDetails['data'] }>(
+      const pageResults = await Promise.allSettled(
+        Array.from({ length: Math.max(0, maxPages - 1) }, (_, index) => index + 2).map((pageNumber) =>
+          this.tryMultipleEndpoints<{ success: boolean, data: JioSaavnPlaylistDetails['data'] }>(
             `/playlists`,
-            { id: playlistId, limit, page }
-          );
+            { id: playlistId, limit, page: pageNumber }
+          )
+        )
+      );
 
-          if (pageResponse.success && pageResponse.data?.songs) {
-            const newSongs = pageResponse.data.songs;
-            if (newSongs.length === 0) break;
-
-            // Add unique songs only
-            const existingIds = new Set(allSongs.map(s => s.id));
-            const uniqueNewSongs = newSongs.filter(s => !existingIds.has(s.id));
-            allSongs = [...allSongs, ...uniqueNewSongs];
-
-            if (allSongs.length >= totalSongs) break;
-          } else {
-            break;
-          }
-        } catch (pageError) {
-          console.warn(`Failed to fetch page ${page} of playlist ${playlistId}`, pageError);
-          break; // Stop paginating on error, return what we have
+      for (const result of pageResults) {
+        if (result.status !== 'fulfilled' || !result.value.success || !result.value.data?.songs) {
+          break;
         }
+
+        const newSongs = result.value.data.songs;
+        if (newSongs.length === 0) break;
+
+        // Add unique songs only
+        const existingIds = new Set(allSongs.map(s => s.id));
+        const uniqueNewSongs = newSongs.filter(s => !existingIds.has(s.id));
+        allSongs = [...allSongs, ...uniqueNewSongs];
+
+        if (allSongs.length >= totalSongs) break;
       }
 
       playlistData.songs = allSongs;
@@ -1248,33 +1218,27 @@ class JioSaavnService {
       const allPlaylists: JioSaavnPlaylist[] = [];
 
       // Search for official chart playlists
-      for (const term of chartTerms.slice(0, 5)) {
-        try {
-          const response = await this.tryMultipleEndpoints<JioSaavnPlaylistResponse>(
+      const chartResults = await Promise.allSettled(
+        chartTerms.slice(0, 5).map((term) =>
+          this.tryMultipleEndpoints<JioSaavnPlaylistResponse>(
             '/search/playlists',
             {
               query: term,
               limit: 4,
               page: forceRefresh ? Math.floor(Math.random() * 2) + 1 : 1
             }
-          );
+          )
+        )
+      );
 
-          if (response.success && response.data?.results) {
-            // Filter for official-looking playlists
-            const officialPlaylists = response.data.results.filter(playlist => {
-              const name = playlist.name.toLowerCase();
-              return (
-                playlist.songCount >= 15 && // Must have decent number of songs
-                (name.includes('top') || name.includes('chart') ||
-                  name.includes('trending') || name.includes('hit') ||
-                  name.includes('popular') || name.includes('viral'))
-              );
-            });
+      for (const result of chartResults) {
+        if (result.status === 'fulfilled' && result.value.success && result.value.data?.results) {
+          const officialPlaylists = result.value.data.results.filter(playlist => {
+            const name = playlist.name.toLowerCase();
+            return playlist.songCount >= 15 && /\b(top|chart|trending|hit|popular|viral)\b/.test(name);
+          });
 
-            allPlaylists.push(...officialPlaylists);
-          }
-        } catch (error) {
-          // Search failed
+          allPlaylists.push(...officialPlaylists);
         }
       }
 
@@ -1284,11 +1248,9 @@ class JioSaavnService {
       const sorted = uniquePlaylists
         .sort((a, b) => {
           // Prioritize official chart keywords
-          const chartKeywords = ['top 50', 'top', 'chart', 'trending', 'weekly', 'popular'];
-          const aHasChart = chartKeywords.some(keyword =>
-            a.name.toLowerCase().includes(keyword)) ? 100 : 0;
-          const bHasChart = chartKeywords.some(keyword =>
-            b.name.toLowerCase().includes(keyword)) ? 100 : 0;
+          const chartKeywordPattern = /\b(top 50|top|chart|trending|weekly|popular)\b/;
+          const aHasChart = chartKeywordPattern.test(a.name.toLowerCase()) ? 100 : 0;
+          const bHasChart = chartKeywordPattern.test(b.name.toLowerCase()) ? 100 : 0;
 
           if (aHasChart !== bHasChart) return bHasChart - aHasChart;
 
@@ -1347,7 +1309,7 @@ class JioSaavnService {
 
   // Get all categories sorted by priority
   getAllCategories(): PlaylistCategory[] {
-    return [...PLAYLIST_CATEGORIES].sort((a, b) => b.priority - a.priority);
+    return PLAYLIST_CATEGORIES.toSorted((a, b) => b.priority - a.priority);
   }
 
   // App-style home flow: category cache + context signature + cross-category de-dupe.
@@ -1361,9 +1323,10 @@ class JioSaavnService {
     const realtime = options?.realtime ?? false;
     const context = this.getCurrentRefreshContext();
 
-    const homeCategories = HOME_CATEGORY_IDS
-      .map((id) => this.getCategoryById(id))
-      .filter((category): category is PlaylistCategory => Boolean(category));
+    const homeCategories = HOME_CATEGORY_IDS.flatMap((id) => {
+      const category = this.getCategoryById(id);
+      return category ? [category] : [];
+    });
 
     const categoryResults = await Promise.all(
       homeCategories.map(async (category) => {
@@ -1398,20 +1361,18 @@ class JioSaavnService {
     );
 
     const usedPlaylistIds: Record<string, true> = {};
-    return categoryResults
-      .map((category) => {
-        const uniqueResults = category.results.filter((playlist) => {
-          if (!playlist?.id || usedPlaylistIds[playlist.id]) return false;
-          usedPlaylistIds[playlist.id] = true;
-          return true;
-        });
+    return categoryResults.flatMap((category) => {
+      const uniqueResults = category.results.filter((playlist) => {
+        if (!playlist?.id || usedPlaylistIds[playlist.id]) return false;
+        usedPlaylistIds[playlist.id] = true;
+        return true;
+      });
 
-        return {
-          ...category,
-          results: uniqueResults,
-        };
-      })
-      .filter((category) => category.results.length > 0);
+      return uniqueResults.length > 0 ? [{
+        ...category,
+        results: uniqueResults,
+      }] : [];
+    });
   }
 
   // Smart search with category detection

@@ -1,4 +1,3 @@
-import { useState, useRef, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
@@ -25,18 +24,8 @@ export function RecentlyPlayedCard({
   onPlay,
   onHoverChange,
 }: RecentlyPlayedCardProps) {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-
   // Extract colors from the image - special processing for Liked Songs
   const colors = useAlbumColors(imageUrl, id === 'liked-songs');
-
-  // Handle image load
-  useEffect(() => {
-    if (imgRef.current?.complete) {
-      setImageLoaded(true);
-    }
-  }, [imageUrl]);
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -56,6 +45,9 @@ export function RecentlyPlayedCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
       className={cn(
         'group relative h-[48px] md:h-[44px] w-full rounded-[4px] overflow-hidden cursor-pointer transition-all duration-300 ease-in-out',
         'recently-played-card bg-white/10 hover:bg-white/20'
@@ -78,12 +70,10 @@ export function RecentlyPlayedCard({
           <div className="relative w-full h-full rounded-[4px] overflow-hidden shadow-md">
             {imageUrl ? (
               <img
-                ref={imgRef}
                 src={imageUrl}
                 alt={title}
                 className="w-full h-full object-cover"
                 loading="lazy"
-                onLoad={() => setImageLoaded(true)}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src =
                     'https://placehold.co/400x400/1f1f1f/959595?text=No+Image';
@@ -113,7 +103,7 @@ export function RecentlyPlayedCard({
         {/* Action buttons */}
         <div className="hidden md:flex items-center pr-2">
           {/* Play button */}
-          <button
+          <button type="button"
             className={cn(
               'w-7 h-7 flex items-center justify-center rounded-full',
               'bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105',

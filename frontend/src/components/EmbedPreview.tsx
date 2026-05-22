@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 
 interface Song {
   id: string;
@@ -67,14 +67,14 @@ const EmbedPreview = ({
 
   const handlePrevious = () => {
     if (currentSongIndex > 0) {
-      setCurrentSongIndex(currentSongIndex - 1);
+      setCurrentSongIndex((index) => index - 1);
       setCurrentTime(0);
     }
   };
 
   const handleNext = () => {
     if (currentSongIndex < songs.length - 1) {
-      setCurrentSongIndex(currentSongIndex + 1);
+      setCurrentSongIndex((index) => index + 1);
       setCurrentTime(0);
     } else {
       setIsPlaying(false);
@@ -109,7 +109,7 @@ const EmbedPreview = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h3 className="text-white font-bold text-lg truncate">{playlistTitle}</h3>
+                <h3 className="text-white font-semibold text-lg truncate">{playlistTitle}</h3>
                 <p className="text-white/70 text-sm truncate">{playlistSubtitle}</p>
                 <div className="flex items-center gap-1 mt-1">
                   <svg
@@ -139,14 +139,14 @@ const EmbedPreview = ({
         <div className="px-4 pb-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <button
+              <button type="button"
                 onClick={handlePrevious}
                 disabled={currentSongIndex === 0}
                 className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <SkipBack className="h-5 w-5" fill="currentColor" />
               </button>
-              <button
+              <button type="button"
                 onClick={handlePlayPause}
                 className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
               >
@@ -156,7 +156,7 @@ const EmbedPreview = ({
                   <Play className="h-5 w-5 text-black ml-0.5" fill="currentColor" />
                 )}
               </button>
-              <button
+              <button type="button"
                 onClick={handleNext}
                 disabled={currentSongIndex === songs.length - 1}
                 className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -166,7 +166,7 @@ const EmbedPreview = ({
             </div>
             <div className="flex items-center gap-3">
               <span className="text-white/70 text-xs font-medium">{formatTime(currentTime)}</span>
-              <button className="text-white/70 hover:text-white transition-colors">
+              <button type="button" className="text-white/70 hover:text-white transition-colors">
                 <MoreHorizontal className="h-5 w-5" />
               </button>
             </div>
@@ -174,7 +174,7 @@ const EmbedPreview = ({
 
           {/* Progress Bar */}
           <div className="relative h-1 bg-white/20 rounded-full overflow-hidden">
-            <motion.div
+            <m.div
               className="absolute left-0 top-0 h-full bg-white rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
@@ -187,9 +187,12 @@ const EmbedPreview = ({
         <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-hide">
           {songs.map((song, index) => (
             <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
               key={song.id}
               className={cn(
-                'flex items-center gap-3 py-2 px-2 rounded hover:bg-white/10 transition-colors cursor-pointer group',
+                'flex items-center gap-3 p-2 rounded hover:bg-white/10 transition-colors cursor-pointer group',
                 index === currentSongIndex && 'bg-white/10'
               )}
               onClick={() => {

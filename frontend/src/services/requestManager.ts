@@ -121,7 +121,8 @@ class RequestManager {
         
         // Minimal delay only if queue is large
         if (this.requestQueue.length > 10) {
-          await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay));
+          setTimeout(() => this.processQueue(), this.rateLimitDelay);
+          break;
         }
       }
     }
@@ -265,7 +266,7 @@ class RequestManager {
   clearCache(pattern?: string): void {
     if (pattern) {
       for (const key of this.cache.keys()) {
-        if (key.includes(pattern)) {
+        if (key.match(pattern)) {
           this.cache.delete(key);
         }
       }
@@ -280,7 +281,7 @@ class RequestManager {
   cancelPendingRequests(pattern?: string): void {
     if (pattern) {
       for (const key of this.pendingRequests.keys()) {
-        if (key.includes(pattern)) {
+        if (key.match(pattern)) {
           this.pendingRequests.delete(key);
         }
       }

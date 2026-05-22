@@ -46,19 +46,19 @@ export default async function handler(req, res) {
     const multerUpload = upload.single('file');
     
     // Use a Promise to handle multer processing
-    await new Promise((resolve, reject) => {
+    const uploadedFile = await new Promise((resolve, reject) => {
       multerUpload(req, res, (err) => {
         if (err) {
           console.error('Multer error:', err);
           reject(err);
         } else {
-          resolve();
+          resolve(req.file);
         }
       });
     });
 
     // Check if we have a file
-    if (!req.file) {
+    if (!uploadedFile) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 

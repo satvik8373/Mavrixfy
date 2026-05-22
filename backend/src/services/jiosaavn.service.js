@@ -106,14 +106,15 @@ export const getTrendingSongs = async (limit = 20) => {
   try {
     // Try 2026-specific trending terms first
     const trending2026Terms = [
-      'trending songs 2026',
-      'top hits 2026',
       'latest bollywood 2026',
+      'trending hindi 2026',
       'trending punjabi 2026',
       'trending gujarati 2026',
       'latest telugu 2026',
+      'trending songs india 2026',
+      'top indian hits 2026',
       'superhits 2026',
-      'viral songs 2026'
+      'viral indian songs 2026'
     ];
 
     for (const term of trending2026Terms) {
@@ -134,10 +135,10 @@ export const getTrendingSongs = async (limit = 20) => {
       }
     }
 
-    // Fallback to general trending
+    // Fallback to Indian-market trending
     const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/songs`, {
       params: {
-        query: 'trending songs',
+        query: 'trending hindi bollywood songs',
         page: 1,
         limit
       }
@@ -158,11 +159,12 @@ export const getNewReleases = async (limit = 20) => {
   try {
     // Try 2026-specific new release terms first
     const newRelease2026Terms = [
-      'new releases 2026',
-      'latest songs 2026',
       'fresh bollywood 2026',
       'new hindi songs 2026',
-      'latest hits 2026'
+      'latest indian songs 2026',
+      'new punjabi songs 2026',
+      'latest telugu songs 2026',
+      'latest tamil songs 2026'
     ];
 
     for (const term of newRelease2026Terms) {
@@ -183,10 +185,10 @@ export const getNewReleases = async (limit = 20) => {
       }
     }
 
-    // Fallback to general new releases
+    // Fallback to Indian-market new releases
     const response = await axios.get(`${JIOSAAVN_API_BASE_URL}/search/songs`, {
       params: {
-        query: 'new releases',
+        query: 'new hindi bollywood releases',
         page: 1,
         limit
       }

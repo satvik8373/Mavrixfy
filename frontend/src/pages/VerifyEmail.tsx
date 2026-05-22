@@ -17,21 +17,145 @@ interface LocationState {
   fullName: string;
 }
 
+
+interface VerifyCardProps {
+  email: string;
+  otp: string[];
+  inputRefs: React.MutableRefObject<(HTMLInputElement | null)[]>;
+  handleOtpChange: (index: number, value: string) => void;
+  handleKeyDown: (index: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
+  handlePaste: (e: React.ClipboardEvent) => void;
+  handleVerify: () => void;
+  handleResend: () => void;
+  handleCancel: () => void;
+  loading: boolean;
+  resendLoading: boolean;
+  canResend: boolean;
+  countdown: number;
+}
+
+const VerifyCard = ({
+  email,
+  otp,
+  inputRefs,
+  handleOtpChange,
+  handleKeyDown,
+  handlePaste,
+  handleVerify,
+  handleResend,
+  handleCancel,
+  loading,
+  resendLoading,
+  canResend,
+  countdown,
+}: VerifyCardProps) => {
+  return (
+    <div className="bg-zinc-950 rounded-2xl p-8 shadow-2xl">
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg
+            className="w-8 h-8 text-black"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
+          </svg>
+        </div>
+        <h2 className="text-white text-2xl font-semibold mb-2">Verify Your Email</h2>
+        <p className="text-gray-400 text-sm">
+          We've sent a verification code to
+        </p>
+        <p className="text-white font-medium mt-1">{email}</p>
+        <p className="text-gray-500 text-xs mt-2">
+          Check your email inbox for the verification code
+        </p>
+      </div>
+
+      {/* OTP Input */}
+      <div className="mb-6">
+        <p className="text-white text-sm font-medium mb-3 block">
+          Enter 6-digit code
+        </p>
+        <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+          {['otp-0', 'otp-1', 'otp-2', 'otp-3', 'otp-4', 'otp-5'].map((id, index) => (
+            <Input
+              key={id}
+              ref={(el) => (inputRefs.current[index] = el)}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={otp[index]}
+              onChange={(e) => handleOtpChange(index, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(index, e)}
+              className="w-12 h-14 text-center text-xl font-bold bg-gray-800 border-gray-600 text-white rounded-lg focus:border-green-500 focus:ring-green-500"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Verify Button */}
+      <Button
+        onClick={handleVerify}
+        disabled={loading || otp.join('').length !== 6}
+        className="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-full mb-4"
+      >
+        {loading ? 'Verifying & Creating Account...' : 'Verify & Create Account'}
+      </Button>
+
+      {/* Resend Code */}
+      <div className="text-center mb-4">
+        {canResend ? (
+          <button type="button"
+            onClick={handleResend}
+            disabled={resendLoading}
+            className="text-green-500 hover:underline text-sm font-medium"
+          >
+            {resendLoading ? 'Sending...' : 'Resend Code'}
+          </button>
+        ) : (
+          <p className="text-gray-400 text-sm">
+            Resend code in {countdown}s
+          </p>
+        )}
+      </div>
+
+      {/* Cancel */}
+      <div className="text-center pt-4 border-t border-gray-700">
+        <button type="button"
+          onClick={handleCancel}
+          className="text-gray-400 hover:text-white text-sm"
+        >
+          Cancel Registration
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const VerifyEmail = () => {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [loading, setLoading] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [countdown, setCountdown] = useState(60);
-  const [canResend, setCanResend] = useState(false);
-  const [verificationSent, setVerificationSent] = useState(false);
+  const [state, setState] = useState({
+    otp: ['', '', '', '', '', ''],
+    loading: false,
+    resendLoading: false,
+    countdown: 60,
+    canResend: false,
+    verificationSent: false,
+  });
+  const { otp, loading, resendLoading, countdown, canResend, verificationSent } = state;
   const navigate = useNavigate();
   const location = useLocation();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   
-  const state = location.state as LocationState;
-  const email = state?.email || '';
-  const password = state?.password || '';
-  const fullName = state?.fullName || '';
+  const locState = location.state as LocationState;
+  const email = locState?.email || '';
+  const password = locState?.password || '';
+  const fullName = locState?.fullName || '';
 
   useEffect(() => {
     if (!email || !password || !fullName) {
@@ -49,13 +173,12 @@ const VerifyEmail = () => {
 
     // Start countdown timer
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          setCanResend(true);
+      setState((prev) => {
+        if (prev.countdown <= 1) {
           clearInterval(timer);
-          return 0;
+          return { ...prev, canResend: true, countdown: 0 };
         }
-        return prev - 1;
+        return { ...prev, countdown: prev.countdown - 1 };
       });
     }, 1000);
 
@@ -86,7 +209,7 @@ const VerifyEmail = () => {
         toast.success(`Verification code sent to ${email}`);
       }
       
-      setVerificationSent(true);
+      setState(prev => ({ ...prev, verificationSent: true }));
     } catch (error: any) {
       toast.error(error.message || 'Failed to send verification code');
     }
@@ -99,7 +222,7 @@ const VerifyEmail = () => {
 
     const newOtp = [...otp];
     newOtp[index] = value;
-    setOtp(newOtp);
+    setState(prev => ({ ...prev, otp: newOtp }));
 
     // Auto-focus next input
     if (value && index < 5) {
@@ -124,7 +247,7 @@ const VerifyEmail = () => {
       }
     }
     
-    setOtp(newOtp);
+    setState(prev => ({ ...prev, otp: newOtp }));
     
     // Focus last filled input or next empty
     const lastFilledIndex = newOtp.findIndex(val => !val);
@@ -140,7 +263,7 @@ const VerifyEmail = () => {
       return;
     }
 
-    setLoading(true);
+    setState(prev => ({ ...prev, loading: true }));
 
     try {
       // Verify OTP with backend
@@ -161,7 +284,7 @@ const VerifyEmail = () => {
         } else {
           toast.error(errorMessage);
         }
-        setOtp(['', '', '', '', '', '']);
+        setState(prev => ({ ...prev, otp: ['', '', '', '', '', ''] }));
         inputRefs.current[0]?.focus();
         return;
       }
@@ -202,25 +325,28 @@ const VerifyEmail = () => {
         toast.error(error.message || 'Failed to create account');
       }
     } finally {
-      setLoading(false);
+      setState(prev => ({ ...prev, loading: false }));
     }
   };
 
   const handleResend = async () => {
-    setResendLoading(true);
+    setState(prev => ({ ...prev, resendLoading: true }));
     
     try {
       await sendVerificationCode();
       
       // Reset countdown
-      setCountdown(60);
-      setCanResend(false);
-      setOtp(['', '', '', '', '', '']);
+      setState(prev => ({
+        ...prev,
+        countdown: 60,
+        canResend: false,
+        otp: ['', '', '', '', '', '']
+      }));
       inputRefs.current[0]?.focus();
     } catch (error: any) {
       toast.error(error.message || 'Failed to resend verification code');
     } finally {
-      setResendLoading(false);
+      setState(prev => ({ ...prev, resendLoading: false }));
     }
   };
 
@@ -231,92 +357,21 @@ const VerifyEmail = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-400 via-green-500 to-green-600 relative overflow-hidden flex items-center justify-center p-8">
       <div className="relative z-10 w-full max-w-md">
-        {/* Mobile & Desktop Layout */}
-        <div className="bg-black rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-black"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-white text-2xl font-bold mb-2">Verify Your Email</h2>
-            <p className="text-gray-400 text-sm">
-              We've sent a verification code to
-            </p>
-            <p className="text-white font-medium mt-1">{email}</p>
-            <p className="text-gray-500 text-xs mt-2">
-              Check your email inbox for the verification code
-            </p>
-          </div>
-
-          {/* OTP Input */}
-          <div className="mb-6">
-            <label className="text-white text-sm font-medium mb-3 block">
-              Enter 6-digit code
-            </label>
-            <div className="flex gap-2 justify-center" onPaste={handlePaste}>
-              {otp.map((digit, index) => (
-                <Input
-                  key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleOtpChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="w-12 h-14 text-center text-xl font-bold bg-gray-800 border-gray-600 text-white rounded-lg focus:border-green-500 focus:ring-green-500"
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Verify Button */}
-          <Button
-            onClick={handleVerify}
-            disabled={loading || otp.join('').length !== 6}
-            className="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-full mb-4"
-          >
-            {loading ? 'Verifying & Creating Account...' : 'Verify & Create Account'}
-          </Button>
-
-          {/* Resend Code */}
-          <div className="text-center mb-4">
-            {canResend ? (
-              <button
-                onClick={handleResend}
-                disabled={resendLoading}
-                className="text-green-500 hover:underline text-sm font-medium"
-              >
-                {resendLoading ? 'Sending...' : 'Resend Code'}
-              </button>
-            ) : (
-              <p className="text-gray-400 text-sm">
-                Resend code in {countdown}s
-              </p>
-            )}
-          </div>
-
-          {/* Cancel */}
-          <div className="text-center pt-4 border-t border-gray-700">
-            <button
-              onClick={handleCancel}
-              className="text-gray-400 hover:text-white text-sm"
-            >
-              Cancel Registration
-            </button>
-          </div>
-        </div>
+                <VerifyCard
+          email={email}
+          otp={otp}
+          inputRefs={inputRefs}
+          handleOtpChange={handleOtpChange}
+          handleKeyDown={handleKeyDown}
+          handlePaste={handlePaste}
+          handleVerify={handleVerify}
+          handleResend={handleResend}
+          handleCancel={handleCancel}
+          loading={loading}
+          resendLoading={resendLoading}
+          canResend={canResend}
+          countdown={countdown}
+        />
       </div>
     </div>
   );

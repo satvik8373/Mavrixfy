@@ -258,7 +258,7 @@ const getTimestampMillis = (value: any): number => {
 };
 
 const sortPlaylistsByNewest = (playlists: FirestorePlaylist[]): FirestorePlaylist[] => {
-  return [...playlists].sort((a, b) => {
+  return playlists.toSorted((a, b) => {
     const aTime = getTimestampMillis((a as any).updatedAt) || getTimestampMillis((a as any).createdAt);
     const bTime = getTimestampMillis((b as any).updatedAt) || getTimestampMillis((b as any).createdAt);
     return bTime - aTime;

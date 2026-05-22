@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { X, Trash2, ListMusic, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,8 +29,8 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
   const [isMobile, setIsMobile] = React.useState(false);
   const [drawerHeight, setDrawerHeight] = React.useState(MOBILE_MID_HEIGHT);
   const [isDragging, setIsDragging] = React.useState(false);
-  const [startY, setStartY] = React.useState(0);
-  const [startHeight, setStartHeight] = React.useState(MOBILE_MID_HEIGHT);
+  const startYRef = React.useRef(0);
+  const startHeightRef = React.useRef(MOBILE_MID_HEIGHT);
 
   React.useEffect(() => {
     const checkMobile = () => {
@@ -57,21 +57,21 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
   const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isMobile) return;
     setIsDragging(true);
-    setStartY(getClientY(e));
-    setStartHeight(drawerHeight);
+    startYRef.current = getClientY(e);
+    startHeightRef.current = drawerHeight;
   };
 
   const handleDragMove = React.useCallback((e: TouchEvent | MouseEvent) => {
     if (!isDragging) return;
 
     const clientY = getClientY(e);
-    const deltaY = startY - clientY;
+    const deltaY = startYRef.current - clientY;
     const windowHeight = window.innerHeight;
     const deltaPercent = (deltaY / windowHeight) * 100;
-    const next = Math.max(MOBILE_MIN_HEIGHT, Math.min(MOBILE_MAX_HEIGHT, startHeight + deltaPercent));
+    const next = Math.max(MOBILE_MIN_HEIGHT, Math.min(MOBILE_MAX_HEIGHT, startHeightRef.current + deltaPercent));
 
     setDrawerHeight(next);
-  }, [isDragging, startY, startHeight]);
+  }, [isDragging]);
 
   const handleDragEnd = React.useCallback(() => {
     if (!isDragging) return;
@@ -90,23 +90,42 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
     setDrawerHeight(closest);
   }, [isDragging, drawerHeight, onClose]);
 
+  const handleDragMoveRef = React.useRef(handleDragMove);
+  const handleDragEndRef = React.useRef(handleDragEnd);
+
+  React.useEffect(() => {
+    handleDragMoveRef.current = handleDragMove;
+    handleDragEndRef.current = handleDragEnd;
+  });
+
   React.useEffect(() => {
     if (!isDragging) return;
 
-    window.addEventListener('touchmove', handleDragMove, { passive: true });
-    window.addEventListener('mousemove', handleDragMove);
-    window.addEventListener('touchend', handleDragEnd);
-    window.addEventListener('mouseup', handleDragEnd);
+    const onTouchMove = (e: TouchEvent) => handleDragMoveRef.current(e);
+    const onMouseMove = (e: MouseEvent) => handleDragMoveRef.current(e);
+    const onTouchEnd = () => handleDragEndRef.current();
+    const onMouseUp = () => handleDragEndRef.current();
+
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('mouseup', onMouseUp);
 
     return () => {
-      window.removeEventListener('touchmove', handleDragMove);
-      window.removeEventListener('mousemove', handleDragMove);
-      window.removeEventListener('touchend', handleDragEnd);
-      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [isDragging, handleDragMove, handleDragEnd]);
+  }, [isDragging]);
 
   const upcomingSongs = queue.slice(currentIndex + 1);
+  const upcomingSongsWithKeys = React.useMemo(() => {
+    return upcomingSongs.map((song, index) => ({
+      song,
+      queueKey: `${song._id}-${currentIndex + 1 + index}`
+    }));
+  }, [upcomingSongs, currentIndex]);
 
   const handleClearQueue = () => {
     if (currentSong) {
@@ -118,16 +137,16 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.44 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black z-50"
+            className="fixed inset-0 bg-zinc-950 z-50"
           />
 
-          <motion.div
+          <m.div
             initial={isMobile ? { y: '100%' } : { x: '100%' }}
             animate={isMobile ? { y: 0 } : { x: 0 }}
             exit={isMobile ? { y: '100%' } : { x: '100%' }}
@@ -153,6 +172,14 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
           >
             {isMobile && (
               <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                  }
+                }}
+                aria-label="Drag to resize queue"
                 className="w-full flex items-center justify-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
                 onTouchStart={handleDragStart}
                 onMouseDown={handleDragStart}
@@ -221,9 +248,9 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {upcomingSongs.map((song, idx) => (
+                      {upcomingSongsWithKeys.map(({ song, queueKey }, idx) => (
                         <div
-                          key={`${song._id}-${idx}`}
+                          key={queueKey}
                           className="group flex items-center gap-3 p-2.5 rounded-2xl border border-transparent hover:border-white/10 bg-white/[0.03] hover:bg-white/[0.07] transition-colors"
                         >
                           <div className="w-6 text-center text-[11px] text-white/45">{idx + 1}</div>
@@ -250,7 +277,7 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
                 </section>
               </div>
             </ScrollArea>
-          </motion.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

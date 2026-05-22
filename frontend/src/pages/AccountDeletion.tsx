@@ -43,7 +43,7 @@ const AccountDeletion = () => {
 		<div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
 			<div className="max-w-3xl mx-auto pb-24">
 				<div className="bg-card rounded-lg shadow-lg p-8">
-					<h1 className="text-3xl font-bold text-foreground mb-6">
+					<h1 className="text-3xl font-semibold text-foreground mb-6">
 						Account Deletion Request
 					</h1>
 
@@ -135,7 +135,7 @@ const AccountDeletion = () => {
 										/>
 									</div>
 
-									<button
+									<button type="button"
 										onClick={handleDeleteAccount}
 										disabled={isDeleting || confirmText !== 'DELETE'}
 										className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"

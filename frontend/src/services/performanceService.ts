@@ -176,8 +176,8 @@ export class PerformanceService {
    * Optimize scroll performance
    */
   optimizeScroll(element: HTMLElement): void {
-    element.style.willChange = 'transform';
-    element.style.transform = 'translateZ(0)'; // Force hardware acceleration
+    Object.assign(element.style, { willChange: 'transform', transform: 'translateZ(0)' }); //
+// Force hardware acceleration
   }
 
   /**

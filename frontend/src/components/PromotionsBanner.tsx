@@ -1,10 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { playSong } from '@/utils/audioManager';
+import { Song } from '@/types';
 
 type MediaType = 'image' | 'gif' | 'video' | 'audio';
 type Platform = 'web' | 'app';
+type ActionType = 'none' | 'external' | 'song' | 'playlist' | 'artist' | 'album';
+
+interface AttachedSong {
+  id: string;
+  title: string;
+  artist: string;
+  imageUrl: string;
+  streamUrl: string;
+}
 
 interface Promotion {
   id: string;
@@ -12,12 +24,18 @@ interface Promotion {
   description?: string;
   mediaUrl?: string;
   mediaType?: MediaType;
-  platforms?: Platform;
+  platforms?: Platform | Platform[] | 'both';
   // legacy support
   imageUrl?: string;
   status: string;
   startDate?: string;
   endDate?: string;
+  actionType?: ActionType;
+  actionUrl?: string;
+  attachedSong?: AttachedSong | null;
+  ctaText?: string;
+  dismissText?: string;
+  layout?: 'hero' | 'modal';
 }
 
 function getMediaType(promo: Promotion): MediaType {
@@ -29,6 +47,12 @@ function getMediaType(promo: Promotion): MediaType {
 
 function getMediaUrl(promo: Promotion): string | undefined {
   return promo.mediaUrl || promo.imageUrl;
+}
+
+function isForWeb(platforms: Promotion['platforms']): boolean {
+  if (!platforms) return true;
+  if (Array.isArray(platforms)) return platforms.includes('web');
+  return platforms === 'web' || platforms === 'both';
 }
 
 // ── Individual media renderers ──────────────────────────────────────────────
@@ -69,8 +93,8 @@ function VideoMedia({ url }: { url: string }) {
         playsInline
       />
       {/* Mute toggle */}
-      <button
-        onClick={() => setMuted(m => !m)}
+      <button type="button"
+        onClick={(e) => { e.stopPropagation(); setMuted(m => !m); }}
         className="absolute top-2 right-2 z-20 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"
       >
         {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
@@ -78,6 +102,11 @@ function VideoMedia({ url }: { url: string }) {
     </>
   );
 }
+
+const pseudoRandom = (seed: number) => {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+};
 
 function AudioMedia({ url }: { url: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -101,17 +130,17 @@ function AudioMedia({ url }: { url: string }) {
               key={i}
               className={`w-1 rounded-full bg-white ${playing ? 'animate-pulse' : ''}`}
               style={{
-                height: `${20 + Math.sin(i * 0.8) * 30 + Math.random() * 20}%`,
+                height: `${20 + Math.sin(i * 0.8) * 30 + pseudoRandom(i) * 20}%`,
                 animationDelay: `${i * 0.05}s`,
-                animationDuration: `${0.6 + Math.random() * 0.4}s`,
+                animationDuration: `${0.6 + pseudoRandom(i + 100) * 0.4}s`,
               }}
             />
           ))}
         </div>
       </div>
       {/* Play button */}
-      <button
-        onClick={toggle}
+      <button type="button"
+        onClick={(e) => { e.stopPropagation(); toggle(); }}
         className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20 p-3 backdrop-blur-sm hover:bg-white/30 transition-colors"
       >
         {playing
@@ -128,6 +157,7 @@ function AudioMedia({ url }: { url: string }) {
 export function PromotionsBanner() {
   const [promos, setPromos] = useState<Promotion[]>([]);
   const [current, setCurrent] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPromos = async () => {
@@ -137,10 +167,10 @@ export function PromotionsBanner() {
           query(collection(db, 'promotions'), where('status', '==', 'active'))
         );
         const all = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Promotion[];
-        // Filter: show if platforms is 'web' or not set (legacy = show everywhere)
+        // Filter: show if platforms includes web, legacy web/both, or not set.
         const valid = all.filter(p =>
           (!p.endDate || p.endDate >= today) &&
-          (!p.platforms || p.platforms === 'web')
+          isForWeb(p.platforms)
         );
         setPromos(valid);
       } catch (e) {
@@ -167,11 +197,65 @@ export function PromotionsBanner() {
   const mediaType = getMediaType(promo);
   const mediaUrl = getMediaUrl(promo);
 
+  const executePromotionAction = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (!promo.actionType || promo.actionType === 'none') return;
+
+    if (promo.actionType === 'external' && promo.actionUrl) {
+      window.open(promo.actionUrl, '_blank', 'noopener,noreferrer');
+    } else if (promo.actionType === 'song' && promo.attachedSong) {
+      const songToPlay: Song = {
+        _id: promo.attachedSong.id,
+        title: promo.attachedSong.title,
+        artist: promo.attachedSong.artist,
+        albumId: null,
+        imageUrl: promo.attachedSong.imageUrl,
+        audioUrl: promo.attachedSong.streamUrl,
+        streamUrl: promo.attachedSong.streamUrl,
+        duration: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      void playSong(songToPlay);
+    } else if (promo.actionType === 'playlist' && promo.actionUrl) {
+      if (promo.actionUrl.startsWith('jio_') || !isNaN(Number(promo.actionUrl))) {
+        navigate(`/jiosaavn/playlist/${promo.actionUrl}`);
+      } else {
+        navigate(`/playlist/${promo.actionUrl}`);
+      }
+    } else if (promo.actionType === 'album' && promo.actionUrl) {
+      if (promo.actionUrl.startsWith('http') || promo.actionUrl.includes('jiosaavn.com')) {
+        window.open(promo.actionUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        navigate(`/albums/${promo.actionUrl}`);
+      }
+    } else if (promo.actionType === 'artist' && promo.actionUrl) {
+      if (promo.actionUrl.startsWith('http') || promo.actionUrl.includes('jiosaavn.com')) {
+        window.open(promo.actionUrl, '_blank', 'noopener,noreferrer');
+      }
+    }
+  };
+
+  const isClickable = promo.actionType && promo.actionType !== 'none';
+
   return (
     <div className="px-4 md:px-6 mb-2">
       {/* 16:5 aspect ratio */}
       <div
-        className="relative w-full rounded-xl overflow-hidden bg-gradient-to-r from-purple-900/60 to-pink-900/60"
+        onClick={executePromotionAction}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            executePromotionAction(e);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        className={`relative w-full rounded-xl overflow-hidden bg-gradient-to-r from-purple-900/60 to-pink-900/60 ${
+          isClickable ? 'cursor-pointer hover:opacity-95 active:scale-[0.99] transition-all' : ''
+        }`}
         style={{ paddingTop: '31.25%' }}
       >
         {/* Media layer */}
@@ -189,25 +273,39 @@ export function PromotionsBanner() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         )}
 
-        {/* Text */}
-        <div className="absolute inset-0 z-10 p-4 md:p-6 flex flex-col justify-end pointer-events-none">
-          <p className="text-white font-bold text-base md:text-lg leading-tight drop-shadow">
-            {promo.title}
-          </p>
-          {promo.description && (
-            <p className="text-white/80 text-xs md:text-sm mt-1 drop-shadow line-clamp-2">
-              {promo.description}
+        {/* Text and Action button overlay */}
+        <div className="absolute inset-0 z-10 p-4 md:p-6 flex items-end justify-between gap-4 pointer-events-none">
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-base md:text-lg leading-tight drop-shadow truncate">
+              {promo.title}
             </p>
+            {promo.description && (
+              <p className="text-white/80 text-xs md:text-sm mt-1 drop-shadow line-clamp-2">
+                {promo.description}
+              </p>
+            )}
+          </div>
+          {isClickable && (
+            <div className="flex-shrink-0 pointer-events-auto">
+              <button
+                type="button"
+                onClick={executePromotionAction}
+                className="px-4 py-2 bg-white text-black hover:bg-gray-100 active:scale-95 text-xs md:text-sm font-semibold rounded-full shadow-lg transition-all flex items-center gap-1.5"
+              >
+                {promo.actionType === 'song' && <Play className="h-3.5 w-3.5 fill-black" />}
+                {promo.ctaText || 'DISCOVER'}
+              </button>
+            </div>
           )}
         </div>
 
         {/* Dot indicators */}
         {promos.length > 1 && (
           <div className="absolute bottom-2 right-3 flex gap-1 z-20">
-            {promos.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrent(i)}
+            {promos.map((p, i) => (
+              <button type="button"
+                key={p.id || i}
+                onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
                 className={`h-1.5 rounded-full transition-all ${
                   i === current ? 'bg-white w-3' : 'bg-white/40 w-1.5'
                 }`}

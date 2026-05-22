@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useMemo, useReducer, useRef, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, Disc3, FileText, Loader2, Music4, RefreshCcw, Sparkles, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -109,8 +109,10 @@ const findHeaderIndex = (headers: string[], aliases: string[]) =>
 const parseCsvSongs = (content: string): DetectedSong[] => {
   const lines = content
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+    .flatMap((line) => {
+      const trimmed = line.trim();
+      return trimmed ? [trimmed] : [];
+    });
 
   if (!lines.length) return [];
 
@@ -174,8 +176,10 @@ const parseCsvSongs = (content: string): DetectedSong[] => {
 const parseTxtSongs = (content: string): DetectedSong[] => {
   const lines = content
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+    .flatMap((line) => {
+      const trimmed = line.trim();
+      return trimmed ? [trimmed] : [];
+    });
 
   return lines.map((line) => {
     const dashSplit = line.match(/^(.*?)\s*-\s*(.+)$/);
@@ -290,8 +294,10 @@ const getSongInitials = (song: DetectedSong): string => {
   const source = song.title || song.artist || '';
   const parts = source
     .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
+    .flatMap((part) => {
+      const trimmed = part.trim();
+      return trimmed ? [trimmed] : [];
+    });
 
   if (!parts.length) return 'S';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
@@ -361,20 +367,283 @@ const toSongEntity = (song: ImportedSong, index: number): Song => {
   };
 };
 
+interface ImportPageState {
+  selectedFile: File | null;
+  detectedSongs: DetectedSong[];
+  parsingFile: boolean;
+  previewing: boolean;
+  previewProgress: number;
+  previewReport: ImportReport | null;
+  importing: boolean;
+  retrying: boolean;
+  importProgress: number;
+  report: ImportReport | null;
+}
+
+type ImportPageAction = Partial<ImportPageState> | ((state: ImportPageState) => ImportPageState);
+
+const importPageReducer = (state: ImportPageState, action: ImportPageAction): ImportPageState => {
+  if (typeof action === 'function') {
+    return action(state);
+  }
+  return { ...state, ...action };
+};
+
+
+interface DetectedSongsListProps {
+  parsingFile: boolean;
+  previewing: boolean;
+  detectedSongs: DetectedSong[];
+  detectedPreviewSongs: DetectedSong[];
+  detectedImageMap: Map<string, string>;
+  previewReport: ImportReport | null;
+}
+
+const DetectedSongsList = ({
+  parsingFile,
+  previewing,
+  detectedSongs,
+  detectedPreviewSongs,
+  detectedImageMap,
+  previewReport,
+}: DetectedSongsListProps) => {
+  if (parsingFile || previewing) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={`placeholder-${index}`} className="flex items-center gap-3 rounded-xl border border-border/60 p-3 animate-pulse">
+            <div className="h-12 w-12 rounded-lg bg-muted/50" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-2/3 bg-muted/50 rounded" />
+              <div className="h-2.5 w-1/2 bg-muted/40 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (detectedSongs.length > 0) {
+    return (
+      <>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm text-muted-foreground">
+            Showing {detectedPreviewSongs.length} of {detectedSongs.length} matched songs
+          </p>
+        </div>
+
+        <div className="max-h-[58vh] overflow-y-auto space-y-2 pr-1">
+          {detectedPreviewSongs.map((song, index) => {
+            const matchKey = `${song.title}|${song.artist}`.toLowerCase().trim();
+            const detectedImage = detectedImageMap.get(matchKey);
+            const itemKey = `detected-${toStableHash(`${song.title}|${song.artist}|${index}`)}`;
+            return (
+              <div
+                key={itemKey}
+                className="group rounded-xl border border-border/70 bg-card/50 p-3 md:p-3.5 transition-colors hover:border-emerald-500/40 hover:bg-card/70"
+              >
+                <div className="flex items-center gap-3">
+                  {detectedImage ? (
+                    <img
+                      src={detectedImage}
+                      alt={song.title}
+                      className="h-12 w-12 shrink-0 rounded-lg object-cover shadow-md"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className={`h-12 w-12 shrink-0 rounded-lg bg-gradient-to-br ${getDetectedSongArtGradient(song)} flex items-center justify-center shadow-md`}>
+                      <span className="text-sm font-semibold text-white tracking-wide">
+                        {getSongInitials(song)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm md:text-[15px] truncate">{song.title}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground truncate">{song.artist}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
+                      {song.album ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/40 px-2 py-0.5 text-muted-foreground">
+                          <Disc3 className="h-3 w-3" />
+                          {song.album}
+                        </span>
+                      ) : null}
+                      {song.addedAt ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/40 px-2 py-0.5 text-muted-foreground">
+                          <CalendarDays className="h-3 w-3" />
+                          {formatAddedAtPreview(song.addedAt)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <p className="hidden sm:block text-xs text-muted-foreground w-8 text-right">
+                    #{index + 1}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
+  if (previewReport) {
+    return (
+      <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+        No matches found yet. Try the `Deep Recheck` option or update your CSV titles/artists.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+      Choose a CSV/TXT file to start song detection.
+    </div>
+  );
+};
+
+interface ImportReportViewProps {
+  report: ImportReport | null;
+  hasFailures: boolean;
+  hasSkips: boolean;
+}
+
+const ImportReportView = ({
+  report,
+  hasFailures,
+  hasSkips,
+}: ImportReportViewProps) => {
+  if (!report) return null;
+
+  return (
+    <div className="max-w-5xl mt-6 rounded-xl border border-border bg-card/40 p-5 md:p-6 space-y-4">
+      <h2 className="text-lg font-semibold">Import Report</h2>
+      <p className="text-sm text-muted-foreground">
+        Matched {report.stats?.matched ?? report.importedSongs.length} playable songs, added{' '}
+        {report.stats?.persisted ?? report.success}, skipped {report.stats?.skipped ?? 0}, failed{' '}
+        {report.failed}.
+      </p>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 text-sm">
+        <div className="rounded-lg border border-border p-3">
+          <p className="text-muted-foreground">Unique</p>
+          <p className="text-xl font-semibold">{report.total}</p>
+        </div>
+        <div className="rounded-lg border border-border p-3">
+          <p className="text-muted-foreground">Matched</p>
+          <p className="text-xl font-semibold">{report.stats?.matched ?? report.importedSongs.length}</p>
+        </div>
+        <div className="rounded-lg border border-border p-3">
+          <p className="text-muted-foreground">Added</p>
+          <p className="text-xl font-semibold text-green-500">{report.stats?.persisted ?? report.success}</p>
+        </div>
+        <div className="rounded-lg border border-border p-3">
+          <p className="text-muted-foreground">Skipped</p>
+          <p className="text-xl font-semibold text-amber-500">{report.stats?.skipped ?? 0}</p>
+        </div>
+        <div className="rounded-lg border border-border p-3">
+          <p className="text-muted-foreground">Failed</p>
+          <p className="text-xl font-semibold text-red-500">{report.failed}</p>
+        </div>
+        <div className="rounded-lg border border-border p-3">
+          <p className="text-muted-foreground">Duration</p>
+          <p className="text-xl font-semibold">
+            {Math.round((report.stats?.durationMs || 0) / 1000)}s
+          </p>
+        </div>
+      </div>
+
+      {(report.stats?.alreadyAdded || report.stats?.inputDuplicatesRemoved || report.stats?.duplicateMatchesSkipped) ? (
+        <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground space-y-1">
+          {report.stats?.alreadyAdded ? (
+            <p>Already added and skipped: {report.stats.alreadyAdded}</p>
+          ) : null}
+          {report.stats?.inputDuplicatesRemoved ? (
+            <p>Duplicate rows removed before search: {report.stats.inputDuplicatesRemoved}</p>
+          ) : null}
+          {report.stats?.duplicateMatchesSkipped ? (
+            <p>Duplicate matches skipped during save: {report.stats.duplicateMatchesSkipped}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {hasSkips && (
+        <div className="space-y-2">
+          <h3 className="font-medium">Skipped Songs</h3>
+          <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+            {report.stats?.skippedSongs?.slice(0, 100).map((song, index) => {
+              const itemKey = `skipped-${toStableHash(`${song.title || ''}|${song.artist || ''}|${song.reason || ''}|${index}`)}`;
+              return (
+                <div
+                  key={itemKey}
+                  className="rounded-md border border-border p-3 text-sm"
+                >
+                  <p className="font-medium">{song.title || 'Unknown title'}</p>
+                  <p className="text-muted-foreground">{song.artist || 'Unknown artist'}</p>
+                  <p className="text-xs text-amber-400 mt-1">{normalizeReason(song.reason)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {hasFailures && (
+        <div className="space-y-2">
+          <h3 className="font-medium">Failed Songs</h3>
+          <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+            {report.failedSongs.slice(0, 100).map((song, index) => {
+              const itemKey = `failed-${toStableHash(`${song.title || ''}|${song.artist || ''}|${index}`)}`;
+              return (
+                <div
+                  key={itemKey}
+                  className="rounded-md border border-border p-3 text-sm"
+                >
+                  <p className="font-medium">{song.title || 'Unknown title'}</p>
+                  <p className="text-muted-foreground">{song.artist || 'Unknown artist'}</p>
+                  {song.addedAt ? (
+                    <p className="text-xs text-muted-foreground/80 mt-1">Added at: {song.addedAt}</p>
+                  ) : null}
+                  <p className="text-xs text-red-400 mt-1">{normalizeReason(song.reason)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const LikedSongsImportPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [detectedSongs, setDetectedSongs] = useState<DetectedSong[]>([]);
-  const [parsingFile, setParsingFile] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
-  const [previewProgress, setPreviewProgress] = useState(0);
-  const [previewReport, setPreviewReport] = useState<ImportReport | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [retrying, setRetrying] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [report, setReport] = useState<ImportReport | null>(null);
+  const [{
+    selectedFile,
+    detectedSongs,
+    parsingFile,
+    previewing,
+    previewProgress,
+    previewReport,
+    importing,
+    retrying,
+    importProgress,
+    report,
+  }, dispatchImport] = useReducer(importPageReducer, {
+    selectedFile: null,
+    detectedSongs: [],
+    parsingFile: false,
+    previewing: false,
+    previewProgress: 0,
+    previewReport: null,
+    importing: false,
+    retrying: false,
+    importProgress: 0,
+    report: null,
+  });
 
   const { loadLikedSongs } = useLikedSongsStore();
 
@@ -486,13 +755,15 @@ const LikedSongsImportPage = () => {
       return;
     }
 
-    setParsingFile(true);
-    setPreviewing(false);
-    setPreviewProgress(0);
-    setSelectedFile(file);
-    setReport(null);
-    setPreviewReport(null);
-    setDetectedSongs([]);
+    dispatchImport({
+      parsingFile: true,
+      previewing: false,
+      previewProgress: 0,
+      selectedFile: file,
+      report: null,
+      previewReport: null,
+      detectedSongs: [],
+    });
 
     try {
       const fileContent = await file.text();
@@ -503,8 +774,7 @@ const LikedSongsImportPage = () => {
         return;
       }
 
-      setPreviewing(true);
-      setPreviewProgress(1);
+      dispatchImport({ previewing: true, previewProgress: 1 });
 
       const formData = new FormData();
       formData.append('file', file);
@@ -516,22 +786,22 @@ const LikedSongsImportPage = () => {
         onUploadProgress: (uploadEvent) => {
           if (!uploadEvent.total) return;
           const uploadProgress = Math.round((uploadEvent.loaded / uploadEvent.total) * 100);
-          setPreviewProgress(Math.max(1, Math.min(99, uploadProgress)));
+          dispatchImport({ previewProgress: Math.max(1, Math.min(99, uploadProgress)) });
         },
       });
 
       const previewData = response.data?.data as ImportReport;
-      setPreviewReport(previewData);
-      setDetectedSongs(mapImportedToDetected(previewData?.importedSongs || []));
-      setPreviewProgress(100);
+      dispatchImport({
+        previewReport: previewData,
+        detectedSongs: mapImportedToDetected(previewData?.importedSongs || []),
+        previewProgress: 100,
+      });
       toast.success(`Matched ${previewData?.importedSongs?.length || 0} songs`);
     } catch {
-      setSelectedFile(null);
-      setDetectedSongs([]);
+      dispatchImport({ selectedFile: null, detectedSongs: [] });
       toast.error('Failed to match songs from file');
     } finally {
-      setParsingFile(false);
-      setPreviewing(false);
+      dispatchImport({ parsingFile: false, previewing: false });
       event.target.value = '';
     }
   };
@@ -542,15 +812,14 @@ const LikedSongsImportPage = () => {
       return;
     }
 
-    setImporting(true);
-    setImportProgress(1);
+    dispatchImport({ importing: true, importProgress: 1 });
     const loadingId = toast.loading(`Importing ${selectedFile.name}...`);
 
     try {
       let persistedReport: ImportReport;
 
       if (previewReport?.importedSongs?.length) {
-        setImportProgress(99);
+        dispatchImport({ importProgress: 99 });
         persistedReport = await persistImportedSongsClientSide(previewReport);
       } else {
         const formData = new FormData();
@@ -563,7 +832,7 @@ const LikedSongsImportPage = () => {
           onUploadProgress: (event) => {
             if (!event.total) return;
             const uploadProgress = Math.round((event.loaded / event.total) * 100);
-            setImportProgress(Math.max(1, Math.min(99, uploadProgress)));
+            dispatchImport({ importProgress: Math.max(1, Math.min(99, uploadProgress)) });
           },
         });
 
@@ -571,9 +840,9 @@ const LikedSongsImportPage = () => {
         persistedReport = await persistImportedSongsClientSide(importReport);
       }
 
-      setReport(persistedReport);
+      dispatchImport({ report: persistedReport });
       await loadLikedSongs();
-      setImportProgress(100);
+      dispatchImport({ importProgress: 100 });
 
       toast.success(
         buildImportToastMessage(persistedReport),
@@ -587,8 +856,8 @@ const LikedSongsImportPage = () => {
         'Import failed';
       toast.error(message, { id: loadingId });
     } finally {
-      setImporting(false);
-      window.setTimeout(() => setImportProgress(0), 500);
+      dispatchImport({ importing: false });
+      window.setTimeout(() => dispatchImport({ importProgress: 0 }), 500);
     }
   };
 
@@ -598,7 +867,7 @@ const LikedSongsImportPage = () => {
       return;
     }
 
-    setRetrying(true);
+    dispatchImport({ retrying: true });
     const loadingId = toast.loading('Retrying failed songs...');
 
     try {
@@ -611,7 +880,7 @@ const LikedSongsImportPage = () => {
 
       const retryReport = response.data?.data as ImportReport;
       const persistedRetryReport = await persistImportedSongsClientSide(retryReport);
-      setReport(persistedRetryReport);
+      dispatchImport({ report: persistedRetryReport });
       await loadLikedSongs();
 
       toast.success(
@@ -626,7 +895,7 @@ const LikedSongsImportPage = () => {
         'Retry failed';
       toast.error(message, { id: loadingId });
     } finally {
-      setRetrying(false);
+      dispatchImport({ retrying: false });
     }
   };
 
@@ -636,7 +905,7 @@ const LikedSongsImportPage = () => {
       return;
     }
 
-    setRetrying(true);
+    dispatchImport({ retrying: true });
     const loadingId = toast.loading('Rechecking failed songs with deep match...');
 
     try {
@@ -651,7 +920,7 @@ const LikedSongsImportPage = () => {
 
       const retryReport = response.data?.data as ImportReport;
       const persistedRetryReport = await persistImportedSongsClientSide(retryReport);
-      setReport(persistedRetryReport);
+      dispatchImport({ report: persistedRetryReport });
       await loadLikedSongs();
 
       toast.success(
@@ -666,7 +935,7 @@ const LikedSongsImportPage = () => {
         'Recheck failed';
       toast.error(message, { id: loadingId });
     } finally {
-      setRetrying(false);
+      dispatchImport({ retrying: false });
     }
   };
 
@@ -691,7 +960,7 @@ const LikedSongsImportPage = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Liked Songs Import Tool</h1>
+            <h1 className="text-2xl md:text-3xl font-semibold">Liked Songs Import Tool</h1>
             <p className="text-sm text-muted-foreground">
               Upload CSV/TXT and import matched playable songs.
             </p>
@@ -831,184 +1100,23 @@ const LikedSongsImportPage = () => {
             )}
 
             <div className="mt-5 rounded-2xl border border-border/70 bg-background/30 p-3 md:p-4">
-              {parsingFile || previewing ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={`placeholder-${index}`} className="flex items-center gap-3 rounded-xl border border-border/60 p-3 animate-pulse">
-                      <div className="h-12 w-12 rounded-lg bg-muted/50" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3 w-2/3 bg-muted/50 rounded" />
-                        <div className="h-2.5 w-1/2 bg-muted/40 rounded" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : detectedSongs.length > 0 ? (
-                <>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm text-muted-foreground">
-                      Showing {detectedPreviewSongs.length} of {detectedSongs.length} matched songs
-                    </p>
-                  </div>
-
-                  <div className="max-h-[58vh] overflow-y-auto space-y-2 pr-1">
-                    {detectedPreviewSongs.map((song, index) => {
-                      const matchKey = `${song.title}|${song.artist}`.toLowerCase().trim();
-                      const detectedImage = detectedImageMap.get(matchKey);
-                      return (
-                      <div
-                        key={`${song.title}-${song.artist}-${index}`}
-                        className="group rounded-xl border border-border/70 bg-card/50 p-3 md:p-3.5 transition-colors hover:border-emerald-500/40 hover:bg-card/70"
-                      >
-                        <div className="flex items-center gap-3">
-                          {detectedImage ? (
-                            <img
-                              src={detectedImage}
-                              alt={song.title}
-                              className="h-12 w-12 shrink-0 rounded-lg object-cover shadow-md"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className={`h-12 w-12 shrink-0 rounded-lg bg-gradient-to-br ${getDetectedSongArtGradient(song)} flex items-center justify-center shadow-md`}>
-                              <span className="text-sm font-semibold text-white tracking-wide">
-                                {getSongInitials(song)}
-                              </span>
-                            </div>
-                          )}
-
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm md:text-[15px] truncate">{song.title}</p>
-                            <p className="text-xs md:text-sm text-muted-foreground truncate">{song.artist}</p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
-                              {song.album ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/40 px-2 py-0.5 text-muted-foreground">
-                                  <Disc3 className="h-3 w-3" />
-                                  {song.album}
-                                </span>
-                              ) : null}
-                              {song.addedAt ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/40 px-2 py-0.5 text-muted-foreground">
-                                  <CalendarDays className="h-3 w-3" />
-                                  {formatAddedAtPreview(song.addedAt)}
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <p className="hidden sm:block text-xs text-muted-foreground w-8 text-right">
-                            #{index + 1}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                    })}
-                  </div>
-                </>
-              ) : previewReport ? (
-                <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
-                  No matches found yet. Try the `Deep Recheck` option or update your CSV titles/artists.
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
-                  Choose a CSV/TXT file to start song detection.
-                </div>
-              )}
+              <DetectedSongsList
+                parsingFile={parsingFile}
+                previewing={previewing}
+                detectedSongs={detectedSongs}
+                detectedPreviewSongs={detectedPreviewSongs}
+                detectedImageMap={detectedImageMap}
+                previewReport={previewReport}
+              />
             </div>
           </div>
         )}
 
-        {report && (
-          <div className="max-w-5xl mt-6 rounded-xl border border-border bg-card/40 p-5 md:p-6 space-y-4">
-            <h2 className="text-lg font-semibold">Import Report</h2>
-            <p className="text-sm text-muted-foreground">
-              Matched {report.stats?.matched ?? report.importedSongs.length} playable songs, added{' '}
-              {report.stats?.persisted ?? report.success}, skipped {report.stats?.skipped ?? 0}, failed{' '}
-              {report.failed}.
-            </p>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 text-sm">
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-muted-foreground">Unique</p>
-                <p className="text-xl font-semibold">{report.total}</p>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-muted-foreground">Matched</p>
-                <p className="text-xl font-semibold">{report.stats?.matched ?? report.importedSongs.length}</p>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-muted-foreground">Added</p>
-                <p className="text-xl font-semibold text-green-500">{report.stats?.persisted ?? report.success}</p>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-muted-foreground">Skipped</p>
-                <p className="text-xl font-semibold text-amber-500">{report.stats?.skipped ?? 0}</p>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-muted-foreground">Failed</p>
-                <p className="text-xl font-semibold text-red-500">{report.failed}</p>
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-muted-foreground">Duration</p>
-                <p className="text-xl font-semibold">
-                  {Math.round((report.stats?.durationMs || 0) / 1000)}s
-                </p>
-              </div>
-            </div>
-
-            {(report.stats?.alreadyAdded || report.stats?.inputDuplicatesRemoved || report.stats?.duplicateMatchesSkipped) ? (
-              <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground space-y-1">
-                {report.stats?.alreadyAdded ? (
-                  <p>Already added and skipped: {report.stats.alreadyAdded}</p>
-                ) : null}
-                {report.stats?.inputDuplicatesRemoved ? (
-                  <p>Duplicate rows removed before search: {report.stats.inputDuplicatesRemoved}</p>
-                ) : null}
-                {report.stats?.duplicateMatchesSkipped ? (
-                  <p>Duplicate matches skipped during save: {report.stats.duplicateMatchesSkipped}</p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {hasSkips && (
-              <div className="space-y-2">
-                <h3 className="font-medium">Skipped Songs</h3>
-                <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
-                  {report.stats?.skippedSongs?.slice(0, 100).map((song, index) => (
-                    <div
-                      key={`${song.title}-${song.artist}-${song.reason}-${index}`}
-                      className="rounded-md border border-border p-3 text-sm"
-                    >
-                      <p className="font-medium">{song.title || 'Unknown title'}</p>
-                      <p className="text-muted-foreground">{song.artist || 'Unknown artist'}</p>
-                      <p className="text-xs text-amber-400 mt-1">{normalizeReason(song.reason)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {hasFailures && (
-              <div className="space-y-2">
-                <h3 className="font-medium">Failed Songs</h3>
-                <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
-                  {report.failedSongs.slice(0, 100).map((song, index) => (
-                    <div
-                      key={`${song.title}-${song.artist}-${index}`}
-                      className="rounded-md border border-border p-3 text-sm"
-                    >
-                      <p className="font-medium">{song.title || 'Unknown title'}</p>
-                      <p className="text-muted-foreground">{song.artist || 'Unknown artist'}</p>
-                      {song.addedAt ? (
-                        <p className="text-xs text-muted-foreground/80 mt-1">Added at: {song.addedAt}</p>
-                      ) : null}
-                      <p className="text-xs text-red-400 mt-1">{normalizeReason(song.reason)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        <ImportReportView
+          report={report}
+          hasFailures={hasFailures}
+          hasSkips={hasSkips}
+        />
       </div>
     </div>
   );

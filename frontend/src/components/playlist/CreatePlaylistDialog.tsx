@@ -25,51 +25,57 @@ interface CreatePlaylistDialogProps {
 }
 
 export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isPublic, setIsPublic] = useState(true);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null);
+  const [state, setState] = useState({
+    name: '',
+    description: '',
+    isPublic: true,
+    imageFile: null as File | null,
+    imagePreview: '',
+    isSubmitting: false,
+    uploadProgress: 0,
+    isUploading: false,
+    imageError: null as string | null,
+  });
+  const { name, description, isPublic, imageFile, imagePreview, isSubmitting, uploadProgress, isUploading, imageError } = state;
   const { createPlaylist, isCreating } = usePlaylistStore();
   const navigate = useNavigate();
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    setImageError(null);
     
     if (!file) {
-      setImageError('Please select an image file');
+      setState(prev => ({ ...prev, imageError: 'Please select an image file' }));
       return;
     }
 
     // Check file type
     if (!file.type.startsWith('image/')) {
-      setImageError('Please upload an image file');
+      setState(prev => ({ ...prev, imageError: 'Please upload an image file' }));
       return;
     }
 
     // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setImageError('Image must be less than 5MB');
+      setState(prev => ({ ...prev, imageError: 'Image must be less than 5MB' }));
       return;
     }
 
-    setImageFile(file);
     // Create a preview URL
     const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
+    setState(prev => ({
+      ...prev,
+      imageFile: file,
+      imagePreview: previewUrl,
+      imageError: null,
+    }));
   };
 
   const uploadImageToCloudinary = async (file: File): Promise<string> => {
-    setIsUploading(true);
+    setState(prev => ({ ...prev, isUploading: true }));
     try {
       // Upload the image to Cloudinary and track progress
       const imageUrl = await uploadImage(file, (progress) => {
-        setUploadProgress(progress);
+        setState(prev => ({ ...prev, uploadProgress: progress }));
       });
       
       return imageUrl;
@@ -77,8 +83,7 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
       toast.error('Failed to upload image');
       throw error;
     } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
+      setState(prev => ({ ...prev, isUploading: false, uploadProgress: 0 }));
     }
   };
 
@@ -88,11 +93,11 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
     
     // Validate image is uploaded
     if (!imageFile) {
-      setImageError('Please upload a cover image for your playlist');
+      setState(prev => ({ ...prev, imageError: 'Please upload a cover image for your playlist' }));
       return;
     }
     
-    setIsLoading(true);
+    setState(prev => ({ ...prev, isSubmitting: true }));
     
     try {
       // Upload the image to Cloudinary
@@ -111,18 +116,22 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
     } catch (error) {
       toast.error('Failed to create playlist');
     } finally {
-      setIsLoading(false);
+      setState(prev => ({ ...prev, isSubmitting: false }));
     }
   };
 
   const resetForm = () => {
-    setName('');
-    setDescription('');
-    setIsPublic(true);
-    setImageFile(null);
-    setImagePreview('');
-    setUploadProgress(0);
-    setImageError(null);
+    setState({
+      name: '',
+      description: '',
+      isPublic: true,
+      imageFile: null,
+      imagePreview: '',
+      isSubmitting: false,
+      uploadProgress: 0,
+      isUploading: false,
+      imageError: null,
+    });
   };
 
   return (
@@ -144,7 +153,7 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
           <div className="grid gap-4 py-4">
             <div className="flex flex-col items-center mb-4">
               <div className="relative group">
-                {isLoading || isUploading ? (
+                {isSubmitting || isUploading ? (
                   <div className="w-40 h-40 flex flex-col items-center justify-center bg-zinc-900 rounded-md">
                     <ContentLoading text={isUploading ? `Uploading... ${uploadProgress}%` : 'Loading...'} height="h-full" />
                   </div>
@@ -175,7 +184,7 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
                     accept="image/*"
                     className="hidden"
                     onChange={handleImageChange}
-                    disabled={isLoading || isUploading}
+                    disabled={isSubmitting || isUploading}
                     required
                   />
                 </div>
@@ -194,7 +203,7 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
               <Input
                 id="name"
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => setState(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="My Awesome Playlist"
                 required
               />
@@ -205,14 +214,18 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
                 id="description"
                 value={description}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  setDescription(e.target.value)
+                  setState(prev => ({ ...prev, description: e.target.value }))
                 }
                 placeholder="Add an optional description"
                 rows={3}
               />
             </div>
-            <div className="flex items-center space-x-2">
-              <Switch id="public" checked={isPublic} onCheckedChange={setIsPublic} />
+            <div className="flex items-center gap-x-2">
+              <Switch
+                id="public"
+                checked={isPublic}
+                onCheckedChange={val => setState(prev => ({ ...prev, isPublic: val }))}
+              />
               <Label htmlFor="public">Make this playlist public</Label>
             </div>
           </div>
@@ -222,9 +235,9 @@ export function CreatePlaylistDialog({ isOpen, onClose }: CreatePlaylistDialogPr
             </Button>
             <Button 
               type="submit" 
-              disabled={!name.trim() || !imageFile || isCreating || isLoading || isUploading}
+              disabled={!name.trim() || !imageFile || isCreating || isSubmitting || isUploading}
             >
-              {isCreating || isLoading ? 'Creating...' : 'Create Playlist'}
+              {isCreating || isSubmitting ? 'Creating...' : 'Create Playlist'}
             </Button>
           </DialogFooter>
         </form>

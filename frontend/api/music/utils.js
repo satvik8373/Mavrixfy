@@ -25,8 +25,15 @@ export function getHighestQualityDownload(downloadUrl) {
     return null;
   }
 
+  const downloadsByQuality = new Map();
+  for (const entry of downloadUrl) {
+    if (entry?.quality) {
+      downloadsByQuality.set(entry.quality, entry);
+    }
+  }
+
   for (const quality of AUDIO_QUALITY_ORDER) {
-    const matched = downloadUrl.find((entry) => entry?.quality === quality);
+    const matched = downloadsByQuality.get(quality);
     if (matched) {
       return matched;
     }

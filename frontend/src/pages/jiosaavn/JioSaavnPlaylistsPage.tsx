@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useReducer, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Music, Filter, TrendingUp, Sparkles } from 'lucide-react';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
@@ -18,29 +18,244 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
 
+interface PlaylistsPageState {
+  playlists: JioSaavnPlaylist[];
+  isFetchingPlaylists: boolean;
+  error: string | null;
+  searchQuery: string;
+  selectedCategory: PlaylistCategory;
+  searchSuggestions: string[];
+  detectedCategory: PlaylistCategory | null;
+}
+
+type PlaylistsPageAction =
+  | { type: 'search_query'; value: string }
+  | { type: 'category'; category: PlaylistCategory }
+  | { type: 'loading' }
+  | { type: 'category_loaded'; playlists: JioSaavnPlaylist[] }
+  | { type: 'search_loaded'; playlists: JioSaavnPlaylist[]; detectedCategory: PlaylistCategory | null; searchSuggestions: string[] }
+  | { type: 'failed'; message: string }
+  | { type: 'clear_search' };
+
+const playlistsPageReducer = (state: PlaylistsPageState, action: PlaylistsPageAction): PlaylistsPageState => {
+  switch (action.type) {
+    case 'search_query':
+      return { ...state, searchQuery: action.value };
+    case 'category':
+      return {
+        ...state,
+        selectedCategory: action.category,
+        searchQuery: '',
+        detectedCategory: null,
+        searchSuggestions: [],
+      };
+    case 'loading':
+      return { ...state, isFetchingPlaylists: true, error: null };
+    case 'category_loaded':
+      return { ...state, playlists: action.playlists, isFetchingPlaylists: false, error: null };
+    case 'search_loaded':
+      return {
+        ...state,
+        playlists: action.playlists,
+        detectedCategory: action.detectedCategory,
+        searchSuggestions: action.searchSuggestions,
+        isFetchingPlaylists: false,
+        error: null,
+      };
+    case 'failed':
+      return { ...state, isFetchingPlaylists: false, error: action.message };
+    case 'clear_search':
+      return { ...state, searchQuery: '', detectedCategory: null, searchSuggestions: [] };
+    default:
+      return state;
+  }
+};
+
+
+interface PlaylistsHeaderProps {
+  getPageTitle: () => string;
+  getPageSubtitle: () => string;
+  searchQuery: string;
+  selectedCategory: PlaylistCategory;
+  searchSuggestions: string[];
+  detectedCategory: PlaylistCategory | null;
+  dispatchPage: React.Dispatch<PlaylistsPageAction>;
+  navigate: any;
+  handleCategoryChange: (category: PlaylistCategory) => void;
+  handleSuggestionClick: (suggestion: string) => void;
+}
+
+const PlaylistsHeader = ({
+  getPageTitle,
+  getPageSubtitle,
+  searchQuery,
+  selectedCategory,
+  searchSuggestions,
+  detectedCategory,
+  dispatchPage,
+  navigate,
+  handleCategoryChange,
+  handleSuggestionClick,
+}: PlaylistsHeaderProps) => {
+  return (
+    <div className="sticky top-0 z-10 bg-[#121212]/95 backdrop-blur-sm border-b border-white/10">
+      <div className="flex items-center gap-4 p-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(-1)}
+          className="rounded-full hover:bg-white/10"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+
+        <div className="flex-1">
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            <Music className="w-6 h-6 text-orange-500" />
+            {getPageTitle()}
+          </h1>
+          <p className="text-sm text-white/60 mt-1">{getPageSubtitle()}</p>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="px-4 pb-4 space-y-3">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
+            <Input
+              placeholder="Search playlists..."
+              value={searchQuery}
+              onChange={(e) => dispatchPage({ type: 'search_query', value: e.target.value })}
+              className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:bg-white/15 focus:border-white/30"
+            />
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/15 flex items-center gap-2"
+                style={{ borderColor: selectedCategory.color + '40', color: selectedCategory.color }}
+              >
+                <span className="text-lg">{selectedCategory.icon}</span>
+                <Filter className="w-4 h-4" />
+                {selectedCategory.name}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Browse Categories
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              {/* High Priority Categories */}
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                TRENDING
+              </DropdownMenuLabel>
+              {PLAYLIST_CATEGORIES.flatMap((category) => {
+                if (category.priority < 7) return [];
+                return [
+                  <DropdownMenuItem
+                    key={category.id}
+                    onClick={() => handleCategoryChange(category)}
+                    className={cn(
+                      "flex items-center gap-3 cursor-pointer",
+                      selectedCategory.id === category.id && "bg-orange-500/20 text-orange-400"
+                    )}
+                  >
+                    <span className="text-lg">{category.icon}</span>
+                    <div className="flex-1">
+                      <div className="font-medium">{category.name}</div>
+                      <div className="text-xs text-muted-foreground">{category.description}</div>
+                    </div>
+                  </DropdownMenuItem>
+                ];
+              })}
+
+              <DropdownMenuSeparator />
+
+              {/* Other Categories */}
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                MORE CATEGORIES
+              </DropdownMenuLabel>
+              {PLAYLIST_CATEGORIES.flatMap((category) => {
+                if (category.priority >= 7) return [];
+                return [
+                  <DropdownMenuItem
+                    key={category.id}
+                    onClick={() => handleCategoryChange(category)}
+                    className={cn(
+                      "flex items-center gap-3 cursor-pointer",
+                      selectedCategory.id === category.id && "bg-orange-500/20 text-orange-400"
+                    )}
+                  >
+                    <span className="text-lg">{category.icon}</span>
+                    <div className="flex-1">
+                      <div className="font-medium">{category.name}</div>
+                      <div className="text-xs text-muted-foreground">{category.description}</div>
+                    </div>
+                  </DropdownMenuItem>
+                ];
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Search Suggestions */}
+        {searchSuggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs text-white/60">Suggestions:</span>
+            {searchSuggestions.map((suggestion) => (
+              <button type="button"
+                key={suggestion}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Category Detection Banner */}
+        {detectedCategory && (
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
+            style={{ backgroundColor: detectedCategory.color + '20', borderColor: detectedCategory.color + '40' }}
+          >
+            <TrendingUp className="w-4 h-4" style={{ color: detectedCategory.color }} />
+            <span>Smart search detected: <strong>{detectedCategory.name}</strong> category</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const JioSaavnPlaylistsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [playlists, setPlaylists] = useState<JioSaavnPlaylist[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<PlaylistCategory>(
-    PLAYLIST_CATEGORIES.find(cat => cat.id === location.state?.category) || PLAYLIST_CATEGORIES[0]
-  );
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
-  const [detectedCategory, setDetectedCategory] = useState<PlaylistCategory | null>(null);
+  const [{
+    playlists,
+    isFetchingPlaylists,
+    error,
+    searchQuery,
+    selectedCategory,
+    searchSuggestions,
+    detectedCategory,
+  }, dispatchPage] = useReducer(playlistsPageReducer, {
+    playlists: [],
+    isFetchingPlaylists: false,
+    error: null,
+    searchQuery: '',
+    selectedCategory: PLAYLIST_CATEGORIES.find(cat => cat.id === location.state?.category) || PLAYLIST_CATEGORIES[0],
+    searchSuggestions: [],
+    detectedCategory: null,
+  });
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -51,30 +266,26 @@ const JioSaavnPlaylistsPage: React.FC = () => {
   useEffect(() => {
     if (searchQuery.trim()) {
       const debounceTimer = setTimeout(() => {
-        performSmartSearch();
+        void performSmartSearch();
       }, 500);
 
       return () => clearTimeout(debounceTimer);
     } else {
-      fetchCategoryPlaylists();
-      setSearchSuggestions([]);
-      setDetectedCategory(null);
+      void fetchCategoryPlaylists();
+      dispatchPage({ type: 'clear_search' });
     }
   }, [searchQuery]);
 
   const fetchCategoryPlaylists = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
+      dispatchPage({ type: 'loading' });
 
       const data = await jioSaavnService.getPlaylistsByCategory(selectedCategory.id, 50, true);
-      setPlaylists(data);
+      dispatchPage({ type: 'category_loaded', playlists: data });
     } catch (err) {
       // Error fetching JioSaavn playlists
-      setError('Failed to load playlists');
+      dispatchPage({ type: 'failed', message: 'Failed to load playlists' });
       toast.error('Failed to load playlists');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -82,23 +293,23 @@ const JioSaavnPlaylistsPage: React.FC = () => {
     if (!searchQuery.trim()) return;
 
     try {
-      setIsLoading(true);
-      setError(null);
+      dispatchPage({ type: 'loading' });
 
       const result = await jioSaavnService.smartSearch(searchQuery, 50);
-      setPlaylists(result.playlists);
-      setDetectedCategory(result.detectedCategory || null);
-      setSearchSuggestions(result.suggestions);
+      dispatchPage({
+        type: 'search_loaded',
+        playlists: result.playlists,
+        detectedCategory: result.detectedCategory || null,
+        searchSuggestions: result.suggestions,
+      });
 
       if (result.detectedCategory) {
         toast.success(`Found ${result.playlists.length} ${result.detectedCategory.name} playlists`);
       }
     } catch (err) {
       // Error searching JioSaavn playlists
-      setError('Failed to search playlists');
+      dispatchPage({ type: 'failed', message: 'Failed to search playlists' });
       toast.error('Failed to search playlists');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -133,14 +344,11 @@ const JioSaavnPlaylistsPage: React.FC = () => {
   };
 
   const handleCategoryChange = (category: PlaylistCategory) => {
-    setSelectedCategory(category);
-    setSearchQuery(''); // Clear search when changing category
-    setDetectedCategory(null);
-    setSearchSuggestions([]);
+    dispatchPage({ type: 'category', category });
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    setSearchQuery(suggestion);
+    dispatchPage({ type: 'search_query', value: suggestion });
   };
 
   const getPageTitle = () => {
@@ -168,137 +376,22 @@ const JioSaavnPlaylistsPage: React.FC = () => {
       <CustomScrollbar className="h-screen">
         <div className="pb-32 md:pb-24">
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-[#121212]/95 backdrop-blur-sm border-b border-white/10">
-            <div className="flex items-center gap-4 p-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                className="rounded-full hover:bg-white/10"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <Music className="w-6 h-6 text-orange-500" />
-                  {getPageTitle()}
-                </h1>
-                <p className="text-sm text-white/60 mt-1">{getPageSubtitle()}</p>
-              </div>
-            </div>
-
-            {/* Search and Filters */}
-            <div className="px-4 pb-4 space-y-3">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
-                  <Input
-                    placeholder="Search playlists..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:bg-white/15 focus:border-white/30"
-                  />
-                </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="bg-white/10 border-white/20 text-white hover:bg-white/15 flex items-center gap-2"
-                      style={{ borderColor: selectedCategory.color + '40', color: selectedCategory.color }}
-                    >
-                      <span className="text-lg">{selectedCategory.icon}</span>
-                      <Filter className="w-4 h-4" />
-                      {selectedCategory.name}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4" />
-                      Browse Categories
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-
-                    {/* High Priority Categories */}
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                      TRENDING
-                    </DropdownMenuLabel>
-                    {PLAYLIST_CATEGORIES.filter(cat => cat.priority >= 7).map((category) => (
-                      <DropdownMenuItem
-                        key={category.id}
-                        onClick={() => handleCategoryChange(category)}
-                        className={cn(
-                          "flex items-center gap-3 cursor-pointer",
-                          selectedCategory.id === category.id && "bg-orange-500/20 text-orange-400"
-                        )}
-                      >
-                        <span className="text-lg">{category.icon}</span>
-                        <div className="flex-1">
-                          <div className="font-medium">{category.name}</div>
-                          <div className="text-xs text-muted-foreground">{category.description}</div>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-
-                    <DropdownMenuSeparator />
-
-                    {/* Other Categories */}
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                      MORE CATEGORIES
-                    </DropdownMenuLabel>
-                    {PLAYLIST_CATEGORIES.filter(cat => cat.priority < 7).map((category) => (
-                      <DropdownMenuItem
-                        key={category.id}
-                        onClick={() => handleCategoryChange(category)}
-                        className={cn(
-                          "flex items-center gap-3 cursor-pointer",
-                          selectedCategory.id === category.id && "bg-orange-500/20 text-orange-400"
-                        )}
-                      >
-                        <span className="text-lg">{category.icon}</span>
-                        <div className="flex-1">
-                          <div className="font-medium">{category.name}</div>
-                          <div className="text-xs text-muted-foreground">{category.description}</div>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Search Suggestions */}
-              {searchSuggestions.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  <span className="text-xs text-white/60">Suggestions:</span>
-                  {searchSuggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Category Detection Banner */}
-              {detectedCategory && (
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
-                  style={{ backgroundColor: detectedCategory.color + '20', borderColor: detectedCategory.color + '40' }}
-                >
-                  <TrendingUp className="w-4 h-4" style={{ color: detectedCategory.color }} />
-                  <span>Smart search detected: <strong>{detectedCategory.name}</strong> category</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <PlaylistsHeader
+            getPageTitle={getPageTitle}
+            getPageSubtitle={getPageSubtitle}
+            searchQuery={searchQuery}
+            selectedCategory={selectedCategory}
+            searchSuggestions={searchSuggestions}
+            detectedCategory={detectedCategory}
+            dispatchPage={dispatchPage}
+            navigate={navigate}
+            handleCategoryChange={handleCategoryChange}
+            handleSuggestionClick={handleSuggestionClick}
+          />
 
           {/* Content */}
           <div className="p-4">
-            {isLoading ? (
+            {isFetchingPlaylists ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-5">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className="space-y-3">
@@ -331,7 +424,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => dispatchPage({ type: 'clear_search' })}
                       className="text-white/60 hover:text-white"
                     >
                       Clear search
@@ -370,7 +463,7 @@ const JioSaavnPlaylistsPage: React.FC = () => {
                 {searchQuery && (
                   <Button
                     variant="outline"
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => dispatchPage({ type: 'clear_search' })}
                     className="bg-white/10 border-white/20 text-white hover:bg-white/15"
                   >
                     Browse {selectedCategory.name} playlists

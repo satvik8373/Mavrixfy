@@ -14,6 +14,13 @@ interface RecentItem {
   data?: any; // Store any additional data needed when playing
 }
 
+const RECENTLY_PLAYED_KEY = 'recently_played:v1';
+
+const readRecentlyPlayed = (): RecentItem[] => {
+  const savedItems = localStorage.getItem(RECENTLY_PLAYED_KEY);
+  return savedItems ? JSON.parse(savedItems) : [];
+};
+
 export function RecentlyPlayed() {
   const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
@@ -24,9 +31,8 @@ export function RecentlyPlayed() {
     // Load recently played items from localStorage
     const loadRecentItems = () => {
       try {
-        const savedItems = localStorage.getItem('recently_played');
-        if (savedItems) {
-          const items: RecentItem[] = JSON.parse(savedItems);
+        const items = readRecentlyPlayed();
+        if (items.length > 0) {
           // Sort by most recently played
           items.sort((a, b) => b.date - a.date);
           setRecentItems(items.slice(0, 8)); // Show 8 most recent items
@@ -50,8 +56,7 @@ export function RecentlyPlayed() {
   // Add an item to recently played
   const addToRecentlyPlayed = (item: RecentItem) => {
     try {
-      const savedItems = localStorage.getItem('recently_played');
-      let items: RecentItem[] = savedItems ? JSON.parse(savedItems) : [];
+      let items = readRecentlyPlayed();
 
       // Remove if already exists to prevent duplicates
       items = items.filter(i => i.id !== item.id);
@@ -67,7 +72,7 @@ export function RecentlyPlayed() {
         items = items.slice(0, 20);
       }
 
-      localStorage.setItem('recently_played', JSON.stringify(items));
+      localStorage.setItem(RECENTLY_PLAYED_KEY, JSON.stringify(items));
       document.dispatchEvent(new Event('recentlyPlayedUpdated'));
     } catch (error) {
       // Error adding to recently played
@@ -92,9 +97,9 @@ export function RecentlyPlayed() {
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-bold">Recently played</h2>
+        <h2 className="text-xl font-semibold">Recently played</h2>
         {recentItems.length > 0 && (
-          <button
+          <button type="button"
             onClick={() => navigate('/history')}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -107,6 +112,9 @@ export function RecentlyPlayed() {
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-1.5">
         {recentItems.map(item => (
           <div
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
             key={item.id}
             className="group relative h-[64px] rounded overflow-hidden transition-all duration-300 cursor-pointer border border-border/60 hover:border-border/80"
             onClick={() => handleItemClick(item)}
@@ -141,7 +149,7 @@ export function RecentlyPlayed() {
                 </h3>
               </div>
               {/* Play button appears on hover */}
-              <button
+              <button type="button"
                 className={cn(
                   'absolute right-2 p-2 bg-green-500 hover:bg-green-400 text-black rounded-full shadow-lg z-10 transition-all duration-200 ease-out',
                   hoveredItemId === item.id
@@ -162,4 +170,5 @@ export function RecentlyPlayed() {
     </div>
   );
 }
+
 

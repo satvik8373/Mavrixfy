@@ -46,7 +46,7 @@ export default function UsersPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
           <p className="mt-1 text-sm text-gray-500">{users.length} registered users</p>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function UsersPage() {
                 <p className="mt-1 text-2xl font-bold text-gray-900">{loading ? '—' : value}</p>
               </div>
               <div className={`rounded-lg p-2 ${bg}`}>
-                <Icon className={`h-5 w-5 ${color}`} />
+                <Icon className={`size-5 ${color}`} />
               </div>
             </div>
           </div>
@@ -74,7 +74,7 @@ export default function UsersPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           placeholder="Search by email or name..."
@@ -88,11 +88,11 @@ export default function UsersPage() {
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <Loader2 className="size-6 animate-spin text-blue-600" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Users className="h-10 w-10 text-gray-300" />
+            <Users className="size-10 text-gray-300" />
             <p className="mt-3 text-sm font-medium text-gray-900">{searchQuery ? 'No users found' : 'No users yet'}</p>
           </div>
         ) : (
@@ -114,9 +114,9 @@ export default function UsersPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {user.photoURL ? (
-                          <img src={user.photoURL} alt={name} className="h-9 w-9 rounded-full object-cover" />
+                          <img src={user.photoURL} alt={name} className="size-9 rounded-full object-cover" />
                         ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                          <div className="flex size-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
                             {name.charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -134,10 +134,10 @@ export default function UsersPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <button className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Manage role">
-                          <Shield className="h-4 w-4" />
+                          <Shield className="size-4" />
                         </button>
-                        <button className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600" title="Ban user">
-                          <Ban className="h-4 w-4" />
+                        <button className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700" title="Ban user">
+                          <Ban className="size-4" />
                         </button>
                       </div>
                     </td>

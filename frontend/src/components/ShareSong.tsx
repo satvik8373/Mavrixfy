@@ -34,7 +34,7 @@ export const ShareSong = ({ song, trigger }: ShareSongProps) => {
   return (
     <>
       {trigger ? (
-        <div onClick={() => setIsOpen(true)}>{trigger}</div>
+        <div role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} onClick={() => setIsOpen(true)}>{trigger}</div>
       ) : (
         <Button
           variant="ghost"

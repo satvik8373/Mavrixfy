@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { X, Download } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -18,52 +18,53 @@ const wasRecentlyDismissed = () => {
   return ts ? Date.now() - Number(ts) < DISMISS_COOLDOWN_MS : false;
 };
 
+const isIOSDevice = () => {
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
+};
+
 const PWAInstallPrompt = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [visible, setVisible] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
+  const [visible, dispatchVisible] = useReducer((_visible: boolean, nextVisible: boolean) => nextVisible, false);
+  const [isIOS] = useState(isIOSDevice);
 
   useEffect(() => {
     // Already installed or recently dismissed — do nothing
     if (isStandalone() || wasRecentlyDismissed()) return;
 
-    const ua = navigator.userAgent;
-    const ios = /iPad|iPhone|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
-    setIsIOS(ios);
-
-    if (ios) {
+    if (isIOS) {
       // iOS doesn't fire beforeinstallprompt — show manual instructions after a delay
-      const t = window.setTimeout(() => setVisible(true), 8000);
+      const t = window.setTimeout(() => dispatchVisible(true), 8000);
       return () => window.clearTimeout(t);
     }
 
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setVisible(true);
+      deferredPromptRef.current = e as BeforeInstallPromptEvent;
+      dispatchVisible(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => setVisible(false));
+    window.addEventListener('appinstalled', () => dispatchVisible(false));
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
     };
-  }, []);
+  }, [isIOS]);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    if (!deferredPromptRef.current) return;
+    await deferredPromptRef.current.prompt();
+    const { outcome } = await deferredPromptRef.current.userChoice;
     if (outcome === 'accepted') {
-      setVisible(false);
+      dispatchVisible(false);
     }
-    setDeferredPrompt(null);
+    deferredPromptRef.current = null;
   };
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    setVisible(false);
+    dispatchVisible(false);
   };
 
   if (!visible) return null;
@@ -93,7 +94,7 @@ const PWAInstallPrompt = () => {
           )}
         </div>
         {!isIOS && (
-          <button
+          <button type="button"
             onClick={handleInstall}
             className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-lg flex-shrink-0"
             aria-label="Install app"
@@ -102,7 +103,7 @@ const PWAInstallPrompt = () => {
             Install
           </button>
         )}
-        <button
+        <button type="button"
           onClick={handleDismiss}
           className="p-1.5 text-white/40 hover:text-white/80 flex-shrink-0"
           aria-label="Dismiss"

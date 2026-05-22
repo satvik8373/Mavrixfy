@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Song } from '../types';
 import { 
   MoreHorizontal, 
@@ -27,54 +27,15 @@ interface SongMenuProps {
 
 export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: SongMenuProps) {
   const [showAddToPlaylistDialog, setShowAddToPlaylistDialog] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   
   const songId = (song as any).id || song._id;
-  const [songLiked, setSongLiked] = useState(likedSongIds.has(songId));
-  
-  // Update state when likedSongIds changes
-  useEffect(() => {
-    setSongLiked(likedSongIds.has(songId));
-  }, [likedSongIds, songId]);
-  
-  // Listen for like updates from other components
-  useEffect(() => {
-    const handleLikeUpdate = (e: Event) => {
-      // Check if this event includes details about which song was updated
-      if (e instanceof CustomEvent && e.detail) {
-        // If we have details and it's not for our current song, ignore
-        if (e.detail.songId && e.detail.songId !== songId) {
-          return;
-        }
-        
-        // If we have explicit like state in the event, use it
-        if (typeof e.detail.isLiked === 'boolean') {
-          setSongLiked(e.detail.isLiked);
-          return;
-        }
-      }
-      
-      // Otherwise do a fresh check from the store
-      setSongLiked(likedSongIds.has(songId));
-    };
-    
-    document.addEventListener('likedSongsUpdated', handleLikeUpdate);
-    document.addEventListener('songLikeStateChanged', handleLikeUpdate);
-    
-    return () => {
-      document.removeEventListener('likedSongsUpdated', handleLikeUpdate);
-      document.removeEventListener('songLikeStateChanged', handleLikeUpdate);
-    };
-  }, [songId, likedSongIds]);
+  const songLiked = likedSongIds.has(songId);
 
   const handleLikeSong = (e: React.MouseEvent) => {
     e.stopPropagation();
     
     // Optimistically update UI
-    setSongLiked(!songLiked);
-    
-    // Perform the toggle
     toggleLikeSong(song);
     
     // Also dispatch an event for other components
@@ -89,16 +50,11 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
     }));
   };
 
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowShareDialog(true);
-  };
-
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button 
+          <button type="button" 
             className={`flex items-center justify-center rounded-full hover:bg-accent transition-colors ${className}`}
           >
             <MoreHorizontal className="h-5 w-5" />
@@ -114,10 +70,15 @@ export function SongMenu({ song, className, variant = 'ghost', size = 'icon' }: 
             <ListPlus className="mr-2 h-4 w-4" />
             Add to Playlist
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleShare}>
-            <Share2 className="mr-2 h-4 w-4" />
-            Share
-          </DropdownMenuItem>
+          <ShareSong
+            song={song}
+            trigger={(
+              <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                <Share2 className="mr-2 h-4 w-4" />
+                Share
+              </DropdownMenuItem>
+            )}
+          />
           <DropdownMenuItem onClick={(e) => {
             e.stopPropagation();
             window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(`${song.title} ${song.artist}`)}`, '_blank');

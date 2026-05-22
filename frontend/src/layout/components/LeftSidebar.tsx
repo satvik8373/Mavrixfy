@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useReducer, useEffect, useSyncExternalStore } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     Search,
@@ -31,9 +31,9 @@ type LikedPlaylistsData = {
 
 const readLikedPlaylistsData = (): LikedPlaylistsData => {
     try {
-        const likedIds: string[] = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+        const likedIds: string[] = JSON.parse(localStorage.getItem('liked_playlists:v1') || '[]');
         const legacyJioLikedIds: string[] = JSON.parse(localStorage.getItem('liked_jiosaavn_playlists') || '[]');
-        const metadata: Record<string, any> = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+        const metadata: Record<string, any> = JSON.parse(localStorage.getItem('liked_playlists_metadata:v1') || '{}');
 
         const mergedLikedIds = Array.from(new Set([...likedIds, ...legacyJioLikedIds]));
 
@@ -103,9 +103,26 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
     const { isAuthenticated } = useAuth();
     const storeIsAuthenticated = useAuthStore(state => state.isAuthenticated);
     const isActuallyAuthenticated = isAuthenticated || storeIsAuthenticated;
-    const [showCreateDialog, setShowCreateDialog] = useState(false);
-    const [likedSongsCount, setLikedSongsCount] = useState(0);
-    const [isSidebarLoading, setIsSidebarLoading] = useState(false);
+    const [sidebarState, dispatchSidebar] = useReducer(
+        (state: { showCreateDialog: boolean; likedSongsCount: number; isSidebarLoading: boolean }, action: { type: 'dialog'; open: boolean } | { type: 'liked_count'; count: number } | { type: 'loading'; value: boolean }) => {
+            switch (action.type) {
+                case 'dialog':
+                    return { ...state, showCreateDialog: action.open };
+                case 'liked_count':
+                    return { ...state, likedSongsCount: action.count };
+                case 'loading':
+                    return { ...state, isSidebarLoading: action.value };
+                default:
+                    return state;
+            }
+        },
+        {
+            showCreateDialog: false,
+            likedSongsCount: 0,
+            isSidebarLoading: false,
+        }
+    );
+    const { showCreateDialog, likedSongsCount, isSidebarLoading } = sidebarState;
     const userPlaylists = usePlaylistStore(state => state.userPlaylists);
     const fetchUserPlaylists = usePlaylistStore(state => state.fetchUserPlaylists);
     const fetchPublicPlaylists = usePlaylistStore(state => state.fetchPublicPlaylists);
@@ -119,7 +136,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
         let isCancelled = false;
 
         const loadSidebarData = async () => {
-            setIsSidebarLoading(true);
+            dispatchSidebar({ type: 'loading', value: true });
 
             if (isActuallyAuthenticated) {
                 await Promise.allSettled([
@@ -127,17 +144,17 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                     fetchPublicPlaylists(),
                 ]);
                 if (!isCancelled) {
-                    loadLikedSongsCount();
+                    await loadLikedSongsCount();
                 }
             } else {
                 await fetchPublicPlaylists();
                 if (!isCancelled) {
-                    setLikedSongsCount(0);
+                    dispatchSidebar({ type: 'liked_count', count: 0 });
                 }
             }
 
             if (!isCancelled) {
-                setIsSidebarLoading(false);
+                dispatchSidebar({ type: 'loading', value: false });
             }
         };
 
@@ -180,12 +197,12 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
         if (isActuallyAuthenticated) {
             try {
                 const count = await getLikedSongsCount();
-                setLikedSongsCount(count);
+                dispatchSidebar({ type: 'liked_count', count });
             } catch (error) {
-                setLikedSongsCount(0);
+                dispatchSidebar({ type: 'liked_count', count: 0 });
             }
         } else {
-            setLikedSongsCount(0);
+            dispatchSidebar({ type: 'liked_count', count: 0 });
         }
     };
 
@@ -201,10 +218,10 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                 : "bg-transparent"
         )}>
             {/* Header */}
-            <div className={cn("px-3 py-3 flex items-center gap-2", isCollapsed ? "justify-center" : "justify-between")}>
+            <div className={cn("p-3 flex items-center gap-2", isCollapsed ? "justify-center" : "justify-between")}>
                 {/* Collapse button on the left */}
                 {onToggleCollapse && (
-                    <button
+                    <button type="button"
                         className="p-1.5 rounded hover:bg-white/10 transition-colors flex-shrink-0"
                         onClick={onToggleCollapse}
                         title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -223,20 +240,20 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
 
                 {/* Your Library text in the middle */}
                 {!isCollapsed && (
-                    <h1 className="text-base font-bold text-foreground flex-1">Your Library</h1>
+                    <h1 className="text-base font-semibold text-foreground flex-1">Your Library</h1>
                 )}
 
                 {/* Action buttons on the right */}
                 {!isCollapsed && (
                     <div className="flex gap-1 flex-shrink-0">
-                        <button
+                        <button type="button"
                             className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
-                            onClick={() => setShowCreateDialog(true)}
+                            onClick={() => dispatchSidebar({ type: 'dialog', open: true })}
                             title="Create playlist"
                         >
                             <Plus size={18} className="text-foreground" />
                         </button>
-                        <button
+                        <button type="button"
                             className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
                             onClick={() => navigate('/library')}
                             title="Open Your Library"
@@ -250,10 +267,10 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
             {/* Search and View Options */}
             {!isCollapsed && (
                 <div className="px-2 flex justify-between items-center">
-                    <button className="p-1.5 rounded-full hover:bg-white/10 transition-colors" title="Search">
+                    <button type="button" className="p-1.5 rounded-full hover:bg-white/10 transition-colors" title="Search">
                         <Search size={16} className="text-muted-foreground hover:text-foreground" />
                     </button>
-                    <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-xs font-medium px-2 py-1 rounded hover:bg-white/10 transition-colors">
+                    <button type="button" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-xs font-medium px-2 py-1 rounded hover:bg-white/10 transition-colors">
                         <span>Recents</span>
                         <List size={14} />
                     </button>
@@ -323,7 +340,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                     {/* Your Playlists */}
                     {isActuallyAuthenticated && isSidebarLoading && userPlaylists.length === 0 && !isCollapsed && (
                         <div className="px-2 py-1 text-xs text-muted-foreground">
-                            Loading your playlists...
+                            Loading your playlists…
                         </div>
                     )}
 
@@ -374,45 +391,59 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                 </div>
             </CustomScrollbar>
 
-            <CreatePlaylistDialog isOpen={showCreateDialog} onClose={() => setShowCreateDialog(false)} />
+            <CreatePlaylistDialog isOpen={showCreateDialog} onClose={() => dispatchSidebar({ type: 'dialog', open: false })} />
         </div>
     );
 };
 
 export default LeftSidebar;
 
+let cachedLikedData: LikedPlaylistsData | null = null;
+const likedListeners = new Set<() => void>();
+
+const subscribeToLikedPlaylists = (onStoreChange: () => void) => {
+    likedListeners.add(onStoreChange);
+    
+    const syncLikedPlaylists = () => {
+        cachedLikedData = readLikedPlaylistsData();
+        onStoreChange();
+    };
+
+    document.addEventListener('likedPlaylistsUpdated', syncLikedPlaylists);
+    window.addEventListener('storage', syncLikedPlaylists);
+
+    return () => {
+        likedListeners.delete(onStoreChange);
+        document.removeEventListener('likedPlaylistsUpdated', syncLikedPlaylists);
+        window.removeEventListener('storage', syncLikedPlaylists);
+    };
+};
+
+const getLikedPlaylistsSnapshot = (): LikedPlaylistsData => {
+    if (cachedLikedData === null) {
+        cachedLikedData = readLikedPlaylistsData();
+    }
+    return cachedLikedData;
+};
+
 function FavouritePlaylists() {
-    const [likedData, setLikedData] = useState<LikedPlaylistsData>(() => readLikedPlaylistsData());
+    const likedData = useSyncExternalStore(subscribeToLikedPlaylists, getLikedPlaylistsSnapshot);
     const playlists = usePlaylistStore(state => state.playlists);
     const location = useLocation();
     const isActive = (path: string) => location.pathname.startsWith(path);
 
-    useEffect(() => {
-        const syncLikedPlaylists = () => {
-            setLikedData(readLikedPlaylistsData());
-        };
-
-        document.addEventListener('likedPlaylistsUpdated', syncLikedPlaylists);
-        window.addEventListener('storage', syncLikedPlaylists);
-
-        return () => {
-            document.removeEventListener('likedPlaylistsUpdated', syncLikedPlaylists);
-            window.removeEventListener('storage', syncLikedPlaylists);
-        };
-    }, []);
-
     // Combine db playlists and external playlists metadata
-    const allLikedPlaylists = likedData.likedIds.map(id => {
+    const allLikedPlaylists = likedData.likedIds.flatMap(id => {
         const metadataItem = likedData.metadata[id];
         if (metadataItem?.source === 'jiosaavn' || metadataItem?.routePath?.startsWith('/jiosaavn/')) {
-            return metadataItem;
+            return metadataItem ? [metadataItem] : [];
         }
 
         const dbPlaylist = playlists.find(p => p._id === id);
-        if (dbPlaylist) return dbPlaylist;
-        if (metadataItem) return metadataItem;
-        return null;
-    }).filter(Boolean) as any[];
+        if (dbPlaylist) return [dbPlaylist];
+        if (metadataItem) return [metadataItem];
+        return [];
+    }) as any[];
 
     const favs = allLikedPlaylists.slice(0, 6);
     if (favs.length === 0) return null;

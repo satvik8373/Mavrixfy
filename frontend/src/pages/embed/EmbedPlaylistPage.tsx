@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -34,16 +34,219 @@ const formatTime = (seconds: number) => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
+const loadEmbedPlaylist = async (playlistId: string): Promise<Playlist> => {
+  const response = await fetch(buildApiUrl(`/playlists/${playlistId}`), {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error ${response.status}`);
+  }
+
+  return response.json();
+};
+
+interface EmbedState {
+  playlist: Playlist | null;
+  loading: boolean;
+  selectedSongIndex: number;
+  isDragging: boolean;
+  showVolumeSlider: boolean;
+}
+
+type EmbedAction =
+  | { type: 'playlist_loaded'; playlist: Playlist | null }
+  | { type: 'selected_index'; index: number }
+  | { type: 'dragging'; value: boolean }
+  | { type: 'volume_slider'; value: boolean };
+
+const embedReducer = (state: EmbedState, action: EmbedAction): EmbedState => {
+  switch (action.type) {
+    case 'playlist_loaded':
+      return { ...state, playlist: action.playlist, loading: false };
+    case 'selected_index':
+      return { ...state, selectedSongIndex: action.index };
+    case 'dragging':
+      return { ...state, isDragging: action.value };
+    case 'volume_slider':
+      return { ...state, showVolumeSlider: action.value };
+    default:
+      return state;
+  }
+};
+
+
+interface EmbedControlsProps {
+  handlePrevious: () => void;
+  handlePlayPause: () => void;
+  handleNext: () => void;
+  selectedSongIndex: number;
+  playlistSongsCount: number;
+  displayCurrentTime: number;
+  handleVolumeToggle: () => void;
+  volumeSliderRef: React.RefObject<HTMLDivElement>;
+  handleVolumeChange: (e: React.MouseEvent<HTMLDivElement>) => void;
+  volume: number;
+  progressBarRef: React.RefObject<HTMLDivElement>;
+  handleProgressClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  handleProgressMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
+  handleProgressMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
+  progress: number;
+  dispatchEmbed: React.Dispatch<EmbedAction>;
+  playbackState: EmbedControlsState;
+}
+
+
+type EmbedControlsState = {
+  isCurrentPlaylistActive: boolean;
+  isPlaying: boolean;
+  isMuted: boolean;
+  showVolumeSlider: boolean;
+  isDragging: boolean;
+};
+
+const EmbedControls = ({  playbackState: { isCurrentPlaylistActive, isPlaying, isMuted, showVolumeSlider, isDragging },
+
+  handlePrevious,
+  handlePlayPause,
+  handleNext,
+  selectedSongIndex,
+  playlistSongsCount,
+  displayCurrentTime,
+  handleVolumeToggle,
+  volumeSliderRef,
+  handleVolumeChange,
+  volume,
+  progressBarRef,
+  handleProgressClick,
+  handleProgressMouseDown,
+  handleProgressMouseMove,
+  progress,
+  dispatchEmbed,
+}: EmbedControlsProps) => {
+  return (
+    <div className="px-4 pb-3 flex-shrink-0">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <button type="button"
+            onClick={handlePrevious}
+            disabled={selectedSongIndex === 0 && !isCurrentPlaylistActive}
+            className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <SkipBack className="h-5 w-5" fill="currentColor" />
+          </button>
+          <button type="button"
+            onClick={handlePlayPause}
+            className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
+          >
+            {isCurrentPlaylistActive && isPlaying ? (
+              <Pause className="h-5 w-5 text-black" fill="currentColor" />
+            ) : (
+              <Play className="h-5 w-5 text-black ml-0.5" fill="currentColor" />
+            )}
+          </button>
+          <button type="button"
+            onClick={handleNext}
+            disabled={selectedSongIndex === playlistSongsCount - 1 && !isCurrentPlaylistActive}
+            className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <SkipForward className="h-5 w-5" fill="currentColor" />
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-white/70 text-xs font-medium">
+            {formatTime(displayCurrentTime)}
+          </span>
+
+          <div
+            className="relative"
+            onMouseEnter={() => dispatchEmbed({ type: 'volume_slider', value: true })}
+            onMouseLeave={() => dispatchEmbed({ type: 'volume_slider', value: false })}
+          >
+            <button type="button"
+              onClick={handleVolumeToggle}
+              className="text-white/70 hover:text-white transition-colors"
+              aria-label={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? (
+                <VolumeX className="h-5 w-5" />
+              ) : (
+                <Volume2 className="h-5 w-5" />
+              )}
+            </button>
+
+            {showVolumeSlider && (
+              <div className="absolute bottom-full right-0 mb-2 p-2 bg-black/90 rounded-lg shadow-lg">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  ref={volumeSliderRef}
+                  className="relative w-8 h-24 bg-white/20 rounded-full cursor-pointer"
+                  onClick={handleVolumeChange}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 bg-white rounded-full transition-all"
+                    style={{ height: `${volume}%` }}
+                  />
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg"
+                    style={{ bottom: `${volume}%`, marginBottom: '-6px' }}
+                  />
+                </div>
+                <div className="text-white text-xs text-center mt-1">
+                  {volume}%
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+        ref={progressBarRef}
+        className="relative h-1 bg-white/20 rounded-full overflow-visible cursor-pointer group"
+        onClick={handleProgressClick}
+        onMouseDown={handleProgressMouseDown}
+        onMouseMove={handleProgressMouseMove}
+        onMouseUp={() => dispatchEmbed({ type: 'dragging', value: false })}
+        onMouseLeave={() => dispatchEmbed({ type: 'dragging', value: false })}
+      >
+        <div
+          className="absolute left-0 top-0 h-full bg-white rounded-full transition-all"
+          style={{ width: `${progress}%` }}
+        />
+        <div
+          className={cn(
+            'absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg transition-opacity',
+            'group-hover:opacity-100',
+            isDragging ? 'opacity-100 scale-125' : 'opacity-0',
+          )}
+          style={{ left: `${progress}%`, marginLeft: '-6px' }}
+        />
+      </div>
+    </div>
+  );
+};
+
 const EmbedPlaylistPage = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const theme = searchParams.get('theme') || 'green';
 
-  const [playlist, setPlaylist] = useState<Playlist | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedSongIndex, setSelectedSongIndex] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [{ playlist, loading, selectedSongIndex, isDragging, showVolumeSlider }, dispatchEmbed] = useReducer(embedReducer, {
+    playlist: null,
+    loading: true,
+    selectedSongIndex: 0,
+    isDragging: false,
+    showVolumeSlider: false,
+  });
   const lastNonZeroVolumeRef = useRef(100);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const volumeSliderRef = useRef<HTMLDivElement>(null);
@@ -73,30 +276,16 @@ const EmbedPlaylistPage = () => {
 
   useEffect(() => {
     if (activePlaylistSongIndex >= 0) {
-      setSelectedSongIndex(activePlaylistSongIndex);
+      dispatchEmbed({ type: 'selected_index', index: activePlaylistSongIndex });
     }
   }, [activePlaylistSongIndex]);
 
   useEffect(() => {
     const fetchPlaylist = async () => {
       try {
-        const response = await fetch(buildApiUrl(`/playlists/${id}`), {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-
-        const data = await response.json();
-        setPlaylist(data);
+        dispatchEmbed({ type: 'playlist_loaded', playlist: await loadEmbedPlaylist(id!) });
       } catch {
-        setPlaylist(null);
-      } finally {
-        setLoading(false);
+        dispatchEmbed({ type: 'playlist_loaded', playlist: null });
       }
     };
 
@@ -113,7 +302,7 @@ const EmbedPlaylistPage = () => {
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
-      setIsDragging(false);
+      dispatchEmbed({ type: 'dragging', value: false });
     };
 
     if (!isDragging) return;
@@ -134,7 +323,7 @@ const EmbedPlaylistPage = () => {
     if (!playlist || playlist.songs.length === 0) return;
 
     const nextIndex = Math.max(0, Math.min(index, playlist.songs.length - 1));
-    setSelectedSongIndex(nextIndex);
+    dispatchEmbed({ type: 'selected_index', index: nextIndex });
     playAlbum(playlist.songs as any, nextIndex);
   };
 
@@ -157,7 +346,7 @@ const EmbedPlaylistPage = () => {
       return;
     }
 
-    setSelectedSongIndex((prev) => Math.max(0, prev - 1));
+    dispatchEmbed({ type: 'selected_index', index: Math.max(0, selectedSongIndex - 1) });
   };
 
   const handleNext = () => {
@@ -168,7 +357,7 @@ const EmbedPlaylistPage = () => {
       return;
     }
 
-    setSelectedSongIndex((prev) => Math.min(playlist.songs.length - 1, prev + 1));
+    dispatchEmbed({ type: 'selected_index', index: Math.min(playlist.songs.length - 1, selectedSongIndex + 1) });
   };
 
   const handleSongClick = (index: number) => {
@@ -185,7 +374,7 @@ const EmbedPlaylistPage = () => {
   };
 
   const handleProgressMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    setIsDragging(true);
+    dispatchEmbed({ type: 'dragging', value: true });
     handleProgressClick(event);
   };
 
@@ -251,7 +440,7 @@ const EmbedPlaylistPage = () => {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h3 className="text-white font-bold text-lg truncate">{playlist.name}</h3>
+                <h3 className="text-white font-semibold text-lg truncate">{playlist.name}</h3>
                 <p className="text-white/70 text-sm truncate">
                   {playlist.description || `Made for ${playlist.user.fullName}`}
                 </p>
@@ -273,114 +462,37 @@ const EmbedPlaylistPage = () => {
           </div>
         </div>
 
-        <div className="px-4 pb-3 flex-shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handlePrevious}
-                disabled={selectedSongIndex === 0 && !isCurrentPlaylistActive}
-                className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <SkipBack className="h-5 w-5" fill="currentColor" />
-              </button>
-              <button
-                onClick={handlePlayPause}
-                className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
-              >
-                {isCurrentPlaylistActive && isPlaying ? (
-                  <Pause className="h-5 w-5 text-black" fill="currentColor" />
-                ) : (
-                  <Play className="h-5 w-5 text-black ml-0.5" fill="currentColor" />
-                )}
-              </button>
-              <button
-                onClick={handleNext}
-                disabled={selectedSongIndex === playlist.songs.length - 1 && !isCurrentPlaylistActive}
-                className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <SkipForward className="h-5 w-5" fill="currentColor" />
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-white/70 text-xs font-medium">
-                {formatTime(displayCurrentTime)}
-              </span>
-
-              <div
-                className="relative"
-                onMouseEnter={() => setShowVolumeSlider(true)}
-                onMouseLeave={() => setShowVolumeSlider(false)}
-              >
-                <button
-                  onClick={handleVolumeToggle}
-                  className="text-white/70 hover:text-white transition-colors"
-                  aria-label={isMuted ? 'Unmute' : 'Mute'}
-                >
-                  {isMuted ? (
-                    <VolumeX className="h-5 w-5" />
-                  ) : (
-                    <Volume2 className="h-5 w-5" />
-                  )}
-                </button>
-
-                {showVolumeSlider && (
-                  <div className="absolute bottom-full right-0 mb-2 p-2 bg-black/90 rounded-lg shadow-lg">
-                    <div
-                      ref={volumeSliderRef}
-                      className="relative w-8 h-24 bg-white/20 rounded-full cursor-pointer"
-                      onClick={handleVolumeChange}
-                    >
-                      <div
-                        className="absolute bottom-0 left-0 right-0 bg-white rounded-full transition-all"
-                        style={{ height: `${volume}%` }}
-                      />
-                      <div
-                        className="absolute left-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg"
-                        style={{ bottom: `${volume}%`, marginBottom: '-6px' }}
-                      />
-                    </div>
-                    <div className="text-white text-xs text-center mt-1">
-                      {volume}%
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div
-            ref={progressBarRef}
-            className="relative h-1 bg-white/20 rounded-full overflow-visible cursor-pointer group"
-            onClick={handleProgressClick}
-            onMouseDown={handleProgressMouseDown}
-            onMouseMove={handleProgressMouseMove}
-            onMouseUp={() => setIsDragging(false)}
-            onMouseLeave={() => setIsDragging(false)}
-          >
-            <div
-              className="absolute left-0 top-0 h-full bg-white rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
-            <div
-              className={cn(
-                'absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg transition-opacity',
-                'group-hover:opacity-100',
-                isDragging ? 'opacity-100 scale-125' : 'opacity-0',
-              )}
-              style={{ left: `${progress}%`, marginLeft: '-6px' }}
-            />
-          </div>
-        </div>
-
+        <EmbedControls
+          handlePrevious={handlePrevious}
+          handlePlayPause={handlePlayPause}
+          handleNext={handleNext}
+          selectedSongIndex={selectedSongIndex}
+          playlistSongsCount={playlist?.songs.length ?? 0}
+          displayCurrentTime={displayCurrentTime}
+          handleVolumeToggle={handleVolumeToggle}
+          volumeSliderRef={volumeSliderRef}
+          handleVolumeChange={handleVolumeChange}
+          volume={volume}
+          progressBarRef={progressBarRef}
+          handleProgressClick={handleProgressClick}
+          handleProgressMouseDown={handleProgressMouseDown}
+          handleProgressMouseMove={handleProgressMouseMove}
+          progress={progress}
+          dispatchEmbed={dispatchEmbed}
+        playbackState={{ isCurrentPlaylistActive: isCurrentPlaylistActive, isPlaying: isPlaying, isMuted: isMuted, showVolumeSlider: showVolumeSlider, isDragging: isDragging }}
+      />
         <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-hide">
           {playlist.songs.map((song, index) => {
             const isActiveSong = currentSong?._id === song._id && isCurrentPlaylistActive;
 
             return (
               <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                 key={song._id}
                 className={cn(
-                  'flex items-center gap-3 py-2 px-2 rounded hover:bg-white/10 transition-colors cursor-pointer group',
+                  'flex items-center gap-3 p-2 rounded hover:bg-white/10 transition-colors cursor-pointer group',
                   isActiveSong && 'bg-white/10',
                 )}
                 onClick={() => handleSongClick(index)}

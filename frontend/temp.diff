@@ -1,0 +1,536 @@
+diff --git a/frontend/src/features/admin/AdminDashboardPage.tsx b/frontend/src/features/admin/AdminDashboardPage.tsx
+index cbdf002..19402fc 100644
+--- a/frontend/src/features/admin/AdminDashboardPage.tsx
++++ b/frontend/src/features/admin/AdminDashboardPage.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useMemo, useState } from 'react';
++import { useEffect, useMemo, useState, useRef, useReducer } from 'react';
+ import { Link, useNavigate, useParams } from 'react-router-dom';
+ import {
+   Activity,
+@@ -98,6 +98,30 @@ const longDate = new Intl.DateTimeFormat('en-US', {
+   year: 'numeric',
+ });
+ 
++function ClientDateText({
++  value,
++  formatter,
++  className,
++  prefix = '',
++  suffix = '',
++  as: Component = 'span',
++}: {
++  value: string;
++  formatter: Intl.DateTimeFormat;
++  className?: string;
++  prefix?: string;
++  suffix?: string;
++  as?: 'p' | 'span';
++}) {
++  const [text, setText] = useState('');
++
++  useEffect(() => {
++    setText(`${prefix}${formatter.format(new Date(value))}${suffix}`);
++  }, [formatter, prefix, suffix, value]);
++
++  return <Component suppressHydrationWarning className={className}>{text}</Component>;
++}
++
+ const formatRelativeTime = (value: string) => {
+   const diff = new Date(value).getTime() - Date.now();
+   const minutes = Math.round(diff / (60 * 1000));
+@@ -252,6 +276,64 @@ const LockedSection = ({
+   );
+ };
+ 
++type SeedType = ReturnType<typeof createAdminSeed>;
++
++type DashboardDataState = {
++  songs: SeedType['songs'];
++  playlists: SeedType['playlists'];
++  artists: SeedType['artists'];
++  searchWeights: SeedType['searchWeights'];
++  moderationCases: SeedType['moderationCases'];
++  users: SeedType['users'];
++  featureFlags: SeedType['featureFlags'];
++  banners: SeedType['banners'];
++  notifications: SeedType['notifications'];
++  notes: SeedType['notes'];
++};
++
++type DashboardDataAction =
++  | { type: 'SET_SONGS'; payload: SeedType['songs'] | ((prev: SeedType['songs']) => SeedType['songs']) }
++  | { type: 'SET_PLAYLISTS'; payload: SeedType['playlists'] | ((prev: SeedType['playlists']) => SeedType['playlists']) }
++  | { type: 'SET_ARTISTS'; payload: SeedType['artists'] | ((prev: SeedType['artists']) => SeedType['artists']) }
++  | { type: 'SET_SEARCH_WEIGHTS'; payload: SeedType['searchWeights'] | ((prev: SeedType['searchWeights']) => SeedType['searchWeights']) }
++  | { type: 'SET_MODERATION_CASES'; payload: SeedType['moderationCases'] | ((prev: SeedType['moderationCases']) => SeedType['moderationCases']) }
++  | { type: 'SET_USERS'; payload: SeedType['users'] | ((prev: SeedType['users']) => SeedType['users']) }
++  | { type: 'SET_FEATURE_FLAGS'; payload: SeedType['featureFlags'] | ((prev: SeedType['featureFlags']) => SeedType['featureFlags']) }
++  | { type: 'SET_BANNERS'; payload: SeedType['banners'] | ((prev: SeedType['banners']) => SeedType['banners']) }
++  | { type: 'SET_NOTIFICATIONS'; payload: SeedType['notifications'] | ((prev: SeedType['notifications']) => SeedType['notifications']) }
++  | { type: 'SET_NOTES'; payload: SeedType['notes'] | ((prev: SeedType['notes']) => SeedType['notes']) };
++
++function dashboardDataReducer(state: DashboardDataState, action: DashboardDataAction): DashboardDataState {
++  const resolve = <T>(prev: T, payload: T | ((p: T) => T)): T => {
++    return typeof payload === 'function' ? (payload as (p: T) => T)(prev) : payload;
++  };
++
++  switch (action.type) {
++    case 'SET_SONGS':
++      return { ...state, songs: resolve(state.songs, action.payload) };
++    case 'SET_PLAYLISTS':
++      return { ...state, playlists: resolve(state.playlists, action.payload) };
++    case 'SET_ARTISTS':
++      return { ...state, artists: resolve(state.artists, action.payload) };
++    case 'SET_SEARCH_WEIGHTS':
++      return { ...state, searchWeights: resolve(state.searchWeights, action.payload) };
++    case 'SET_MODERATION_CASES':
++      return { ...state, moderationCases: resolve(state.moderationCases, action.payload) };
++    case 'SET_USERS':
++      return { ...state, users: resolve(state.users, action.payload) };
++    case 'SET_FEATURE_FLAGS':
++      return { ...state, featureFlags: resolve(state.featureFlags, action.payload) };
++    case 'SET_BANNERS':
++      return { ...state, banners: resolve(state.banners, action.payload) };
++    case 'SET_NOTIFICATIONS':
++      return { ...state, notifications: resolve(state.notifications, action.payload) };
++    case 'SET_NOTES':
++      return { ...state, notes: resolve(state.notes, action.payload) };
++    default:
++      return state;
++  }
++}
++
+ const AdminDashboardPage = () => {
+   const navigate = useNavigate();
+   const params = useParams<{ section?: string }>();
+@@ -260,13 +342,31 @@ const AdminDashboardPage = () => {
+   const session = useAdminAccess();
+   const { metrics, isLive, isRefreshing, lastSyncedAt, refresh } = useAdminMetrics(session);
+ 
+-  const [commandOpen, setCommandOpen] = useState(false);
+-  const [songView, setSongView] = useState<'catalog' | 'imports' | 'quality'>('catalog');
+-  const [rolesView, setRolesView] = useState<'permissions' | 'architecture'>('permissions');
+-  const [songSearch, setSongSearch] = useState('');
+-  const [selectedSongIds, setSelectedSongIds] = useState<string[]>([]);
+-  const [songs, setSongs] = useState(seed.songs);
+-  const [focusedSongId, setFocusedSongId] = useState(seed.songs[0]?.id ?? '');
++  const [uiView, setUiView] = useState({
++    commandOpen: false,
++    songView: 'catalog' as 'catalog' | 'imports' | 'quality',
++    rolesView: 'permissions' as 'permissions' | 'architecture',
++    previewMode: 'dark' as 'dark' | 'light',
++  });
++  const { commandOpen, songView, rolesView, previewMode } = uiView;
++  const setCommandOpen = (val: boolean) => setUiView(prev => ({ ...prev, commandOpen: val }));
++  const setSongView = (val: 'catalog' | 'imports' | 'quality') => setUiView(prev => ({ ...prev, songView: val }));
++  const setRolesView = (val: 'permissions' | 'architecture') => setUiView(prev => ({ ...prev, rolesView: val }));
++  const setPreviewMode = (val: 'dark' | 'light') => setUiView(prev => ({ ...prev, previewMode: val }));
++
++  const [songSelection, setSongSelection] = useState({
++    search: '',
++    selectedIds: [] as string[],
++    focusedId: seed.songs[0]?.id ?? '',
++  });
++  const { search: songSearch, selectedIds: selectedSongIds, focusedId: focusedSongId } = songSelection;
++  const setSongSearch = (val: string) => setSongSelection(prev => ({ ...prev, search: val }));
++  const setSelectedSongIds = (val: string[] | ((prev: string[]) => string[])) => setSongSelection(prev => ({
++    ...prev,
++    selectedIds: typeof val === 'function' ? val(prev.selectedIds) : val
++  }));
++  const setFocusedSongId = (val: string) => setSongSelection(prev => ({ ...prev, focusedId: val }));
++
+   const [songEditor, setSongEditor] = useState<SongEditorState>({
+     title: '',
+     artist: '',
+@@ -282,33 +382,70 @@ const AdminDashboardPage = () => {
+     regions: '',
+   });
+   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
+-  const [playlists, setPlaylists] = useState(seed.playlists);
+-  const [draggedPlaylistId, setDraggedPlaylistId] = useState<string | null>(null);
+-  const [artists, setArtists] = useState(seed.artists);
+-  const [searchWeights, setSearchWeights] = useState(seed.searchWeights);
+-  const [moderationCases, setModerationCases] = useState(seed.moderationCases);
+-  const [users, setUsers] = useState(seed.users);
+-  const [featureFlags, setFeatureFlags] = useState(seed.featureFlags);
+-  const [banners, setBanners] = useState(seed.banners);
+-  const [previewMode, setPreviewMode] = useState<'dark' | 'light'>('dark');
++  const draggedPlaylistIdRef = useRef<string | null>(null);
++
+   const [selectedBannerId, setSelectedBannerId] = useState(seed.banners[0]?.id ?? '');
+-  const [notifications, setNotifications] = useState(seed.notifications);
+-  const [notificationTitle, setNotificationTitle] = useState('');
+-  const [notificationSegment, setNotificationSegment] = useState('Premium listeners');
+-  const [notificationChannel, setNotificationChannel] = useState<'push' | 'in-app'>('push');
+-  const [notificationSchedule, setNotificationSchedule] = useState(
+-    new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
+-  );
+-  const [notes, setNotes] = useState(seed.notes);
++
++  const [notificationForm, setNotificationForm] = useState({
++    title: '',
++    segment: 'Premium listeners',
++    channel: 'push' as 'push' | 'in-app',
++    schedule: new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
++  });
++  const { title: notificationTitle, segment: notificationSegment, channel: notificationChannel, schedule: notificationSchedule } = notificationForm;
++  const setNotificationTitle = (val: string) => setNotificationForm(prev => ({ ...prev, title: val }));
++  const setNotificationSegment = (val: string) => setNotificationForm(prev => ({ ...prev, segment: val }));
++  const setNotificationChannel = (val: 'push' | 'in-app') => setNotificationForm(prev => ({ ...prev, channel: val }));
++  const setNotificationSchedule = (val: string | ((prev: string) => string)) => setNotificationForm(prev => ({
++    ...prev,
++    schedule: typeof val === 'function' ? val(prev.schedule) : val
++  }));
++
+   const [noteDraft, setNoteDraft] = useState('');
+ 
++  // 10 data collections managed in useReducer
++  const [dataState, dispatchData] = useReducer(dashboardDataReducer, null as any, () => ({
++    songs: seed.songs,
++    playlists: seed.playlists,
++    artists: seed.artists,
++    searchWeights: seed.searchWeights,
++    moderationCases: seed.moderationCases,
++    users: seed.users,
++    featureFlags: seed.featureFlags,
++    banners: seed.banners,
++    notifications: seed.notifications,
++    notes: seed.notes,
++  }));
++  
++  const {
++    songs,
++    playlists,
++    artists,
++    searchWeights,
++    moderationCases,
++    users,
++    featureFlags,
++    banners,
++    notifications,
++    notes,
++  } = dataState;
++
++  const setSongs = (val: SeedType['songs'] | ((prev: SeedType['songs']) => SeedType['songs'])) => dispatchData({ type: 'SET_SONGS', payload: val });
++  const setPlaylists = (val: SeedType['playlists'] | ((prev: SeedType['playlists']) => SeedType['playlists'])) => dispatchData({ type: 'SET_PLAYLISTS', payload: val });
++  const setArtists = (val: SeedType['artists'] | ((prev: SeedType['artists']) => SeedType['artists'])) => dispatchData({ type: 'SET_ARTISTS', payload: val });
++  const setSearchWeights = (val: SeedType['searchWeights'] | ((prev: SeedType['searchWeights']) => SeedType['searchWeights'])) => dispatchData({ type: 'SET_SEARCH_WEIGHTS', payload: val });
++  const setModerationCases = (val: SeedType['moderationCases'] | ((prev: SeedType['moderationCases']) => SeedType['moderationCases'])) => dispatchData({ type: 'SET_MODERATION_CASES', payload: val });
++  const setUsers = (val: SeedType['users'] | ((prev: SeedType['users']) => SeedType['users'])) => dispatchData({ type: 'SET_USERS', payload: val });
++  const setFeatureFlags = (val: SeedType['featureFlags'] | ((prev: SeedType['featureFlags']) => SeedType['featureFlags'])) => dispatchData({ type: 'SET_FEATURE_FLAGS', payload: val });
++  const setBanners = (val: SeedType['banners'] | ((prev: SeedType['banners']) => SeedType['banners'])) => dispatchData({ type: 'SET_BANNERS', payload: val });
++  const setNotifications = (val: SeedType['notifications'] | ((prev: SeedType['notifications']) => SeedType['notifications'])) => dispatchData({ type: 'SET_NOTIFICATIONS', payload: val });
++  const setNotes = (val: SeedType['notes'] | ((prev: SeedType['notes']) => SeedType['notes'])) => dispatchData({ type: 'SET_NOTES', payload: val });
++
+   const sectionGroups = useMemo(
+-    () => groupOrder
+-      .map((group) => ({
+-        group,
+-        sections: ADMIN_SECTIONS.filter((section) => section.group === group),
+-      }))
+-      .filter((entry) => entry.sections.length > 0),
++    () => groupOrder.flatMap((group) => {
++      const sections = ADMIN_SECTIONS.filter((section) => section.group === group);
++      return sections.length > 0 ? [{ group, sections }] : [];
++    }),
+     []
+   );
+ 
+@@ -517,7 +654,10 @@ const AdminDashboardPage = () => {
+             releaseDate: songEditor.releaseDate,
+             explicit: songEditor.explicit,
+             approvalState: songEditor.approvalState,
+-            regions: songEditor.regions.split(',').map((item) => item.trim()).filter(Boolean),
++            regions: songEditor.regions.split(',').flatMap((item) => {
++              const trimmed = item.trim();
++              return trimmed ? [trimmed] : [];
++            }),
+           }
+         : song
+     )));
+@@ -958,14 +1098,15 @@ const AdminDashboardPage = () => {
+ 
+               <div className="mt-5 overflow-hidden rounded-[24px] border border-white/8">
+                 <div className="grid grid-cols-[44px_1.8fr_1.2fr_0.9fr_0.9fr_0.8fr] gap-4 border-b border-white/8 bg-white/[0.04] px-4 py-3 text-xs uppercase tracking-[0.18em] text-slate-500">
+-                  <label className="flex items-center">
++                  <div className="flex items-center">
+                     <input
+                       type="checkbox"
+                       checked={filteredSongs.length > 0 && selectedSongIds.length === filteredSongs.length}
+                       onChange={toggleAllSongs}
++                      aria-label="Select all songs"
+                       className="h-4 w-4 rounded border-white/10 bg-transparent"
+                     />
+-                  </label>
++                  </div>
+                   <span>Track</span>
+                   <span>Album</span>
+                   <span>State</span>
+@@ -980,21 +1121,20 @@ const AdminDashboardPage = () => {
+                       type="button"
+                       onClick={() => setFocusedSongId(song.id)}
+                       className={cn(
+-                        'grid w-full grid-cols-[44px_1.8fr_1.2fr_0.9fr_0.9fr_0.8fr] gap-4 border-b border-white/8 px-4 py-4 text-left hover:bg-white/[0.03]',
++                        'grid w-full grid-cols-[44px_1.8fr_1.2fr_0.9fr_0.9fr_0.8fr] gap-4 border-b border-white/8 p-4 text-left hover:bg-white/[0.03]',
+                         focusedSongId === song.id && 'bg-cyan-400/[0.07]'
+                       )}
+                     >
+-                      <label
+-                        className="flex items-center"
+-                        onClick={(event) => event.stopPropagation()}
+-                      >
++                      <div className="flex items-center">
+                         <input
+                           type="checkbox"
+                           checked={selectedSongIds.includes(song.id)}
++                          onClick={(event) => event.stopPropagation()}
+                           onChange={() => toggleSongSelection(song.id)}
++                          aria-label={`Select ${song.title}`}
+                           className="h-4 w-4 rounded border-white/10 bg-transparent"
+                         />
+-                      </label>
++                      </div>
+                       <div>
+                         <div className="flex items-center gap-3">
+                           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400/20 to-emerald-300/15 text-xs font-semibold text-cyan-100">
+@@ -1012,7 +1152,7 @@ const AdminDashboardPage = () => {
+                       </div>
+                       <div>
+                         <StatusPill label={song.approvalState} className={statePillClass(song.approvalState)} />
+-                        <p className="mt-2 text-xs text-slate-500">{longDate.format(new Date(song.releaseDate))}</p>
++                        <ClientDateText as="p" value={song.releaseDate} formatter={longDate} className="mt-2 text-xs text-slate-500" />
+                       </div>
+                       <div className="text-xs text-slate-300">
+                         {song.regions.slice(0, 3).join(', ')}
+@@ -1177,7 +1317,7 @@ const AdminDashboardPage = () => {
+               <h3 className="mt-2 text-xl font-semibold text-white">Processing jobs</h3>
+               <div className="mt-5 space-y-4">
+                 {seed.importJobs.map((job) => (
+-                  <div key={job.id} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4">
++                  <div key={job.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                     <div className="flex items-center justify-between gap-4">
+                       <div>
+                         <p className="font-medium text-slate-100">{job.label}</p>
+@@ -1271,13 +1411,13 @@ const AdminDashboardPage = () => {
+             <div
+               key={playlist.id}
+               draggable
+-              onDragStart={() => setDraggedPlaylistId(playlist.id)}
++              onDragStart={() => { draggedPlaylistIdRef.current = playlist.id; }}
+               onDragOver={(event) => event.preventDefault()}
+               onDrop={() => {
+-                if (draggedPlaylistId) reorderPlaylists(draggedPlaylistId, playlist.id);
+-                setDraggedPlaylistId(null);
++                if (draggedPlaylistIdRef.current) reorderPlaylists(draggedPlaylistIdRef.current, playlist.id);
++                draggedPlaylistIdRef.current = null;
+               }}
+-              className="flex items-center gap-4 rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4"
++              className="flex items-center gap-4 rounded-[24px] border border-white/8 bg-white/[0.03] p-4"
+             >
+               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-slate-400">
+                 <GripVertical className="h-4 w-4" />
+@@ -1290,9 +1430,14 @@ const AdminDashboardPage = () => {
+                 <p className="mt-1 text-sm text-slate-400">
+                   {playlist.category} • {playlist.songCount} songs • {playlist.curator}
+                 </p>
+-                <p className="mt-2 text-xs text-slate-500">
+-                  Publish {longDateTime.format(new Date(playlist.publishAt))} • {playlist.homepageSlot}
+-                </p>
++                <ClientDateText
++                  as="p"
++                  value={playlist.publishAt}
++                  formatter={longDateTime}
++                  prefix="Publish "
++                  suffix={` • ${playlist.homepageSlot}`}
++                  className="mt-2 text-xs text-slate-500"
++                />
+               </div>
+               <div className="text-right">
+                 <p className="text-sm font-medium text-cyan-200">Trend {playlist.trendingScore}</p>
+@@ -1333,7 +1478,7 @@ const AdminDashboardPage = () => {
+           <h3 className="mt-2 text-xl font-semibold text-white">Shelf mix</h3>
+           <div className="mt-5 grid gap-3 sm:grid-cols-2">
+             {['Focus', 'Workout', 'Mood', 'Regional'].map((category) => (
+-              <div key={category} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4">
++              <div key={category} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                 <p className="font-medium text-slate-100">{category}</p>
+                 <p className="mt-2 text-sm text-slate-400">
+                   {playlists.filter((playlist) => playlist.category === category).length} active playlist surfaces
+@@ -1353,7 +1498,7 @@ const AdminDashboardPage = () => {
+         <h3 className="mt-2 text-xl font-semibold text-white">Profiles and verification</h3>
+         <div className="mt-5 space-y-3">
+           {artists.map((artist) => (
+-            <div key={artist.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4">
++            <div key={artist.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+               <div className="flex items-center justify-between gap-4">
+                 <div>
+                   <div className="flex items-center gap-3">
+@@ -1367,15 +1512,15 @@ const AdminDashboardPage = () => {
+                 <Switch checked={artist.verified} onCheckedChange={() => toggleArtistVerification(artist.id)} />
+               </div>
+               <div className="mt-4 grid gap-3 sm:grid-cols-3">
+-                <div className="rounded-2xl border border-white/8 bg-slate-950/40 px-3 py-3 text-sm text-slate-300">
++                <div className="rounded-2xl border border-white/8 bg-slate-950/40 p-3 text-sm text-slate-300">
+                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Velocity</p>
+                   <p className="mt-2">{artist.releaseVelocity}</p>
+                 </div>
+-                <div className="rounded-2xl border border-white/8 bg-slate-950/40 px-3 py-3 text-sm text-slate-300">
++                <div className="rounded-2xl border border-white/8 bg-slate-950/40 p-3 text-sm text-slate-300">
+                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Top market</p>
+                   <p className="mt-2">{artist.topMarket}</p>
+                 </div>
+-                <div className="rounded-2xl border border-white/8 bg-slate-950/40 px-3 py-3 text-sm text-slate-300">
++                <div className="rounded-2xl border border-white/8 bg-slate-950/40 p-3 text-sm text-slate-300">
+                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Discography</p>
+                   <p className="mt-2">{artist.discographyCount} items</p>
+                 </div>
+@@ -1410,7 +1555,7 @@ const AdminDashboardPage = () => {
+         <h3 className="mt-2 text-xl font-semibold text-white">Ranking weights and curated boosts</h3>
+         <div className="mt-5 space-y-5">
+           {searchWeights.map((weight) => (
+-            <div key={weight.id} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4">
++            <div key={weight.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+               <div className="flex items-center justify-between gap-4">
+                 <div>
+                   <p className="font-medium text-slate-100">{weight.label}</p>
+@@ -1431,7 +1576,7 @@ const AdminDashboardPage = () => {
+             </div>
+           ))}
+ 
+-          <div className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4">
++          <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+             <p className="font-medium text-slate-100">Curated discovery boosts</p>
+             <div className="mt-4 space-y-3">
+               {seed.curatedBoosts.map((boost) => (
+@@ -1488,7 +1633,7 @@ const AdminDashboardPage = () => {
+         <h3 className="mt-2 text-xl font-semibold text-white">Reported content review queue</h3>
+         <div className="mt-5 space-y-3">
+           {moderationCases.map((item) => (
+-            <div key={item.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4">
++            <div key={item.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+               <div className="flex flex-wrap items-center justify-between gap-3">
+                 <div>
+                   <p className="font-medium text-slate-100">{item.entity}</p>
+@@ -1576,7 +1721,7 @@ const AdminDashboardPage = () => {
+         <h3 className="mt-2 text-xl font-semibold text-white">Plan mix, reports, and account actions</h3>
+         <div className="mt-5 space-y-3">
+           {users.map((item) => (
+-            <div key={item.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4">
++            <div key={item.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+               <div className="flex flex-wrap items-center justify-between gap-4">
+                 <div>
+                   <div className="flex items-center gap-3">
+@@ -1681,7 +1826,7 @@ const AdminDashboardPage = () => {
+         <h3 className="mt-2 text-xl font-semibold text-white">Rollouts across web, Android, and iOS</h3>
+         <div className="mt-5 space-y-4">
+           {featureFlags.map((flag) => (
+-            <div key={flag.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4">
++            <div key={flag.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+               <div className="flex items-start justify-between gap-4">
+                 <div>
+                   <p className="font-medium text-slate-100">{flag.name}</p>
+@@ -1767,7 +1912,7 @@ const AdminDashboardPage = () => {
+               type="button"
+               onClick={() => setSelectedBannerId(banner.id)}
+               className={cn(
+-                'w-full rounded-[24px] border px-4 py-4 text-left',
++                'w-full rounded-[24px] border p-4 text-left',
+                 selectedBannerId === banner.id
+                   ? 'border-cyan-300/30 bg-cyan-400/10'
+                   : 'border-white/8 bg-white/[0.03]'
+@@ -1849,11 +1994,11 @@ const AdminDashboardPage = () => {
+             <div className="mt-5 space-y-3">
+               <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                 <p className="font-medium text-slate-100">Start</p>
+-                <p className="mt-2 text-sm text-slate-400">{longDateTime.format(new Date(selectedBanner.startAt))}</p>
++                <ClientDateText as="p" value={selectedBanner.startAt} formatter={longDateTime} className="mt-2 text-sm text-slate-400" />
+               </div>
+               <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                 <p className="font-medium text-slate-100">End</p>
+-                <p className="mt-2 text-sm text-slate-400">{longDateTime.format(new Date(selectedBanner.endAt))}</p>
++                <ClientDateText as="p" value={selectedBanner.endAt} formatter={longDateTime} className="mt-2 text-sm text-slate-400" />
+               </div>
+             </div>
+           )}
+@@ -1923,7 +2068,7 @@ const AdminDashboardPage = () => {
+         <h3 className="mt-2 text-xl font-semibold text-white">Recent alerts and uplift</h3>
+         <div className="mt-5 space-y-3">
+           {notifications.map((campaign) => (
+-            <div key={campaign.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4">
++            <div key={campaign.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+               <div className="flex flex-wrap items-center justify-between gap-3">
+                 <div>
+                   <p className="font-medium text-slate-100">{campaign.title}</p>
+@@ -1941,7 +2086,7 @@ const AdminDashboardPage = () => {
+                 />
+               </div>
+               <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+-                <span>{longDateTime.format(new Date(campaign.scheduledAt))}</span>
++                <ClientDateText value={campaign.scheduledAt} formatter={longDateTime} />
+                 <span>{campaign.uplift}</span>
+               </div>
+             </div>
+@@ -1981,7 +2126,7 @@ const AdminDashboardPage = () => {
+             <h3 className="mt-2 text-xl font-semibold text-white">Role matrix</h3>
+             <div className="mt-5 space-y-4">
+               {seed.roleDefinitions.map((definition) => (
+-                <div key={definition.role} className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4">
++                <div key={definition.role} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+                   <div className="flex items-center justify-between gap-3">
+                     <div>
+                       <p className="font-medium text-slate-100">{definition.label}</p>
+@@ -2051,7 +2196,7 @@ const AdminDashboardPage = () => {
+               <h3 className="mt-2 text-xl font-semibold text-white">Recommended collections</h3>
+               <div className="mt-5 space-y-3">
+                 {seed.firestoreCollections.map((collectionSpec) => (
+-                  <div key={collectionSpec.path} className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4">
++                  <div key={collectionSpec.path} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
+                     <p className="font-medium text-slate-100">{collectionSpec.path}</p>
+                     <p className="mt-2 text-sm text-slate-400">{collectionSpec.purpose}</p>
+                     <div className="mt-3 flex flex-wrap gap-2">
+@@ -2121,7 +2266,7 @@ const AdminDashboardPage = () => {
+     </div>
+   );
+ 
+-  const renderSectionContent = () => {
++  const getSectionContent = () => {
+     if (!currentSectionAllowed) {
+       return <LockedSection permission={currentSectionConfig.permission} onNavigate={navigateToSection} />;
+     }
+@@ -2144,7 +2289,7 @@ const AdminDashboardPage = () => {
+     <div className="admin-shell">
+       <div className="relative z-10 flex min-h-screen">
+         <aside className="admin-panel hidden w-[290px] shrink-0 flex-col border-r border-white/8 lg:flex">
+-          <div className="border-b border-white/8 px-6 py-6">
++          <div className="border-b border-white/8 p-6">
+             <div className="flex items-center gap-3">
+               <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-gradient-to-br from-cyan-400/20 to-emerald-300/15 text-cyan-100">
+                 <Disc3 className="h-5 w-5" />
+@@ -2171,7 +2316,7 @@ const AdminDashboardPage = () => {
+                         data-active={currentSection === section.key}
+                         onClick={() => navigateToSection(section.key)}
+                         className={cn(
+-                          'admin-nav-item flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-left',
++                          'admin-nav-item flex w-full items-center gap-3 rounded-2xl border border-transparent p-3 text-left',
+                           !allowed && 'opacity-55'
+                         )}
+                       >
+@@ -2192,7 +2337,7 @@ const AdminDashboardPage = () => {
+         </aside>
+ 
+         <div className="flex min-h-screen flex-1 flex-col">
+-          <header className="admin-panel sticky top-0 z-20 border-b border-white/8 px-4 py-4 md:px-6 xl:px-8">
++          <header className="admin-panel sticky top-0 z-20 border-b border-white/8 p-4 md:px-6 xl:px-8">
+             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+               <div className="flex flex-wrap items-center gap-3">
+                 <button type="button" onClick={() => setCommandOpen(true)} className={quietButtonClass}>
+@@ -2274,7 +2419,7 @@ const AdminDashboardPage = () => {
+           </header>
+ 
+           <main className="admin-scroll flex-1 overflow-y-auto px-4 pb-8 pt-6 md:px-6 xl:px-8">
+-            {renderSectionContent()}
++            {getSectionContent()}
+           </main>
+         </div>
+       </div>

@@ -19,8 +19,15 @@ export const getHighestQualityDownload = (
     return null;
   }
 
+  const qualityMap = new Map<string, JioSaavnDownloadUrl>();
+  for (const entry of downloadUrl) {
+    if (entry?.quality) {
+      qualityMap.set(entry.quality, entry);
+    }
+  }
+
   for (const quality of JIOSAAVN_AUDIO_QUALITY_ORDER) {
-    const matched = downloadUrl.find((entry) => entry?.quality === quality);
+    const matched = qualityMap.get(quality);
     if (matched) {
       return matched;
     }

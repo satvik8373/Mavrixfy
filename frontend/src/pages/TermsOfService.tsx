@@ -5,7 +5,7 @@ const TermsOfService = () => {
   return (
     <div className="min-h-screen bg-[#121212] text-white">
       <div className="max-w-4xl mx-auto px-6 py-8 pb-24">
-        <h1 className="text-3xl font-bold mb-8">Terms of Service</h1>
+        <h1 className="text-3xl font-semibold mb-8">Terms of Service</h1>
         
         <div className="space-y-6 text-gray-300">
             <section>
@@ -102,7 +102,7 @@ const TermsOfService = () => {
             </section>
 
             <div className="mt-8 pt-6 border-t border-gray-700">
-              <p className="text-sm text-gray-400">
+              <p suppressHydrationWarning className="text-sm text-gray-400">
                 Last updated: {new Date().toLocaleDateString()}
               </p>
             </div>

@@ -18,7 +18,7 @@ const EqualizerVisualization = ({ settings }: { settings: any }) => {
     const minDb = -12;
     const maxDb = 12;
 
-    const [dragging, setDragging] = React.useState<string | null>(null);
+    const draggingRef = React.useRef<string | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
     // Calculate Y position percentage (0 to 1) for a dB value
@@ -38,26 +38,26 @@ const EqualizerVisualization = ({ settings }: { settings: any }) => {
 
     const handlePointerDown = (freq: string, e: React.PointerEvent) => {
         e.preventDefault();
-        setDragging(freq);
+        draggingRef.current = freq;
         (e.target as Element).setPointerCapture(e.pointerId);
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
-        if (!dragging || !containerRef.current) return;
+        if (!draggingRef.current || !containerRef.current) return;
 
         const rect = containerRef.current.getBoundingClientRect();
         const y = e.clientY - rect.top;
         const percentage = y / rect.height;
         const newDb = getDbFromPercentage(percentage);
 
-        if (newDb !== settings.equalizer[dragging]) {
-            settings.setEqualizerBand(dragging, newDb);
+        if (newDb !== settings.equalizer[draggingRef.current]) {
+            settings.setEqualizerBand(draggingRef.current, newDb);
         }
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
-        if (dragging) {
-            setDragging(null);
+        if (draggingRef.current) {
+            draggingRef.current = null;
             (e.target as Element).releasePointerCapture(e.pointerId);
         }
     };
@@ -198,13 +198,13 @@ const SettingsPage = () => {
         <div className="flex-1 bg-[#121212] min-h-screen pb-20 overflow-y-auto">
             <div className="max-w-[800px] mx-auto px-6 py-8">
                 <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-3xl font-bold text-white">Settings</h1>
+                    <h1 className="text-3xl font-semibold text-white">Settings</h1>
                     <Search className="w-5 h-5 text-white cursor-pointer" onClick={() => navigate('/search')} />
                 </div>
 
                 {/* Account */}
                 <div className="space-y-4 mb-8">
-                    <h2 className="text-white font-bold text-base">Account</h2>
+                    <h2 className="text-white font-semibold text-base">Account</h2>
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-[#b3b3b3]">Edit login methods</p>
                         <Button
@@ -252,7 +252,7 @@ const SettingsPage = () => {
                 {/* Audio Quality */}
                 <div className="space-y-6 mb-8">
                     <div className="flex items-center gap-3">
-                        <h2 className="text-white font-bold text-base">Audio quality</h2>
+                        <h2 className="text-white font-semibold text-base">Audio quality</h2>
                         {settings.streamingQuality !== 'Automatic' && (
                             <div className="px-2 py-0.5 bg-[#1ed760]/20 text-[#1ed760] text-xs rounded-full font-medium">
                                 {settings.streamingQuality}
@@ -280,7 +280,7 @@ const SettingsPage = () => {
 
                 {/* Your Library */}
                 <div className="space-y-6 mb-8">
-                    <h2 className="text-white font-bold text-base">Your Library</h2>
+                    <h2 className="text-white font-semibold text-base">Your Library</h2>
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-[#b3b3b3]">Use compact library layout</p>
                         <Switch
@@ -299,14 +299,14 @@ const SettingsPage = () => {
                 <div className="space-y-6 sm:space-y-8 mb-8">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <h2 className="text-white font-bold text-base">Playback</h2>
+                            <h2 className="text-white font-semibold text-base">Playback</h2>
                             {Object.values(settings.equalizer).some(val => val !== 0) && (
                                 <div className="w-2 h-2 bg-[#1ed760] rounded-full animate-pulse" title="Equalizer active" />
                             )}
                         </div>
 
                         <div className="flex items-center justify-between w-full sm:w-auto gap-4">
-                            <button
+                            <button type="button"
                                 onClick={settings.resetEqualizer}
                                 className="text-xs font-medium text-[#b3b3b3] hover:text-white uppercase tracking-wider transition-colors ml-auto sm:ml-0"
                             >
@@ -319,21 +319,26 @@ const SettingsPage = () => {
                         {/* Horizontal Presets List - Compact & Wrapped on Mobile */}
                         <div className="flex justify-center w-full mb-6 sm:mb-8">
                             <div className="flex flex-wrap justify-center gap-2 max-w-full">
-                                <button
+                                <button type="button"
                                     onClick={() => settings.resetEqualizer()}
                                     className="px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors whitespace-nowrap"
                                 >
                                     Flat
                                 </button>
-                                {Object.keys(EQUALIZER_PRESETS).filter(k => k !== 'Flat').map((preset) => (
-                                    <button
-                                        key={preset}
-                                        onClick={() => settings.setEqualizerPreset(preset)}
-                                        className="px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-[#2a2a2a] hover:bg-[#3a3a3a] text-[#b3b3b3] hover:text-white transition-colors whitespace-nowrap border border-transparent hover:border-white/10"
-                                    >
-                                        {preset}
-                                    </button>
-                                ))}
+                                {Object.keys(EQUALIZER_PRESETS).reduce<React.ReactNode[]>((acc, preset) => {
+                                    if (preset !== 'Flat') {
+                                        acc.push(
+                                            <button type="button"
+                                                key={preset}
+                                                onClick={() => settings.setEqualizerPreset(preset)}
+                                                className="px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-[#2a2a2a] hover:bg-[#3a3a3a] text-[#b3b3b3] hover:text-white transition-colors whitespace-nowrap border border-transparent hover:border-white/10"
+                                            >
+                                                {preset}
+                                            </button>
+                                        );
+                                    }
+                                    return acc;
+                                }, [])}
                             </div>
                         </div>
 

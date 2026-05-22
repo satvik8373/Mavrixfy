@@ -5,16 +5,22 @@ interface EqualiserAnimationProps {
   className?: string;
 }
 
+interface BarState {
+  id: number;
+  height: number;
+}
+
 const EqualiserAnimation = ({ className }: EqualiserAnimationProps) => {
-  const [bars, setBars] = useState<number[]>([]);
+  const [bars, setBars] = useState<BarState[]>([
+    { id: 1, height: 50 },
+    { id: 2, height: 75 },
+    { id: 3, height: 60 },
+  ]);
   
   useEffect(() => {
-    // Initialize with random values
-    setBars(Array.from({ length: 3 }, () => Math.random() * 100));
-    
     // Update animation every 250ms
     const interval = setInterval(() => {
-      setBars(Array.from({ length: 3 }, () => Math.random() * 100));
+      setBars(prev => prev.map(bar => ({ ...bar, height: Math.random() * 100 })));
     }, 250);
     
     return () => clearInterval(interval);
@@ -22,11 +28,11 @@ const EqualiserAnimation = ({ className }: EqualiserAnimationProps) => {
   
   return (
     <div className={cn('flex items-center justify-center space-x-0.5', className)}>
-      {bars.map((height, i) => (
+      {bars.map((bar) => (
         <div 
-          key={i} 
+          key={bar.id} 
           className="w-0.5 bg-green-500" 
-          style={{ height: `${Math.max(40, height)}%` }}
+          style={{ height: `${Math.max(40, bar.height)}%` }}
         ></div>
       ))}
     </div>

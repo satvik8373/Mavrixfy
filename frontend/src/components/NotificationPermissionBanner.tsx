@@ -54,13 +54,13 @@ export function NotificationPermissionBanner() {
         <p className="text-xs text-white/60">Get notified about new music and updates</p>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button
+        <button type="button"
           onClick={handleEnable}
           className="rounded-full bg-green-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-green-400 transition-colors"
         >
           Enable
         </button>
-        <button onClick={handleDismiss} className="rounded-full p-1 text-white/40 hover:text-white/70 transition-colors">
+        <button type="button" onClick={handleDismiss} className="rounded-full p-1 text-white/40 hover:text-white/70 transition-colors">
           <X className="h-4 w-4" />
         </button>
       </div>

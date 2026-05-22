@@ -287,8 +287,10 @@ export default function FloatingLines({
 
   useEffect(() => {
     if (!containerRef.current || renderFallback) return;
+    const triggerFallback = () => setRenderFallback(true);
+
     if (!supportsWebGL()) {
-      setRenderFallback(true);
+      triggerFallback();
       return;
     }
 
@@ -301,13 +303,12 @@ export default function FloatingLines({
       renderer = new WebGLRenderer({ antialias: true, alpha: false });
     } catch (error) {
       console.warn('[FloatingLines] WebGL initialization failed:', error);
-      setRenderFallback(true);
+      triggerFallback();
       return;
     }
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.domElement.style.width = '100%';
-    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.cssText = 'width: 100%; height: 100%;';
     containerRef.current.appendChild(renderer.domElement);
 
     const uniforms = {
@@ -388,7 +389,7 @@ export default function FloatingLines({
         renderer.setSize(width, height, false);
       } catch (error) {
         console.warn('[FloatingLines] Resize failed, switching to fallback:', error);
-        setRenderFallback(true);
+        triggerFallback();
         return;
       }
       const canvasWidth = renderer.domElement.width;
@@ -451,7 +452,7 @@ export default function FloatingLines({
         renderer.render(scene, camera);
       } catch (error) {
         console.warn('[FloatingLines] Render failed, switching to fallback:', error);
-        setRenderFallback(true);
+        triggerFallback();
         return;
       }
       raf = requestAnimationFrame(renderLoop);

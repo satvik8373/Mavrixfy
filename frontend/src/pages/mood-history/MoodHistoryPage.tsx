@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchMoodHistory, finalizePlaylist, MoodHistoryPlaylist } from '@/services/moodHistoryService';
 import { usePlayerStore } from '@/stores/usePlayerStore';
@@ -48,9 +48,12 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
 
     const playSongs = useCallback((e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
-        const songs = session.songs
-            .filter(s => s.audioUrl)
-            .map(s => ({ ...s, albumId: null, createdAt: '', updatedAt: '' }));
+        const songs = session.songs.reduce<any[]>((acc, s) => {
+            if (s.audioUrl) {
+                acc.push({ ...s, albumId: null, createdAt: '', updatedAt: '' });
+            }
+            return acc;
+        }, []);
         if (!songs.length) { toast.error('No playable songs in this session'); return; }
         playAlbum(songs, 0);
         setIsPlaying(true);
@@ -64,29 +67,35 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
 
     const playSpecificSong = (e: React.MouseEvent, idx: number) => {
         e.stopPropagation();
-        const songs = session.songs
-            .filter(s => s.audioUrl)
-            .map(s => ({ ...s, albumId: null, createdAt: '', updatedAt: '' }));
+        const songs = session.songs.reduce<any[]>((acc, s) => {
+            if (s.audioUrl) {
+                acc.push({ ...s, albumId: null, createdAt: '', updatedAt: '' });
+            }
+            return acc;
+        }, []);
         if (songs.length > 0) {
             playAlbum(songs, idx);
             setIsPlaying(true);
         }
     };
 
-    const thumbs = Array.from(new Set(session.songs.map(s => s.imageUrl).filter(Boolean))).slice(0, 4);
+    const thumbs = Array.from(new Set(session.songs.flatMap(s => s.imageUrl ? [s.imageUrl] : []))).slice(0, 4);
 
     return (
         <div className="group flex flex-col w-full hover:bg-white/5 rounded-md transition-colors duration-200 overflow-hidden mb-1 sm:mb-2 border border-transparent hover:border-white/5">
             {/* Sleek Row Header */}
             <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                 className="flex items-center p-3 sm:px-4 sm:py-3 gap-3 sm:gap-4 cursor-pointer relative"
                 onClick={() => setExpanded(!expanded)}
             >
                 {/* Custom Thumbnail grid */}
                 <div className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 grid grid-cols-2 gap-[1px] rounded overflow-hidden bg-[#282828] shadow-[0_4px_10px_rgba(0,0,0,0.3)]">
                     {thumbs.length > 0 ? (
-                        thumbs.map((url, i) => (
-                            <img key={i} src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        thumbs.map((url) => (
+                            <img key={url} src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
                         ))
                     ) : (
                         <div className="col-span-2 row-span-2 flex items-center justify-center">
@@ -97,7 +106,7 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
 
                 {/* Details */}
                 <div className="flex-1 min-w-0 pr-2 sm:pr-4">
-                    <h3 className="text-sm sm:text-base font-bold text-white truncate mb-1 md:mb-0.5 group-hover:text-white transition-colors">
+                    <h3 className="text-sm sm:text-base font-semibold text-white truncate mb-1 md:mb-0.5 group-hover:text-white transition-colors">
                         {session.name || 'Your AI Session'}
                     </h3>
 
@@ -118,7 +127,7 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
                 {/* Hover Actions */}
                 <div className="flex items-center gap-2 sm:gap-4 right-4 z-10 flex-shrink-0">
                     {!isF ? (
-                        <button
+                        <button type="button"
                             onClick={handleFinalizeClick}
                             disabled={finalizing === session._id}
                             className="hidden sm:flex text-xs font-bold uppercase tracking-widest border border-[#727272] text-white hover:border-white hover:scale-105 px-4 py-1.5 rounded-full transition-all"
@@ -131,7 +140,7 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
                         </span>
                     )}
 
-                    <button
+                    <button type="button"
                         onClick={playSongs}
                         className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:translate-y-2 sm:group-hover:translate-y-0 transition-all duration-300 w-10 h-10 sm:w-12 sm:h-12 bg-[#1ed760] rounded-full flex items-center justify-center text-black hover:scale-105 hover:bg-[#1fdf64] shadow-lg focus:opacity-100"
                         title="Play"
@@ -139,7 +148,7 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
                         <Play className="w-5 h-5 sm:w-6 sm:h-6 ml-1 fill-black" />
                     </button>
 
-                    <button
+                    <button type="button"
                         className="hidden sm:flex text-[#b3b3b3] hover:text-white transition-colors p-1"
                         title={expanded ? "Collapse" : "Expand"}
                     >
@@ -154,7 +163,7 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
                     {/* Mobile Finalize button */}
                     <div className="sm:hidden px-4 py-3 flex justify-between items-center border-b border-white/5">
                         {!isF ? (
-                            <button
+                            <button type="button"
                                 onClick={handleFinalizeClick}
                                 disabled={finalizing === session._id}
                                 className="text-[10px] font-bold uppercase tracking-widest border border-[#727272] text-white hover:border-white px-3 py-1.5 rounded-full transition-all"
@@ -178,7 +187,7 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
 
                     <div className="flex flex-col mt-2 max-h-96 overflow-y-auto custom-scrollbar">
                         {session.songs.map((song, idx) => (
-                            <div key={song._id || idx} className="grid grid-cols-[1fr_auto] sm:grid-cols-[auto_1fr_auto] gap-3 sm:gap-4 px-4 sm:px-6 py-2 sm:py-2.5 hover:bg-white/10 group/track transition-colors rounded-sm mx-0 sm:mx-2 cursor-pointer" onClick={(e) => playSpecificSong(e, idx)}>
+                            <div role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} key={song._id || idx} className="grid grid-cols-[1fr_auto] sm:grid-cols-[auto_1fr_auto] gap-3 sm:gap-4 px-4 sm:px-6 py-2 sm:py-2.5 hover:bg-white/10 group/track transition-colors rounded-sm mx-0 sm:mx-2 cursor-pointer" onClick={(e) => playSpecificSong(e, idx)}>
                                 <div className="hidden sm:flex w-8 items-center justify-center text-[#b3b3b3] text-sm group-hover/track:text-white">
                                     <span className="group-hover/track:hidden">{idx + 1}</span>
                                     <Play className="w-4 h-4 hidden group-hover/track:block fill-white" />
@@ -212,14 +221,62 @@ const SessionCard = ({ session, onFinalize, finalizing }: SessionCardProps) => {
     );
 };
 
+interface MoodHistoryState {
+    sessions: MoodHistoryPlaylist[];
+    loading: boolean;
+    finalizing: string | null;
+    hasMore: boolean;
+    totalCount: number;
+}
+
+type MoodHistoryAction =
+    | { type: 'loading'; page: number }
+    | { type: 'loaded'; page: number; playlists: MoodHistoryPlaylist[]; hasMore: boolean; totalCount: number }
+    | { type: 'failed' }
+    | { type: 'finalizing'; id: string | null }
+    | { type: 'finalized'; id: string; name?: string };
+
+const moodHistoryReducer = (state: MoodHistoryState, action: MoodHistoryAction): MoodHistoryState => {
+    switch (action.type) {
+        case 'loading':
+            return action.page === 1 ? { ...state, loading: true } : state;
+        case 'loaded':
+            return {
+                ...state,
+                sessions: action.page === 1 ? action.playlists : [...state.sessions, ...action.playlists],
+                totalCount: action.page === 1 ? action.totalCount : state.totalCount,
+                hasMore: action.hasMore,
+                loading: false,
+            };
+        case 'failed':
+            return { ...state, loading: false };
+        case 'finalizing':
+            return { ...state, finalizing: action.id };
+        case 'finalized':
+            return {
+                ...state,
+                sessions: state.sessions.map((session) => (
+                    session._id === action.id
+                        ? { ...session, isFinalized: true, name: action.name || session.name }
+                        : session
+                )),
+                finalizing: null,
+            };
+        default:
+            return state;
+    }
+};
+
 export default function MoodHistoryPage() {
-    const [sessions, setSessions] = useState<MoodHistoryPlaylist[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [finalizing, setFinalizing] = useState<string | null>(null);
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [totalCount, setTotalCount] = useState(0);
+    const [{ sessions, loading, finalizing, hasMore, totalCount }, dispatchHistory] = useReducer(moodHistoryReducer, {
+        sessions: [],
+        loading: true,
+        finalizing: null,
+        hasMore: true,
+        totalCount: 0,
+    });
+    const pageRef = useRef(1);
+    const loadingMoreRef = useRef(false);
 
     const { isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
@@ -227,24 +284,25 @@ export default function MoodHistoryPage() {
 
     const loadSessions = useCallback(async (p: number) => {
         try {
-            if (p === 1) setLoading(true);
-            else setLoadingMore(true);
-
-            const res = await fetchMoodHistory(p, 10);
-
             if (p === 1) {
-                setSessions(res.playlists);
-                setTotalCount(res.total ?? res.playlists.length);
+                dispatchHistory({ type: 'loading', page: p });
             } else {
-                setSessions(prev => [...prev, ...res.playlists]);
+                loadingMoreRef.current = true;
             }
 
-            setHasMore(res.hasMore);
+            const res = await fetchMoodHistory(p, 10);
+            dispatchHistory({
+                type: 'loaded',
+                page: p,
+                playlists: res.playlists,
+                hasMore: res.hasMore,
+                totalCount: res.total ?? res.playlists.length,
+            });
         } catch (err) {
             toast.error('Failed to load history');
+            dispatchHistory({ type: 'failed' });
         } finally {
-            setLoading(false);
-            setLoadingMore(false);
+            loadingMoreRef.current = false;
         }
     }, []);
 
@@ -255,24 +313,24 @@ export default function MoodHistoryPage() {
     }, [authLoading, isAuthenticated, navigate, loadSessions]);
 
     useEffect(() => {
-        if (inView && hasMore && !loading && !loadingMore) {
-            const nextPage = page + 1;
-            setPage(nextPage);
-            loadSessions(nextPage);
+        if (inView && hasMore && !loading && !loadingMoreRef.current) {
+            pageRef.current += 1;
+            loadSessions(pageRef.current);
         }
-    }, [inView, hasMore, loading, loadingMore, page, loadSessions]);
+    }, [inView, hasMore, loading, loadSessions]);
 
     const handleFinalize = useCallback(async (id: string) => {
-        setFinalizing(id);
+        dispatchHistory({ type: 'finalizing', id });
         try {
             const res = await finalizePlaylist(id);
             toast.success(res.message || 'Added to your Library!');
-            setSessions(prev => prev.map(s => s._id === id ? { ...s, isFinalized: true, name: res.playlist?.name || s.name } : s));
+            dispatchHistory({ type: 'finalized', id, name: res.playlist?.name });
         } catch (err: any) {
             const msg = err?.response?.data?.message || 'Failed to finalize. Please try again.';
             toast.error(msg);
+            dispatchHistory({ type: 'finalizing', id: null });
         } finally {
-            setFinalizing(null);
+            dispatchHistory({ type: 'finalizing', id: null });
         }
     }, []);
 
@@ -284,10 +342,10 @@ export default function MoodHistoryPage() {
             {/* Background Ambient Gradient */}
             <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-b from-[#251029]/80 to-[#121212] pointer-events-none" />
 
-            <div className="relative z-10 px-4 sm:px-6 py-6 sm:py-8 w-full">
+            <div className="relative z-10 px-4 sm:p-6 sm:py-8 w-full">
                 {/* Header Back Nav */}
                 <div className="flex items-center mb-6 sm:mb-8">
-                    <button
+                    <button type="button"
                         onClick={() => navigate(-1)}
                         className="w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 flex items-center justify-center transition-colors shadow-md"
                     >
@@ -305,7 +363,7 @@ export default function MoodHistoryPage() {
                         </div>
                         <div className="flex flex-col gap-2 sm:gap-3 text-center sm:text-left">
                             <span className="hidden sm:block text-sm font-bold uppercase tracking-[0.15em] text-white/90">History</span>
-                            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tighter shadow-black/20 text-shadow-sm leading-tight sm:pb-1">
+                            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-semibold text-white tracking-tighter shadow-black/20 text-shadow-sm leading-tight sm:pb-1">
                                 Mood History
                             </h1>
                             <div className="text-xs sm:text-sm font-medium text-white/70 flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 mt-1 sm:mt-2 flex-wrap px-2 sm:px-0">
@@ -319,7 +377,7 @@ export default function MoodHistoryPage() {
                         </div>
                     </div>
 
-                    <button
+                    <button type="button"
                         onClick={() => navigate('/mood-playlist')}
                         className="flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 active:scale-95 rounded-full text-black font-bold uppercase tracking-widest text-xs sm:text-sm transition-all shadow-[0_6px_12px_rgba(30,215,96,0.2)] mx-auto lg:mx-0 w-full lg:w-auto max-w-xs lg:max-w-none"
                     >
@@ -336,9 +394,9 @@ export default function MoodHistoryPage() {
                 ) : sessions.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 sm:py-24 gap-4 text-center">
                         <History className="w-12 h-12 sm:w-20 sm:h-20 text-[#b3b3b3] mb-2 sm:mb-4" />
-                        <h2 className="text-xl sm:text-3xl font-bold">No mood sessions yet</h2>
+                        <h2 className="text-xl sm:text-3xl font-semibold">No mood sessions yet</h2>
                         <p className="text-sm sm:text-base text-[#b3b3b3] max-w-sm mx-auto px-4">Generate your first AI mood playlist and it will appear here along with your listening history.</p>
-                        <button
+                        <button type="button"
                             onClick={() => navigate('/mood-playlist')}
                             className="mt-6 px-8 py-3 bg-white text-black rounded-full font-bold hover:scale-105 transition-transform"
                         >

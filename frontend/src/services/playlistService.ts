@@ -54,7 +54,7 @@ export const convertFirestorePlaylistToPlaylist = (data: any): Playlist => {
   const firestorePlaylist = castFirestorePlaylist(data);
   
   // Safely extract createdBy information with fallbacks
-  const createdBy = firestorePlaylist.createdBy || {};
+  const createdBy = (firestorePlaylist.createdBy || {}) as any;
   const createdById = createdBy.id || createdBy._id || createdBy.uid || 'unknown';
   const createdByUid = createdBy.uid || createdBy.id || createdBy._id || 'unknown';
   const createdByName = createdBy.fullName || createdBy.displayName || createdBy.name || 'Unknown User';

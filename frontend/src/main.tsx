@@ -1,6 +1,6 @@
-// React import kept for JSX runtime compatibility in some tooling
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { LazyMotion, domAnimation } from 'framer-motion'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary.tsx'
 import './index.css'
@@ -9,6 +9,12 @@ import './styles/custom-utilities.css'
 import { configureWebViewAuth, getEnvironmentInfo } from './utils/webViewDetection'
 
 // Initialize Google Analytics and GTM
+declare global {
+  interface Window {
+    gtag: any;
+    dataLayer: any[];
+  }
+}
 function initializeAnalytics() {
   try {
     // Google Tag Manager initialization
@@ -199,6 +205,8 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
-    <App />
+    <LazyMotion features={domAnimation} strict>
+      <App />
+    </LazyMotion>
   </ErrorBoundary>,
 )

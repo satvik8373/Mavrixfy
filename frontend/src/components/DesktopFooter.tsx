@@ -11,7 +11,7 @@ const DesktopFooter = () => {
                     <div className="flex gap-16 lg:gap-24">
                         {/* Company Column */}
                         <div className="flex flex-col gap-4">
-                            <h3 className="font-bold text-white text-base">Company</h3>
+                            <h3 className="font-semibold text-white text-base">Company</h3>
                             <ul className="flex flex-col gap-2">
                                 <li><Link to="/about" className="text-[#a7a7a7] hover:text-white hover:underline">About</Link></li>
                                 <li><a href="mailto:careers@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Jobs</a></li>
@@ -21,7 +21,7 @@ const DesktopFooter = () => {
 
                         {/* Communities Column */}
                         <div className="flex flex-col gap-4">
-                            <h3 className="font-bold text-white text-base">Communities</h3>
+                            <h3 className="font-semibold text-white text-base">Communities</h3>
                             <ul className="flex flex-col gap-2">
                                 <li><a href="mailto:artists@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">For Artists</a></li>
                                 <li><a href="mailto:developers@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Developers</a></li>
@@ -32,7 +32,7 @@ const DesktopFooter = () => {
 
                         {/* Useful Links Column */}
                         <div className="flex flex-col gap-4">
-                            <h3 className="font-bold text-white text-base">Useful links</h3>
+                            <h3 className="font-semibold text-white text-base">Useful links</h3>
                             <ul className="flex flex-col gap-2">
                                 <li><a href="mailto:support@mavrixfy.site" className="text-[#a7a7a7] hover:text-white hover:underline">Support</a></li>
                                 <li><Link to="/home" className="text-[#a7a7a7] hover:text-white hover:underline">Free Mobile App</Link></li>
@@ -42,7 +42,7 @@ const DesktopFooter = () => {
 
                         {/* Mavrixfy Plans Column */}
                         <div className="flex flex-col gap-4">
-                            <h3 className="font-bold text-white text-base">Mavrixfy Plans</h3>
+                            <h3 className="font-semibold text-white text-base">Mavrixfy Plans</h3>
                             <ul className="flex flex-col gap-2">
                                 <li><Link to="/home" className="text-[#a7a7a7] hover:text-white hover:underline">Free Streaming</Link></li>
                                 <li><Link to="/library" className="text-[#a7a7a7] hover:text-white hover:underline">Personal Library</Link></li>
@@ -95,7 +95,7 @@ const DesktopFooter = () => {
                         <Link to="/about" className="text-[#a7a7a7] hover:text-white">Accessibility</Link>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                        <div className="text-[#a7a7a7]">
+                        <div className="text-[#a7a7a7]" suppressHydrationWarning>
                             © {new Date().getFullYear()} Mavrixfy. All rights reserved.
                         </div>
                         <div className="text-[#a7a7a7] text-xs">

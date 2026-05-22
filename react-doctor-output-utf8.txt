@@ -1,0 +1,453 @@
+﻿[1mreact-doctor[22m [2mv0.2.1[22m
+
+[2mScanning E:\Mavrixfy\Mavrixfy-web\frontend...[22m
+
+
+
+  [33mΓÜá[39m [33mreact-doctor/no-cascading-set-state           [39m [90m├ù30[39m
+[90m      3 setState calls in a single useEffect ΓÇö consider using useReducer or deriving state[39m
+[90m      ΓåÆ Combine into useReducer: `const [state, dispatch] = useReducer(reducer, initialState)`[39m
+[90m      src/components/ui/horizontal-scroll.tsx:32[39m
+[90m      src/components/LikeButton.tsx:25[39m
+[90m      src/components/jiosaavn/JioSaavnPlaylistsSection.tsx:150[39m
+[90m      src/components/ui/FloatingLines.tsx:288[39m
+[90m      src/components/PWAInstallPrompt.tsx:26[39m
+[90m      src/components/ShareSheet.tsx:45[39m
+[90m      src/components/MoodPlaylistGenerator.tsx:103[39m
+[90m      src/components/MoodPlaylistGenerator.tsx:140[39m
+[90m      src/components/OptimizedImage.tsx:85[39m
+[90m      src/App.tsx:336[39m
+[90m      src/components/HeaderLogin.tsx:33[39m
+[90m      src/components/EqualiserAnimation.tsx:11[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:337[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:51[39m
+[90m      src/pages/VerifyEmail.tsx:47[39m
+[90m      src/layout/components/LeftSidebar.tsx:118[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:90[39m
+[90m      src/pages/search/SearchPage.tsx:93[39m
+[90m      src/pages/home/HomePage.tsx:121[39m
+[90m      src/hooks/useOptimizedAvatar.ts:15[39m
+[90m      src/layout/MainLayout.tsx:98[39m
+[90m      src/pages/album/AlbumPage.tsx:23[39m
+[90m      src/pages/song/SongPage.tsx:67[39m
+[90m      src/pages/auth-callback/AuthCallbackPage.tsx:18[39m
+[90m      src/features/admin/hooks/useAdminAccess.ts:85[39m
+[90m      src/layout/components/PlaybackControls.tsx:346[39m
+[90m      src/layout/components/PlaybackControls.tsx:1053[39m
+[90m      src/layout/components/PlaybackControls.tsx:1065[39m
+[90m      src/contexts/AuthContext.tsx:220[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:80[39m
+
+  [33mΓÜá[39m [33mreact-doctor/js-combine-iterations            [39m [90m├ù27[39m
+[90m      .filter().map() iterates the array twice ΓÇö combine into a single loop with .reduce() or for...of[39m
+[90m      ΓåÆ Combine `.map().filter()` (or similar chains) into a single pass with `.reduce()` or a `for...of` loop to avoid iterating the array twice[39m
+[90m      api/music/search/index.js:40[39m
+[90m      api/music/hollywood/index.js:29[39m
+[90m      api/music/smart-search/index.js:21[39m
+[90m      api/music/smart-search/index.js:21[39m
+[90m      api/music/hindi/index.js:29[39m
+[90m      api/music/bollywood/index.js:29[39m
+[90m      api/music/trending/all.js:29[39m
+[90m      src/services/catalogService.ts:25[39m
+[90m      src/pages/SettingsPage.tsx:328[39m
+[90m      src/lib/resolveArtist.ts:17[39m
+[90m      src/lib/resolveArtist.ts:26[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:306[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:227[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:250[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:51[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:67[39m
+[90m      src/pages/search/SearchPage.tsx:141[39m
+[90m      src/services/smartSearchService.ts:64[39m
+[90m      src/services/smartSearchService.ts:64[39m
+[90m      src/services/smartSearchService.ts:128[39m
+[90m      src/services/jioSaavnService.ts:472[39m
+[90m      src/services/jioSaavnService.ts:769[39m
+[90m      src/services/jioSaavnService.ts:769[39m
+[90m      src/services/jioSaavnService.ts:1364[39m
+[90m      src/services/jioSaavnService.ts:1401[39m
+[90m      src/layout/components/PlaybackControls.tsx:267[39m
+[90m      src/utils/cleanupOfflineData.ts:128[39m
+
+  [33mΓÜá[39m [33mreact-doctor/rerender-state-only-in-handlers  [39m [90m├ù23[39m
+[90m      useState "isLoading" is updated but never read in the component's return ΓÇö use useRef so updates don't trigger re-renders[39m
+[90m      ΓåÆ Replace useState with useRef when the value is only mutated and never read in render ΓÇö `ref.current = ...` updates without re-rendering the component[39m
+[90m      src/components/playlist/AddToPlaylistDialog.tsx:19[39m
+[90m      src/components/playlist/SwipeCard.tsx:10[39m
+[90m      src/components/playlist/SwipeCard.tsx:11[39m
+[90m      src/components/playlist/SwipeCard.tsx:12[39m
+[90m      src/components/playlist/SwipeCard.tsx:13[39m
+[90m      src/components/PingPongScroll.tsx:26[39m
+[90m      src/components/PWAInstallPrompt.tsx:22[39m
+[90m      src/components/SongDetailsView.tsx:68[39m
+[90m      src/components/QueueDrawer.tsx:32[39m
+[90m      src/components/QueueDrawer.tsx:33[39m
+[90m      src/components/ShuffleButton.tsx:65[39m
+[90m      src/pages/LibraryPage.tsx:107[39m
+[90m      src/pages/SettingsPage.tsx:21[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:250[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:251[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:256[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:295[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:286[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:32[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:222[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:224[39m
+[90m      src/pages/VerifyEmail.tsx:26[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:47[39m
+
+  [33mΓÜá[39m [33mreact-doctor/prefer-useReducer                [39m [90m├ù23[39m
+[90m      Component "EmbedPlaylistModal" has 5 useState calls ΓÇö consider useReducer for related state[39m
+[90m      ΓåÆ Group related state: `const [state, dispatch] = useReducer(reducer, { field1, field2, ... })`[39m
+[90m      src/components/EmbedPlaylistModal.tsx:35[39m
+[90m      src/components/playlist/SongFileUploader.tsx:122[39m
+[90m      src/components/playlist/CreatePlaylistDialog.tsx:27[39m
+[90m      src/components/MoodPlaylistGenerator.tsx:42[39m
+[90m      src/components/AudioOutputPicker.tsx:56[39m
+[90m      src/components/SongDetailsView.tsx:37[39m
+[90m      src/components/QueueDrawer.tsx:18[39m
+[90m      src/components/ui/CustomScrollbar.tsx:16[39m
+[90m      src/components/playlist/EditPlaylistDialog.tsx:42[39m
+[90m      src/pages/LibraryPage.tsx:98[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:237[39m
+[90m      src/pages/Register.tsx:35[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:255[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:21[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:218[39m
+[90m      src/pages/VerifyEmail.tsx:20[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:364[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:35[39m
+[90m      src/pages/home/HomePage.tsx:68[39m
+[90m      src/layout/components/MobileNav.tsx:100[39m
+[90m      src/layout/components/PlaybackControls.tsx:238[39m
+[90m      src/pages/Login.tsx:35[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:37[39m
+
+  [33mΓÜá[39m [33mreact-doctor/js-batch-dom-css                 [39m [90m├ù21[39m
+[90m      Multiple sequential element.style assignments ΓÇö batch with cssText or classList for fewer reflows[39m
+[90m      ΓåÆ Batch DOM/CSS reads and writes ΓÇö interleaving them inside a loop causes layout thrashing. Read first, then write[39m
+[90m      src/components/ui/FloatingLines.tsx:310[39m
+[90m      src/components/EmbedPlaylistModal.tsx:84[39m
+[90m      src/components/EmbedPlaylistModal.tsx:85[39m
+[90m      src/components/SongDetailsView.tsx:372[39m
+[90m      src/components/SongDetailsView.tsx:373[39m
+[90m      src/components/SongDetailsView.tsx:374[39m
+[90m      src/components/SongDetailsView.tsx:465[39m
+[90m      src/components/SongDetailsView.tsx:466[39m
+[90m      src/components/SongDetailsView.tsx:524[39m
+[90m      src/components/SongDetailsView.tsx:525[39m
+[90m      src/components/SongDetailsView.tsx:582[39m
+[90m      src/components/SongDetailsView.tsx:583[39m
+[90m      src/components/SongDetailsView.tsx:592[39m
+[90m      src/components/SongDetailsView.tsx:600[39m
+[90m      src/components/SongDetailsView.tsx:601[39m
+[90m      src/components/SongDetailsView.tsx:603[39m
+[90m      src/services/performanceService.ts:180[39m
+[90m      src/layout/MainLayout.tsx:198[39m
+[90m      src/layout/MainLayout.tsx:229[39m
+[90m      src/lib/shareCard/platformHandlers.ts:176[39m
+[90m      src/lib/shareCard/platformHandlers.ts:177[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-array-index-as-key            [39m [90m├ù20[39m
+[90m      Array index "i" used as key ΓÇö causes bugs when list is reordered or filtered[39m
+[90m      ΓåÆ Use a stable unique identifier: `key={item.id}` or `key={item.slug}` ΓÇö index keys break on reorder/filter[39m
+[90m      src/components/PromotionsBanner.tsx:209[39m
+[90m      src/components/playlist/SongFileUploader.tsx:1024[39m
+[90m      src/components/playlist/SongFileUploader.tsx:1080[39m
+[90m      src/components/QueuePanel.tsx:203[39m
+[90m      src/components/SongDetailsView.tsx:1006[39m
+[90m      src/components/SearchSuggestions.tsx:82[39m
+[90m      src/components/SearchSuggestions.tsx:104[39m
+[90m      src/components/SearchSuggestions.tsx:124[39m
+[90m      src/components/SearchSkeleton.tsx:10[39m
+[90m      src/components/QueueDrawer.tsx:229[39m
+[90m      src/components/EqualiserAnimation.tsx:27[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:1348[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:276[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:92[39m
+[90m      src/pages/VerifyEmail.tsx:270[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:860[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:978[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:996[39m
+[90m      src/pages/search/SearchPage.tsx:288[39m
+[90m      src/layout/components/PlaybackControls.tsx:1480[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-giant-component               [39m [90m├ù19[39m
+[90m      Component "SongFileUploader" is 1088 lines ΓÇö consider breaking it into smaller focused components[39m
+[90m      ΓåÆ Extract logical sections into focused components: `<UserHeader />`, `<UserActions />`, etc.[39m
+[90m      src/components/playlist/SongFileUploader.tsx:122[39m
+[90m      src/components/MoodPlaylistGenerator.tsx:40[39m
+[90m      src/components/SongDetailsView.tsx:37[39m
+[90m      src/components/playlist/EditPlaylistDialog.tsx:42[39m
+[90m      src/components/Header.tsx:27[39m
+[90m      src/pages/liked-songs/LikedSongsPage.tsx:221[39m
+[90m      src/pages/LibraryPage.tsx:98[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:237[39m
+[90m      src/pages/Register.tsx:35[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:255[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:21[39m
+[90m      src/pages/VerifyEmail.tsx:20[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:364[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:35[39m
+[90m      src/pages/home/HomePage.tsx:68[39m
+[90m      src/layout/components/MobileNav.tsx:100[39m
+[90m      src/layout/components/PlaybackControls.tsx:238[39m
+[90m      src/pages/Login.tsx:35[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:37[39m
+
+  [33mΓÜá[39m [33mreact-doctor/js-set-map-lookups               [39m [90m├ù15[39m
+[90m      array.includes() in a loop is O(n) per call ΓÇö convert to a Set for O(1) lookups[39m
+[90m      ΓåÆ Use a `Set` or `Map` for repeated membership tests / keyed lookups ΓÇö `Array.includes`/`find` is O(n) per call[39m
+[90m      public/firebase-messaging-sw.js:38[39m
+[90m      src/components/playlist/SongFileUploader.tsx:245[39m
+[90m      src/services/requestManager.ts:268[39m
+[90m      src/services/requestManager.ts:283[39m
+[90m      src/services/jioSaavnService.ts:1268[39m
+[90m      src/services/jioSaavnService.ts:1268[39m
+[90m      src/services/jioSaavnService.ts:1269[39m
+[90m      src/services/jioSaavnService.ts:1269[39m
+[90m      src/services/jioSaavnService.ts:1270[39m
+[90m      src/services/jioSaavnService.ts:1270[39m
+[90m      src/services/hybridAuthService.ts:359[39m
+[90m      src/services/hybridAuthService.ts:359[39m
+[90m      src/services/hybridAuthService.ts:367[39m
+[90m      src/services/hybridAuthService.ts:367[39m
+[90m      src/utils/cleanupOfflineData.ts:55[39m
+
+  [33mΓÜá[39m [33mreact-doctor/rendering-hydration-mismatch-time[39m [90m├ù14[39m
+[90m      Math.random() reachable from JSX renders differently on server vs client ΓÇö wrap in useEffect+useState (client-only) or add suppressHydrationWarning to the parent if intentional[39m
+[90m      ΓåÆ Wrap dynamic time/random values in useEffect+useState (client-only) or add suppressHydrationWarning to the parent if intentional[39m
+[90m      src/components/PromotionsBanner.tsx:104[39m
+[90m      src/components/PromotionsBanner.tsx:106[39m
+[90m      src/components/DesktopFooter.tsx:99[39m
+[90m      src/components/Footer.tsx:67[39m
+[90m      src/pages/TermsOfService.tsx:106[39m
+[90m      src/pages/ProfilePage.tsx:203[39m
+[90m      src/pages/PrivacyPolicy.tsx:98[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:1145[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1018[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1297[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1855[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1859[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:1947[39m
+[90m      src/pages/About.tsx:134[39m
+
+  [33mΓÜá[39m [33mreact-doctor/async-await-in-loop              [39m [90m├ù13[39m
+[90m      await inside a forΓÇªof loop runs the calls sequentially ΓÇö for independent operations, collect them and use `await Promise.all(items.map(...))` to run them concurrently[39m
+[90m      ΓåÆ Collect the items and use `await Promise.all(items.map(...))` to run independent operations concurrently[39m
+[90m      src/components/playlist/SongFileUploader.tsx:380[39m
+[90m      src/components/playlist/SongFileUploader.tsx:570[39m
+[90m      src/services/likedSongsService.ts:463[39m
+[90m      src/services/requestManager.ts:124[39m
+[90m      src/services/jioSaavnService.ts:580[39m
+[90m      src/services/jioSaavnService.ts:616[39m
+[90m      src/services/jioSaavnService.ts:913[39m
+[90m      src/services/jioSaavnService.ts:956[39m
+[90m      src/services/jioSaavnService.ts:1005[39m
+[90m      src/services/jioSaavnService.ts:1017[39m
+[90m      src/services/jioSaavnService.ts:1178[39m
+[90m      src/services/jioSaavnService.ts:1253[39m
+[90m      src/utils/audioCache.ts:118[39m
+
+  [33mΓÜá[39m [33mreact-doctor/js-cache-storage                 [39m [90m├ù13[39m
+[90m      localStorage.getItem("recently_played:v1") called multiple times ΓÇö cache the result in a variable[39m
+[90m      ΓåÆ Cache repeated `localStorage`/`sessionStorage` reads in a local variable ΓÇö each access serializes/deserializes[39m
+[90m      src/components/RecentlyPlayed.tsx:53[39m
+[90m      src/components/SearchSuggestions.tsx:144[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:372[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:379[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:419[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:443[39m
+[90m      src/pages/Register.tsx:51[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:187[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:193[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:230[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:231[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:242[39m
+[90m      src/utils/shareTracking.ts:76[39m
+
+  [33mΓÜá[39m [33mreact-doctor/js-flatmap-filter                [39m [90m├ù11[39m
+[90m      .map().filter(Boolean) iterates twice ΓÇö use .flatMap() to transform and filter in a single pass[39m
+[90m      ΓåÆ Use `.flatMap(item => condition ? [value] : [])` ΓÇö transforms and filters in a single pass instead of creating an intermediate array[39m
+[90m      api/music/smart-search/index.js:68[39m
+[90m      src/pages/LibraryPage.tsx:637[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:520[39m
+[90m      src/pages/mood-history/MoodHistoryPage.tsx:76[39m
+[90m      src/layout/components/LeftSidebar.tsx:405[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:110[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:175[39m
+[90m      src/pages/liked-songs/LikedSongsImportPage.tsx:291[39m
+[90m      src/stores/useMusicStore.ts:94[39m
+[90m      src/layout/components/PlaybackControls.tsx:275[39m
+[90m      src/layout/components/PlaybackControls.tsx:283[39m
+
+  [33mΓÜá[39m [33mreact-doctor/rendering-usetransition-loading  [39m [90m├ù8[39m
+[90m      useState for "isLoading" ΓÇö if this guards a state transition (not an async fetch), consider useTransition instead[39m
+[90m      ΓåÆ Replace with `const [isPending, startTransition] = useTransition()` ΓÇö avoids a re-render for the loading state[39m
+[90m      src/components/playlist/AddToPlaylistDialog.tsx:19[39m
+[90m      src/components/jiosaavn/JioSaavnPlaylistsSection.tsx:143[39m
+[90m      src/components/playlist/CreatePlaylistDialog.tsx:33[39m
+[90m      src/pages/ProfilePage.tsx:15[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistsPage.tsx:26[39m
+[90m      src/pages/jiosaavn/JioSaavnPlaylistPage.tsx:42[39m
+[90m      src/hooks/useOptimizedAvatar.ts:12[39m
+[90m      src/pages/album/AlbumPage.tsx:20[39m
+
+  [33mΓÜá[39m [33mreact-doctor/use-lazy-motion                  [39m [90m├ù6[39m
+[90m      Import "m" with LazyMotion instead of "motion" ΓÇö saves ~30kb in bundle size[39m
+[90m      ΓåÆ Use `import { LazyMotion, m } from "framer-motion"` with `domAnimation` features ΓÇö saves ~30kb[39m
+[90m      src/components/EmbedPlaylistModal.tsx:6[39m
+[90m      src/components/ui/ElasticSlider.tsx:1[39m
+[90m      src/components/EmbedPreview.tsx:4[39m
+[90m      src/components/AudioOutputPicker.tsx:2[39m
+[90m      src/components/SongDetailsView.tsx:2[39m
+[90m      src/components/QueueDrawer.tsx:2[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-render-in-render              [39m [90m├ù6[39m
+[90m      Inline render function "renderOutputIcon()" ΓÇö extract to a separate component for proper reconciliation[39m
+[90m      ΓåÆ Extract to a named component: `const ListItem = ({ item }) => <div>{item.name}</div>`[39m
+[90m      src/components/AudioOutputPicker.tsx:294[39m
+[90m      src/components/skeletons/HomeSkeleton.tsx:92[39m
+[90m      src/components/skeletons/HomeSkeleton.tsx:109[39m
+[90m      src/components/skeletons/HomeSkeleton.tsx:124[39m
+[90m      src/features/admin/AdminDashboardPage.tsx:2280[39m
+[90m      src/layout/components/MobileNav.tsx:544[39m
+
+  [33mΓÜá[39m [33mreact-doctor/client-passive-event-listeners   [39m [90m├ù6[39m
+[90m      "touchmove" listener without { passive: true } ΓÇö blocks scrolling performance. Only add { passive: true } if the handler does NOT call event.preventDefault() (passive listeners silently ignore preventDefault())[39m
+[90m      ΓåÆ Add `{ passive: true }` as the third argument: `addEventListener('scroll', handler, { passive: true })`. Only do this if the handler does NOT call `event.preventDefault()` ΓÇö passive listeners silently ignore `preventDefault()`, which breaks features like pull-to-refresh suppression, custom gestures, and nested-scroll containment.[39m
+[90m      src/components/SongDetailsView.tsx:337[39m
+[90m      src/components/SongDetailsView.tsx:338[39m
+[90m      src/components/QueueDrawer.tsx:98[39m
+[90m      src/components/ui/CustomScrollbar.tsx:114[39m
+[90m      src/pages/LibraryPage.tsx:168[39m
+[90m      src/pages/playlist/PlaylistPage.tsx:322[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-generic-handler-names         [39m [90m├ù4[39m
+[90m      Non-descriptive handler name "handleClick" ΓÇö name should describe what it does, not when it runs[39m
+[90m      ΓåÆ Rename to describe the action: e.g. `handleSubmit` ΓåÆ `saveUserProfile`, `handleClick` ΓåÆ `toggleSidebar`[39m
+[90m      src/components/LikeButton.tsx:67[39m
+[90m      src/components/playlist/SwipeCard.tsx:100[39m
+[90m      src/components/MoodPlaylistGenerator.tsx:471[39m
+[90m      src/components/ShuffleButton.tsx:123[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-effect-chain                  [39m [90m├ù4[39m
+[90m      useEffect reacts to "currentSrc" which is set by another useEffect ΓÇö chains of effects add an extra render per link and become rigid as code evolves. Compute what you can during render and write all related state inside the event handler that originally fires the chain[39m
+[90m      ΓåÆ Compute as much as possible during render (e.g. `const isGameOver = round > 5`) and write all related state inside the event handler that originally fires the chain. Each effect link adds an extra render and makes the code rigid as requirements evolve[39m
+[90m      src/components/OptimizedImage.tsx:135[39m
+[90m      src/components/OptimizedImage.tsx:142[39m
+[90m      src/pages/LibraryPage.tsx:134[39m
+[90m      src/pages/LibraryPage.tsx:141[39m
+
+  [33mΓÜá[39m [33mreact-doctor/advanced-event-handler-refs      [39m [90m├ù4[39m
+[90m      useEffect re-subscribes a "handleMouseMove" listener every time the handler identity changes ΓÇö store the handler in a ref and have the listener read `handlerRef.current()`, then drop it from the deps[39m
+[90m      ΓåÆ Store the handler in a ref and have the listener read `handlerRef.current()` ΓÇö the subscription stays put while the latest handler is always called[39m
+[90m      src/components/SongDetailsView.tsx:691[39m
+[90m      src/components/QueueDrawer.tsx:93[39m
+[90m      src/components/ui/CustomScrollbar.tsx:109[39m
+[90m      src/components/ui/CustomScrollbar.tsx:128[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-inline-prop-on-memo-component [39m [90m├ù4[39m
+[90m      JSX attribute values should not contain functions created in the same scope ΓÇö SongRow is wrapped in memo(), so new references cause unnecessary re-renders[39m
+[90m      ΓåÆ Hoist the inline `() => ...` / `[]` / `{}` to a stable reference (useMemo, useCallback, or module scope) so the memoized child doesn't re-render every parent render[39m
+[90m      src/pages/liked-songs/LikedSongsPage.tsx:524[39m
+[90m      src/pages/liked-songs/LikedSongsPage.tsx:526[39m
+[90m      src/pages/liked-songs/LikedSongsPage.tsx:527[39m
+[90m      src/layout/MainLayout.tsx:292[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-derived-state-effect          [39m [90m├ù3[39m
+[90m      Derived state in useEffect ΓÇö wrap the calculation in useMemo([deps]) (or compute it directly during render if it isn't expensive)[39m
+[90m      ΓåÆ For derived state, compute inline: `const x = fn(dep)`. For state resets on prop change, use a key prop: `<Component key={prop} />`. See https://react.dev/learn/you-might-not-need-an-effect[39m
+[90m      src/components/SongMenu.tsx:36[39m
+[90m      src/components/ui/ElasticSlider.tsx:66[39m
+[90m      src/components/OptimizedImage.tsx:85[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-permanent-will-change         [39m [90m├ù3[39m
+[90m      Permanent will-change wastes GPU memory ΓÇö apply only during active animation and remove after[39m
+[90m      ΓåÆ Add will-change on animation start (`onMouseEnter`) and remove on end (`onAnimationEnd`). Permanent promotion wastes GPU memory and can degrade performance[39m
+[90m      src/components/SplashScreen.tsx:16[39m
+[90m      src/pages/home/HomePage.tsx:328[39m
+[90m      src/layout/components/PlaybackControls.tsx:1246[39m
+
+  [33mΓÜá[39m [33mreact-doctor/js-tosorted-immutable            [39m [90m├ù3[39m
+[90m      [...array].sort() ΓÇö use array.toSorted() for immutable sorting (ES2023)[39m
+[90m      ΓåÆ Use `array.toSorted()` (ES2023) instead of `[...array].sort()` for immutable sorting without the spread allocation[39m
+[90m      src/services/jioSaavnService.ts:1080[39m
+[90m      src/services/jioSaavnService.ts:1350[39m
+[90m      src/services/firestore.ts:261[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-derived-useState              [39m [90m├ù2[39m
+[90m      useState initialized from prop "defaultValue" ΓÇö if this value should stay in sync with the prop, derive it during render instead[39m
+[90m      ΓåÆ Remove useState and compute the value inline: `const value = transform(propName)`[39m
+[90m      src/components/ui/ElasticSlider.tsx:59[39m
+[90m      src/components/OptimizedImage.tsx:40[39m
+
+  [33mΓÜá[39m [33mjsx-a11y/heading-has-content                  [39m [90m├ù2[39m
+[90m      Headings must have content and the content must be accessible by a screen reader.[39m
+[90m      ΓåÆ Provide screen reader accessible content when using heading elements.[39m
+[90m      src/components/ui/alert.tsx:31[39m
+[90m      src/components/ui/card.tsx:25[39m
+
+  [33mΓÜá[39m [33mreact-doctor/js-index-maps                    [39m [90m├ù2[39m
+[90m      array.find() in a loop is O(n*m) ΓÇö build a Map for O(1) lookups[39m
+[90m      ΓåÆ Build an index `Map` once outside the loop instead of `array.find(...)` inside it[39m
+[90m      api/music/utils.js:29[39m
+[90m      src/utils/jiosaavnAudio.ts:23[39m
+
+  [33mΓÜá[39m [33mreact-doctor/prefer-use-sync-external-store   [39m [90m├ù2[39m
+[90m      useState "likedData" is synchronized with an external store via useEffect ΓÇö replace this useState + useEffect pair with useSyncExternalStore(subscribe, getSnapshot) to avoid tearing during concurrent renders[39m
+[90m      ΓåÆ Replace the `useState(getSnapshot())` + `useEffect(() => store.subscribe(() => setSnapshot(getSnapshot())))` pair with `useSyncExternalStore(store.subscribe, getSnapshot)`. The hook handles tearing during concurrent renders and SSR snapshots; the manual subscribe pattern doesn't[39m
+[90m      src/pages/LibraryPage.tsx:618[39m
+[90m      src/layout/components/LeftSidebar.tsx:385[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-inline-exhaustive-style       [39m [90m├ù2[39m
+[90m      11 inline style properties ΓÇö extract to a CSS class, CSS module, or styled component for maintainability and reuse[39m
+[90m      ΓåÆ Move styles to a CSS class, CSS module, Tailwind utilities, or a styled component ΓÇö inline objects with many properties hurt readability and create new references every render[39m
+[90m      src/components/ui/touch-ripple.tsx:103[39m
+[90m      src/layout/components/MobileNav.tsx:597[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-mirror-prop-effect[39m
+[90m      useState "value" is mirrored from prop "defaultValue" via this effect ΓÇö delete both the useState and the effect, and read the prop directly in render[39m
+[90m      ΓåÆ Delete both the `useState` and the `useEffect` and read the prop directly during render. Mirroring a prop into local state forces a stale first render before the effect re-syncs[39m
+[90m      src/components/ui/ElasticSlider.tsx:66[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-layout-transition-inline[39m
+[90m      Transitioning layout property "width" causes layout thrash every frame ΓÇö use transform and opacity instead[39m
+[90m      ΓåÆ Use `transform` and `opacity` for transitions ΓÇö they run on the compositor thread. For height animations, use `grid-template-rows: 0fr ΓåÆ 1fr`[39m
+[90m      src/components/ui/progress.tsx:22[39m
+
+  [33mΓÜá[39m [33mreact-doctor/async-defer-await[39m
+[90m      await blocks the function before an early-return that doesn't use the awaited value ΓÇö move the await after the synchronous guard so the skip path stays fast[39m
+[90m      ΓåÆ Move the `await` after the synchronous early-return guard so the skip path stays fast[39m
+[90m      api/cloudinary/upload.js:49[39m
+
+  [33mΓÜá[39m [33mreact-doctor/rendering-hydration-no-flicker[39m
+[90m      useEffect(setState, []) on mount causes a flash ΓÇö consider useSyncExternalStore or suppressHydrationWarning[39m
+[90m      ΓåÆ Use `useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)` or add `suppressHydrationWarning` to the element[39m
+[90m      src/pages/home/HomePage.tsx:93[39m
+
+  [33mΓÜá[39m [33mreact-doctor/no-fetch-in-effect[39m
+[90m      fetch() inside useEffect ΓÇö use a data fetching library (react-query, SWR) or server component[39m
+[90m      ΓåÆ Use `useQuery()` from @tanstack/react-query, `useSWR()`, or fetch in a Server Component instead[39m
+[90m      src/pages/embed/EmbedPlaylistPage.tsx:80[39m
+
+  [33mΓÜá[39m [33mreact-doctor/js-min-max-loop[39m
+[90m      array.sort()[0] for min/max ΓÇö use Math.min(...array) instead (O(n) vs O(n log n))[39m
+[90m      ΓåÆ Use `Math.min(...array)` / `Math.max(...array)` instead of sorting just to read the first or last element[39m
+[90m      src/utils/imageCache.ts:125[39m
+
+  [32mΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ[39m  [32m75[39m [2m/ 100[22m [32mGreat[39m
+  [32mΓöé Γùá Γùá Γöé[39m  [32mΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê[39m[2mΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæΓûæ[22m
+  [32mΓöé  Γû╜  Γöé[39m  React Doctor [2m(www.react.doctor)[22m
+  [32mΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ[39m
+
+  [33m296 issues[39m [2macross 94/220 files  in 1.8s[22m
+[90m  Full diagnostics written to C:\Users\ASUS\AppData\Local\Temp\react-doctor-14efaccc-d97e-42fc-920b-b759ed8eda1e[39m
+
+  [1mΓåÆ Share your results:[22m [36mhttps://www.react.doctor/share?p=mavrixfy-frontend&s=75&w=296&f=94[39m
+
+  [1mΓåÆ Catch these issues on every PR:[22m [36mhttps://react.review[39m
+  [2mReact Review is a GitHub App built on React Doctor, and it runs on each pull request,[22m
+  [2mposts new issues as inline review comments, and tracks your team's score over time.[22m
+
+

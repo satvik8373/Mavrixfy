@@ -6,59 +6,59 @@ interface HomeSkeletonProps {
   type?: 'card' | 'list' | 'grid' | 'recently-played';
 }
 
+// Professional shimmer animation
+const SHIMMER_CLASS = `
+  relative overflow-hidden
+  before:absolute before:inset-0
+  before:-translate-x-full
+  before:animate-[shimmer_2s_infinite]
+  before:bg-gradient-to-r
+  before:from-transparent before:via-white/10 before:to-transparent
+`;
+
+// Standalone component for recently played card skeleton
+const RecentlyPlayedCard: React.FC = () => (
+  <div className={`bg-white/5 rounded-lg p-3 backdrop-blur-sm ${SHIMMER_CLASS}`}>
+    <div className="flex items-center gap-x-3">
+      <div className="w-12 h-12 bg-white/10 rounded-lg flex-shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 bg-white/10 rounded-full w-3/4" />
+        <div className="h-2 bg-white/8 rounded-full w-1/2" />
+      </div>
+    </div>
+  </div>
+);
+
+// Standalone component for card skeleton
+const Card: React.FC = () => (
+  <div className={`bg-white/5 rounded-xl p-4 backdrop-blur-sm ${SHIMMER_CLASS}`}>
+    <div className="space-y-3">
+      <div className="w-full aspect-square bg-white/10 rounded-lg" />
+      <div className="space-y-2">
+        <div className="h-3 bg-white/10 rounded-full w-4/5" />
+        <div className="h-2 bg-white/8 rounded-full w-3/5" />
+      </div>
+    </div>
+  </div>
+);
+
+// Standalone component for list skeleton
+const List: React.FC = () => (
+  <div className={`flex items-center space-x-4 p-3 bg-white/5 rounded-lg backdrop-blur-sm ${SHIMMER_CLASS}`}>
+    <div className="w-14 h-14 bg-white/10 rounded-lg flex-shrink-0" />
+    <div className="flex-1 space-y-2">
+      <div className="h-4 bg-white/10 rounded-full w-4/5" />
+      <div className="h-3 bg-white/8 rounded-full w-3/5" />
+      <div className="h-2 bg-white/6 rounded-full w-2/5" />
+    </div>
+  </div>
+);
+
 const HomeSkeleton: React.FC<HomeSkeletonProps> = ({
   className = '',
   count = 3,
   type = 'card'
 }) => {
-  // Professional shimmer animation
-  const shimmerClass = `
-    relative overflow-hidden
-    before:absolute before:inset-0
-    before:-translate-x-full
-    before:animate-[shimmer_2s_infinite]
-    before:bg-gradient-to-r
-    before:from-transparent before:via-white/10 before:to-transparent
-  `;
-
-  // Recently played skeleton
-  const renderRecentlyPlayedCard = () => (
-    <div className={`bg-white/5 rounded-lg p-3 backdrop-blur-sm ${shimmerClass}`}>
-      <div className="flex items-center space-x-3">
-        <div className="w-12 h-12 bg-white/10 rounded-lg flex-shrink-0" />
-        <div className="flex-1 space-y-2">
-          <div className="h-3 bg-white/10 rounded-full w-3/4" />
-          <div className="h-2 bg-white/8 rounded-full w-1/2" />
-        </div>
-      </div>
-    </div>
-  );
-
-  // Professional card skeleton
-  const renderCard = () => (
-    <div className={`bg-white/5 rounded-xl p-4 backdrop-blur-sm ${shimmerClass}`}>
-      <div className="space-y-3">
-        <div className="w-full aspect-square bg-white/10 rounded-lg" />
-        <div className="space-y-2">
-          <div className="h-3 bg-white/10 rounded-full w-4/5" />
-          <div className="h-2 bg-white/8 rounded-full w-3/5" />
-        </div>
-      </div>
-    </div>
-  );
-
-  // Professional list skeleton
-  const renderList = () => (
-    <div className={`flex items-center space-x-4 p-3 bg-white/5 rounded-lg backdrop-blur-sm ${shimmerClass}`}>
-      <div className="w-14 h-14 bg-white/10 rounded-lg flex-shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="h-4 bg-white/10 rounded-full w-4/5" />
-        <div className="h-3 bg-white/8 rounded-full w-3/5" />
-        <div className="h-2 bg-white/6 rounded-full w-2/5" />
-      </div>
-    </div>
-  );
-
   // Grid skeleton
   if (type === 'grid') {
     return (
@@ -66,7 +66,7 @@ const HomeSkeleton: React.FC<HomeSkeletonProps> = ({
         {Array.from({ length: Math.min(count, 8) }).map((_, index) => (
           <div 
             key={index} 
-            className={`bg-white/5 rounded-xl p-3 backdrop-blur-sm ${shimmerClass}`}
+            className={`bg-white/5 rounded-xl p-3 backdrop-blur-sm ${SHIMMER_CLASS}`}
             style={{ animationDelay: `${index * 0.1}s` }}
           >
             <div className="space-y-3">
@@ -89,7 +89,7 @@ const HomeSkeleton: React.FC<HomeSkeletonProps> = ({
             key={index}
             style={{ animationDelay: `${index * 0.1}s` }}
           >
-            {renderRecentlyPlayedCard()}
+            <RecentlyPlayedCard />
           </div>
         ))}
       </div>
@@ -106,7 +106,7 @@ const HomeSkeleton: React.FC<HomeSkeletonProps> = ({
             className="flex-shrink-0 w-32"
             style={{ animationDelay: `${index * 0.1}s` }}
           >
-            {renderCard()}
+            <Card />
           </div>
         ))}
       </div>
@@ -121,7 +121,7 @@ const HomeSkeleton: React.FC<HomeSkeletonProps> = ({
           key={index}
           style={{ animationDelay: `${index * 0.1}s` }}
         >
-          {renderList()}
+          <List />
         </div>
       ))}
     </div>

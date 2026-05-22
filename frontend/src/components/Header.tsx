@@ -8,7 +8,7 @@ import { useMusicStore } from '@/stores/useMusicStore';
 import SearchSuggestions from '@/components/SearchSuggestions';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOut } from '@/services/hybridAuthService';
-import { debounce } from 'lodash';
+import debounce from 'lodash/debounce';
 import { WhatsNewDialog } from './WhatsNewDialog';
 import { useOptimizedAvatar } from '@/hooks/useOptimizedAvatar';
 
@@ -24,6 +24,162 @@ interface HeaderProps {
   className?: string;
 }
 
+
+interface HeaderActionsProps {
+  user: any;
+  authLoading: boolean;
+  isAndroid: boolean;
+  avatarUrl: string | null;
+  avatarLoading: boolean;
+  setShowWhatsNew: (val: boolean) => void;
+  handleLogout: () => void;
+  navigate: (path: string) => void;
+}
+
+const HeaderActions = ({
+  user,
+  authLoading,
+  isAndroid,
+  avatarUrl,
+  avatarLoading,
+  setShowWhatsNew,
+  handleLogout,
+  navigate,
+}: HeaderActionsProps) => {
+  if (authLoading) return null;
+
+  if (!user) {
+    return (
+      <Button
+        className="rounded-full bg-white hover:bg-white/90 hover:scale-105 text-black font-bold px-8 text-sm transition-all"
+        style={{ height: '48px' }}
+        onClick={() => navigate('/login')}
+      >
+        Log in
+      </Button>
+    );
+  }
+
+  return (
+    <>
+      {/* APK Download for Android Users - Show on mobile too */}
+      {isAndroid && (
+        <a
+          href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
+          download
+          className="flex items-center gap-2 px-3 md:px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-medium rounded-full transition-all text-xs md:text-sm"
+          title="Download Android APK"
+        >
+          <Download size={16} />
+          <span className="hidden sm:inline">Download APK</span>
+          <span className="sm:hidden">APK</span>
+        </a>
+      )}
+
+      {/* Bell Icon - Show on mobile too */}
+      <button type="button"
+        className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
+        onClick={() => setShowWhatsNew(true)}
+      >
+        <Bell size={20} className="text-[#a7a7a7] hover:text-white transition-colors" />
+      </button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="w-8 h-8 rounded-full bg-[#1f1f1f] hover:scale-105 flex items-center justify-center overflow-hidden transition-transform">
+            {avatarUrl && !avatarLoading ? (
+              <img
+                src={avatarUrl}
+                alt={user.name || 'User'}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <User className="h-5 w-5 text-[#a7a7a7]" />
+            )}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-[320px] bg-[#282828] border-none p-1 shadow-xl" align="end" sideOffset={8}>
+
+          <DropdownMenuItem
+            className="cursor-pointer text-white hover:bg-white/10 p-3"
+            onClick={() => navigate('/settings')}
+          >
+            Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer text-white hover:bg-white/10 p-3"
+            onClick={() => navigate('/about')}
+          >
+            About
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer text-white hover:bg-white/10 p-3"
+            onClick={() => navigate('/privacy')}
+          >
+            Privacy Policy
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer text-white hover:bg-white/10 p-3"
+            onClick={() => navigate('/terms')}
+          >
+            Terms of Service
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="bg-white/10 my-1" />
+
+          <DropdownMenuItem
+            className="cursor-pointer text-white hover:bg-white/10 p-3"
+            onClick={handleLogout}
+          >
+            Log out
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="bg-white/10 my-1" />
+
+          <div className="p-2">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h3 className="text-white font-semibold text-sm">Your Updates</h3>
+            </div>
+
+            <div className="space-y-2">
+              {/* Item 1 */}
+              <div className="group flex gap-3 p-2 rounded-md hover:bg-white/5 cursor-pointer transition-colors relative">
+                <img
+                  src="/mavrixfy.png"
+                  alt="Concert"
+                  className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+                />
+                <div className="flex flex-col justify-center">
+                  <p className="text-white text-[13px] leading-tight line-clamp-2">
+                    Tickets on sale for Iqlipse Nova in Vadodara on Sat, Dec 20
+                  </p>
+                  <p className="text-[#a7a7a7] text-xs mt-1">6w</p>
+                </div>
+                <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                </div>
+              </div>
+
+              {/* Item 2 */}
+              <div className="group flex gap-3 p-2 rounded-md hover:bg-white/5 cursor-pointer transition-colors">
+                <div className="w-12 h-12 rounded-md bg-[#333] flex items-center justify-center flex-shrink-0">
+                  <Megaphone className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <p className="text-white text-[13px] leading-tight line-clamp-2">
+                    Say hello to Your Updates. Check here for news on your followers, playlists, events and more
+                  </p>
+                  <p className="text-[#a7a7a7] text-xs mt-1">10w</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+};
 const Header = ({ className }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -241,138 +397,18 @@ const Header = ({ className }: HeaderProps) => {
         <div className="flex-shrink-0" style={{ width: '32px' }} />
 
         {/* Right: User Profile & Bell */}
-        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-          {!authLoading && (
-            user ? (
-              <>
-                {/* APK Download for Android Users - Show on mobile too */}
-                {isAndroid && (
-                  <a
-                    href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
-                    download
-                    className="flex items-center gap-2 px-3 md:px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-medium rounded-full transition-all text-xs md:text-sm"
-                    title="Download Android APK"
-                  >
-                    <Download size={16} />
-                    <span className="hidden sm:inline">Download APK</span>
-                    <span className="sm:hidden">APK</span>
-                  </a>
-                )}
-
-                {/* Bell Icon - Show on mobile too */}
-                <button
-                  className="w-8 h-8 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
-                  onClick={() => setShowWhatsNew(true)}
-                >
-                  <Bell size={20} className="text-[#a7a7a7] hover:text-white transition-colors" />
-                </button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="w-8 h-8 rounded-full bg-[#1f1f1f] hover:scale-105 flex items-center justify-center overflow-hidden transition-transform">
-                      {avatarUrl && !avatarLoading ? (
-                        <img
-                          src={avatarUrl}
-                          alt={user.name || 'User'}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <User className="h-5 w-5 text-[#a7a7a7]" />
-                      )}
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-[320px] bg-[#282828] border-none p-1 shadow-xl" align="end" sideOffset={8}>
-
-                    <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10 p-3"
-                      onClick={() => navigate('/settings')}
-                    >
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10 p-3"
-                      onClick={() => navigate('/about')}
-                    >
-                      About
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10 p-3"
-                      onClick={() => navigate('/privacy')}
-                    >
-                      Privacy Policy
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10 p-3"
-                      onClick={() => navigate('/terms')}
-                    >
-                      Terms of Service
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator className="bg-white/10 my-1" />
-
-                    <DropdownMenuItem
-                      className="cursor-pointer text-white hover:bg-white/10 p-3"
-                      onClick={handleLogout}
-                    >
-                      Log out
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator className="bg-white/10 my-1" />
-
-                    <div className="px-2 py-2">
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <h3 className="text-white font-bold text-sm">Your Updates</h3>
-                      </div>
-
-                      <div className="space-y-2">
-                        {/* Item 1 */}
-                        <div className="group flex gap-3 p-2 rounded-md hover:bg-white/5 cursor-pointer transition-colors relative">
-                          <img
-                            src="/mavrixfy.png"
-                            alt="Concert"
-                            className="w-12 h-12 rounded-md object-cover flex-shrink-0"
-                          />
-                          <div className="flex flex-col justify-center">
-                            <p className="text-white text-[13px] leading-tight line-clamp-2">
-                              Tickets on sale for Iqlipse Nova in Vadodara on Sat, Dec 20
-                            </p>
-                            <p className="text-[#a7a7a7] text-xs mt-1">6w</p>
-                          </div>
-                          <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                          </div>
-                        </div>
-
-                        {/* Item 2 */}
-                        <div className="group flex gap-3 p-2 rounded-md hover:bg-white/5 cursor-pointer transition-colors">
-                          <div className="w-12 h-12 rounded-md bg-[#333] flex items-center justify-center flex-shrink-0">
-                            <Megaphone className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="flex flex-col justify-center">
-                            <p className="text-white text-[13px] leading-tight line-clamp-2">
-                              Say hello to Your Updates. Check here for news on your followers, playlists, events and more
-                            </p>
-                            <p className="text-[#a7a7a7] text-xs mt-1">10w</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <WhatsNewDialog open={showWhatsNew} onOpenChange={setShowWhatsNew} />
-              </>
-            ) : (
-              <Button
-                className="rounded-full bg-white hover:bg-white/90 hover:scale-105 text-black font-bold px-8 text-sm transition-all"
-                style={{ height: '48px' }}
-                onClick={() => navigate('/login')}
-              >
-                Log in
-              </Button>
-            )
-          )}
+                <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+          <HeaderActions
+            user={user}
+            authLoading={authLoading}
+            isAndroid={isAndroid}
+            avatarUrl={avatarUrl}
+            avatarLoading={avatarLoading}
+            setShowWhatsNew={setShowWhatsNew}
+            handleLogout={handleLogout}
+            navigate={navigate}
+          />
+          {user && <WhatsNewDialog open={showWhatsNew} onOpenChange={setShowWhatsNew} />}
         </div>
       </div>
     </header>

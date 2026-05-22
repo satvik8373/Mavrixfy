@@ -39,14 +39,108 @@ interface EditPlaylistFormData {
   isPublic: boolean;
 }
 
+
+interface PlaylistImageSectionProps {
+  imagePreview: string | null;
+  isUploading: boolean;
+  uploadProgress: number;
+  isSubmitting: boolean;
+  imageError: string;
+  imageFile: File | null;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  handleImageClick: () => void;
+  handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  testDirectUpload: () => void;
+}
+
+const PlaylistImageSection = ({
+  imagePreview,
+  isUploading,
+  uploadProgress,
+  isSubmitting,
+  imageError,
+  imageFile,
+  fileInputRef,
+  handleImageClick,
+  handleImageChange,
+  testDirectUpload,
+}: PlaylistImageSectionProps) => {
+  return (
+    <div className="flex flex-col items-center justify-center mb-4">
+      <div 
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+        className="relative w-40 h-40 rounded-md overflow-hidden bg-gray-100 cursor-pointer group"
+        onClick={handleImageClick}
+      >
+        {imagePreview ? (
+          <img 
+            src={imagePreview} 
+            alt="Playlist Cover" 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-full h-full">
+            <ImageIcon className="h-12 w-12 text-gray-400" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-zinc-950 bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+          <span className="text-white text-sm font-medium">Change Cover</span>
+        </div>
+        {isUploading && (
+          <div className="absolute inset-0 bg-zinc-950 bg-opacity-50 flex flex-col items-center justify-center">
+            <ContentLoading text={`Uploading... ${uploadProgress}%`} height="h-full" />
+          </div>
+        )}
+      </div>
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleImageChange}
+        disabled={isSubmitting || isUploading}
+      />
+      <div className="mt-2 text-center">
+        <p className="text-xs text-muted-foreground">
+          Cover image is required
+        </p>
+        {imageError && (
+          <p className="text-xs text-red-500 mt-1">{imageError}</p>
+        )}
+      </div>
+      
+      {imageFile && (
+        <div className="flex justify-center mt-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm"
+            className="text-xs"
+            onClick={testDirectUpload}
+            disabled={isUploading || !imageFile}
+          >
+            <Cloud className="h-3 w-3 mr-1" />
+            Test Direct Upload
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDialogProps) {
-  const [imagePreview, setImagePreview] = useState<string>(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [imageError, setImageError] = useState<string>('');
+  const [state, setState] = useState({
+    imagePreview: playlist.imageUrl || getPlaceholderImageUrl(playlist.name),
+    isUploading: false,
+    uploadProgress: 0,
+    isSubmitting: false,
+    imageError: '',
+    imageFile: null as File | null,
+  });
+  const { imagePreview, isUploading, uploadProgress, isSubmitting, imageError, imageFile } = state;
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const { updatePlaylist } = usePlaylistStore();
 
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<EditPlaylistFormData>({
@@ -67,9 +161,11 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
         description: playlist.description || '',
         isPublic: playlist.isPublic !== undefined ? playlist.isPublic : true,
       });
-      setImagePreview(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
-      // Clear any image errors when the playlist changes
-      setImageError('');
+      setState(prev => ({
+        ...prev,
+        imagePreview: playlist.imageUrl || getPlaceholderImageUrl(playlist.name),
+        imageError: '',
+      }));
     }
   }, [playlist, reset]);
 
@@ -81,39 +177,40 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Clear any previous errors
-    setImageError('');
-
     // Check file type
     if (!file.type.startsWith('image/')) {
-      setImageError('Please upload an image file');
+      setState(prev => ({ ...prev, imageError: 'Please upload an image file' }));
       toast.error('Please upload an image file');
       return;
     }
 
     // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setImageError('Image must be less than 5MB');
+      setState(prev => ({ ...prev, imageError: 'Image must be less than 5MB' }));
       toast.error('Image must be less than 5MB');
       return;
     }
 
-    setImageFile(file);
     // Create a preview URL
     const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
+    setState(prev => ({
+      ...prev,
+      imageFile: file,
+      imagePreview: previewUrl,
+      imageError: '',
+    }));
   };
 
   // Test direct upload to Cloudinary
   const testDirectUpload = async () => {
     if (!imageFile) {
-      setImageError('Please select an image first');
+      setState(prev => ({ ...prev, imageError: 'Please select an image first' }));
       toast.error('Please select an image first');
       return;
     }
 
     try {
-      setIsUploading(true);
+      setState(prev => ({ ...prev, isUploading: true }));
       
       // Create form data
       const formData = new FormData();
@@ -139,20 +236,20 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
       
       // Show success and update preview
       toast.success('Direct upload successful!');
-      setImagePreview(result.secure_url);
+      setState(prev => ({ ...prev, imagePreview: result.secure_url }));
     } catch (error: any) {
       toast.error(`Direct upload failed: ${error.message || 'Unknown error'}`);
     } finally {
-      setIsUploading(false);
+      setState(prev => ({ ...prev, isUploading: false }));
     }
   };
 
   const uploadImageToCloudinary = async (file: File): Promise<string> => {
-    setIsUploading(true);
+    setState(prev => ({ ...prev, isUploading: true }));
     try {
       // Upload the image to Cloudinary and track progress
       const imageUrl = await uploadImage(file, (progress) => {
-        setUploadProgress(progress);
+        setState(prev => ({ ...prev, uploadProgress: progress }));
       });
       
       return imageUrl;
@@ -161,8 +258,7 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
       // Return a placeholder image URL on error
       return getPlaceholderImageUrl(playlist.name);
     } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
+      setState(prev => ({ ...prev, isUploading: false, uploadProgress: 0 }));
     }
   };
 
@@ -173,13 +269,13 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
   const onSubmit = async (data: EditPlaylistFormData) => {
     // Check if we have an image (either from the original playlist or a new upload)
     if (!imagePreview && !imageFile && !playlist.imageUrl) {
-      setImageError('A cover image is required');
+      setState(prev => ({ ...prev, imageError: 'A cover image is required' }));
       toast.error('Please upload a cover image');
       return;
     }
 
     try {
-      setIsSubmitting(true);
+      setState(prev => ({ ...prev, isSubmitting: true }));
       
       // Use the existing image URL by default
       let imageUrl = playlist.imageUrl;
@@ -214,15 +310,18 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
     } catch (error) {
       toast.error('Could not update the playlist. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setState(prev => ({ ...prev, isSubmitting: false }));
     }
   };
 
   const dialogCloseHandler = () => {
     reset();
-    setImageFile(null);
-    setImageError('');
-    setImagePreview(playlist.imageUrl || getPlaceholderImageUrl(playlist.name));
+    setState(prev => ({
+      ...prev,
+      imageFile: null,
+      imageError: '',
+      imagePreview: playlist.imageUrl || getPlaceholderImageUrl(playlist.name),
+    }));
     onClose();
   };
 
@@ -240,65 +339,18 @@ export function EditPlaylistDialog({ isOpen, onClose, playlist }: EditPlaylistDi
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="flex flex-col items-center justify-center mb-4">
-              <div 
-                className="relative w-40 h-40 rounded-md overflow-hidden bg-gray-100 cursor-pointer group"
-                onClick={handleImageClick}
-              >
-                {imagePreview ? (
-                  <img 
-                    src={imagePreview} 
-                    alt="Playlist Cover" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <ImageIcon className="h-12 w-12 text-gray-400" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <span className="text-white text-sm font-medium">Change Cover</span>
-                </div>
-                {isUploading && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
-                    <ContentLoading text={`Uploading... ${uploadProgress}%`} height="h-full" />
-                  </div>
-                )}
-              </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={handleImageChange}
-                disabled={isSubmitting || isUploading}
-              />
-              <div className="mt-2 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Cover image is required
-                </p>
-                {imageError && (
-                  <p className="text-xs text-red-500 mt-1">{imageError}</p>
-                )}
-              </div>
-            </div>
-            
-            {/* Test direct upload button */}
-            {imageFile && (
-              <div className="flex justify-center">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  className="text-xs"
-                  onClick={testDirectUpload}
-                  disabled={isUploading || !imageFile}
-                >
-                  <Cloud className="h-3 w-3 mr-1" />
-                  Test Direct Upload
-                </Button>
-              </div>
-            )}
+                        <PlaylistImageSection
+              imagePreview={imagePreview}
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              isSubmitting={isSubmitting}
+              imageError={imageError}
+              imageFile={imageFile}
+              fileInputRef={fileInputRef}
+              handleImageClick={handleImageClick}
+              handleImageChange={handleImageChange}
+              testDirectUpload={testDirectUpload}
+            />
             
             <div className="grid gap-2">
               <Label htmlFor="name" className="text-right">

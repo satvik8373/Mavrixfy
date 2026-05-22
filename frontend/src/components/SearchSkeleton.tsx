@@ -5,9 +5,9 @@
 export const SearchSkeleton = () => {
   return (
     <div className="space-y-2 animate-pulse">
-      {[...Array(8)].map((_, index) => (
+      {[1, 2, 3, 4, 5, 6, 7, 8].map((id) => (
         <div
-          key={index}
+          key={id}
           className="flex items-center gap-4 p-3 rounded-lg bg-[#282828]/50"
         >
           {/* Index placeholder */}

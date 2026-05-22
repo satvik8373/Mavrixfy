@@ -44,7 +44,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Overview</h1>
         <p className="mt-1 text-sm text-gray-500">Platform metrics and quick access</p>
       </div>
 
@@ -56,11 +56,11 @@ export default function DashboardPage() {
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
                 <p className="mt-2 text-3xl font-bold text-gray-900">
-                  {loading ? <span className="text-gray-300">—</span> : value}
+                  {loading ? <span className="text-gray-300">Loading</span> : value}
                 </p>
               </div>
               <div className={`rounded-lg p-3 ${bg}`}>
-                <Icon className={`h-6 w-6 ${color}`} />
+                <Icon className={`size-6 ${color}`} />
               </div>
             </div>
           </Link>
@@ -77,14 +77,14 @@ export default function DashboardPage() {
             <Link key={href} href={href} className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-gray-50">
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-gray-100 p-2">
-                  <Icon className="h-5 w-5 text-gray-600" />
+                  <Icon className="size-5 text-gray-600" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-900">{label}</p>
                   <p className="text-xs text-gray-500">{desc}</p>
                 </div>
               </div>
-              <ArrowRight className="h-4 w-4 text-gray-400" />
+              <ArrowRight className="size-4 text-gray-400" />
             </Link>
           ))}
         </div>
@@ -104,7 +104,7 @@ export default function DashboardPage() {
             <div key={label} className="px-6 py-4">
               <p className="text-xs text-gray-500">{label}</p>
               <div className="mt-1 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
+                <span className="size-2 rounded-full bg-green-500" />
                 <p className="text-sm font-medium text-gray-900">{status}</p>
               </div>
             </div>

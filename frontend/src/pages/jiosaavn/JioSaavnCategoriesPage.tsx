@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Music, TrendingUp, Sparkles } from 'lucide-react';
 import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import { Button } from '@/components/ui/button';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
-import { jioSaavnService, PLAYLIST_CATEGORIES, CATEGORY_ICON_MAP } from '@/services/jioSaavnService';
-import { cn } from '@/lib/utils';
+import { PLAYLIST_CATEGORIES, CATEGORY_ICON_MAP } from '@/services/jioSaavnService';
 
 const JioSaavnCategoriesPage: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState(PLAYLIST_CATEGORIES[0]);
 
   const handleCategoryClick = (categoryId: string) => {
     navigate('/jiosaavn/playlists', {
@@ -34,7 +32,7 @@ const JioSaavnCategoriesPage: React.FC = () => {
               </Button>
 
               <div className="flex-1">
-                <h1 className="text-2xl font-bold flex items-center gap-2">
+                <h1 className="text-2xl font-semibold flex items-center gap-2">
                   <Music className="w-6 h-6 text-orange-500" />
                   Mavrixfy Categories
                 </h1>
@@ -46,7 +44,7 @@ const JioSaavnCategoriesPage: React.FC = () => {
           {/* Categories Grid */}
           <div className="p-4">
             <div className="mb-6">
-              <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+              <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-yellow-500" />
                 Browse by Category
               </h2>
@@ -55,7 +53,7 @@ const JioSaavnCategoriesPage: React.FC = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
               {PLAYLIST_CATEGORIES.map((category) => (
-                <button
+                <button type="button"
                   key={category.id}
                   onClick={() => handleCategoryClick(category.id)}
                   className="group relative p-6 rounded-lg transition-all duration-200 hover:scale-105 overflow-hidden"
@@ -79,7 +77,7 @@ const JioSaavnCategoriesPage: React.FC = () => {
                         return <IconComp className="w-8 h-8" style={{ color: category.color }} />;
                       })()}
                     </div>
-                    <h3 className="font-bold text-lg mb-2" style={{ color: category.color }}>
+                    <h3 className="font-semibold text-lg mb-2" style={{ color: category.color }}>
                       {category.name}
                     </h3>
                     <p className="text-white/60 text-sm leading-tight">

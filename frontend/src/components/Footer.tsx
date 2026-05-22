@@ -63,10 +63,10 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-8 pt-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-400 text-sm" suppressHydrationWarning>
               © {new Date().getFullYear()} Mavrixfy. All rights reserved.
             </p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
+            <div className="flex gap-x-6 mt-4 md:mt-0">
               <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm">
                 Privacy
               </Link>

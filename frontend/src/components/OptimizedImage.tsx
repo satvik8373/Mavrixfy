@@ -34,15 +34,27 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   fallbackSrc = 'https://placehold.co/400x400/1f1f1f/959595?text=No+Image',
   size = 'medium'
 }) => {
+  const prevSrcRef = useRef(src);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [currentSrc, setCurrentSrc] = useState<string>('');
-  const [shouldLoad, setShouldLoad] = useState(priority);
+  const [useFallback, setUseFallback] = useState(false);
+  const [inViewport, setInViewport] = useState(false);
+
   const imgRef = useRef<HTMLImageElement>(null);
+
+  if (src !== prevSrcRef.current) {
+    prevSrcRef.current = src;
+    setIsLoaded(false);
+    setHasError(false);
+    setUseFallback(false);
+  }
+
+  const activeSrc = useFallback ? fallbackSrc : src;
+  const shouldLoad = priority || inViewport;
 
   // Generate optimized URLs for different formats
   const generateImageUrls = () => {
-    if (!src || src === fallbackSrc) {
+    if (!activeSrc || activeSrc === fallbackSrc) {
       return { webp: fallbackSrc, jpg: fallbackSrc, original: fallbackSrc };
     }
 
@@ -50,18 +62,18 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     const adaptiveQuality = quality;
 
     // Check if it's already a Cloudinary URL
-    const isCloudinaryUrl = src.includes('cloudinary.com');
+    const isCloudinaryUrl = activeSrc.includes('cloudinary.com');
     
     if (isCloudinaryUrl) {
       // Extract public ID from Cloudinary URL
-      const match = src.match(/\/([^/]+)\/?([^/]+)\/([^/]+)$/);
+      const match = activeSrc.match(/\/([^/]+)\/?([^/]+)\/([^/]+)$/);
       if (match && match[3]) {
         const publicId = match[3].split('.')[0];
         
         // Support all formats
         const formats = { webp: 'webp', jpg: 'jpg' };
         
-        const urls: any = { original: src };
+        const urls: any = { original: activeSrc };
         
         Object.entries(formats).forEach(([key, fmt]) => {
           urls[key] = getOptimizedImageUrl(publicId, { 
@@ -77,16 +89,10 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }
 
     // For non-Cloudinary URLs, return original
-    return { webp: src, jpg: src, original: src };
+    return { webp: activeSrc, jpg: activeSrc, original: activeSrc };
   };
 
   const imageUrls = generateImageUrls();
-
-  useEffect(() => {
-    setCurrentSrc(src);
-    setIsLoaded(false);
-    setHasError(false);
-  }, [src]);
 
   const handleLoad = () => {
     setIsLoaded(true);
@@ -95,16 +101,13 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   const handleError = () => {
     setHasError(true);
-    if (currentSrc !== fallbackSrc) {
-      setCurrentSrc(fallbackSrc);
-    }
+    setUseFallback(true);
     onError?.();
   };
 
   // Intersection Observer for lazy loading
   useEffect(() => {
     if (priority) {
-      setShouldLoad(true);
       return;
     }
 
@@ -113,7 +116,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setShouldLoad(true);
+            setInViewport(true);
             observer.unobserve(entry.target);
           }
         });
@@ -130,20 +133,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
     return () => observer.disconnect();
   }, [priority]);
-
-  // Load image when shouldLoad becomes true
-  useEffect(() => {
-    if (shouldLoad && imgRef.current && !imgRef.current.src) {
-      imgRef.current.src = currentSrc;
-    }
-  }, [shouldLoad, currentSrc]);
-
-  // For priority images, set src immediately
-  useEffect(() => {
-    if (priority && imgRef.current) {
-      imgRef.current.src = currentSrc;
-    }
-  }, [currentSrc, priority]);
 
   const showPlaceholder = !isLoaded && !hasError;
 
@@ -168,7 +157,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Fallback img element */}
       <img
         ref={imgRef}
-        src={priority ? currentSrc : ''} // Empty src for lazy loading
+        src={shouldLoad ? activeSrc : ''} // Empty src for lazy loading
         alt={alt}
         className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
         width={width}

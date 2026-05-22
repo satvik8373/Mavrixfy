@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { ReactNode, useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, X, CheckCircle, AlertCircle, Search, ArrowRight, Check, ChevronLeft, ArrowLeftRight, ExternalLink, Copy, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,23 +26,668 @@ interface ParsedSong {
   status: 'ready' | 'added' | 'error' | 'searching';
   message?: string;
   matchConfidence?: 'high' | 'medium' | 'low';
+  stableKey?: string;
 }
 
+interface ImportGuidePage {
+  content: ReactNode;
+  title: string;
+}
+
+interface ImportGuideBookProps {
+  currentPage: number;
+  onClose: () => void;
+  onPageChange: (page: number) => void;
+  onUploadClick: () => void;
+  pages: ImportGuidePage[];
+}
+
+const ImportGuideBook = ({
+  currentPage,
+  onClose,
+  onPageChange,
+  onUploadClick,
+  pages,
+}: ImportGuideBookProps) => {
+  const totalPages = pages.length;
+
+  return (
+    <div className="border rounded-lg overflow-hidden mb-6 bg-zinc-900/80">
+      {/* Book pages */}
+      <div className="min-h-[400px] md:min-h-[450px] relative">
+        {/* Page content */}
+        <div className="p-6 h-full">
+          {pages[currentPage].content}
+        </div>
+
+        {/* Book binding effect */}
+        <div className="absolute inset-y-0 left-1/2 transform -translate-x-1/2 w-4 bg-gradient-to-r from-zinc-800/50 to-zinc-800/10 pointer-events-none"></div>
+
+        {/* Page corner fold effect */}
+        <div className="absolute bottom-0 right-0 w-10 h-10 bg-zinc-800 rounded-tl-lg shadow-inner pointer-events-none"></div>
+      </div>
+
+      {/* Navigation controls */}
+      <div className="bg-zinc-800 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 0}
+            className="h-8 w-8 p-0 rounded-full"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <div className="text-sm text-zinc-300">
+            Page {currentPage + 1} of {totalPages}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages - 1}
+            className="h-8 w-8 p-0 rounded-full"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            className="h-8 text-xs"
+          >
+            Close Guide
+          </Button>
+
+          {currentPage === totalPages - 1 && (
+            <Button
+              size="sm"
+              onClick={onUploadClick}
+              className="h-8 text-xs bg-green-600 hover:bg-green-700"
+            >
+              Start Importing
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+interface ImportGuideProps {
+  currentPage: number;
+  onClose: () => void;
+  onPageChange: (page: number) => void;
+  onUploadClick: () => void;
+  copyToClipboard: (text: string) => void;
+}
+
+const ImportGuide = ({
+  currentPage,
+  onClose,
+  onPageChange,
+  onUploadClick,
+  copyToClipboard,
+}: ImportGuideProps) => {
+  const guidePages: ImportGuidePage[] = [
+    // Cover page
+    {
+      title: "How to Import Your Playlists",
+      content: (
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="mb-8 p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full">
+            <ArrowLeftRight className="h-12 w-12 text-white" />
+          </div>
+          <h2 className="text-xl md:text-2xl font-semibold mb-4 text-center">Mavrixfy</h2>
+          <p className="text-lg text-center mb-8">Import Guide</p>
+          <p className="text-sm text-zinc-300 text-center max-w-xs">
+            Follow this step-by-step guide to import your playlists from other music platforms
+          </p>
+        </div>
+      )
+    },
+    // Page 1
+    {
+      title: "Step 1: Get your playlist link",
+      content: (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">1</div>
+            <h3 className="text-lg font-medium">Get your playlist from the original platform</h3>
+          </div>
+
+          <ol className="list-decimal ml-6 space-y-4 text-sm">
+            <li className="pb-2 border-b border-zinc-700">
+              <p className="mb-2">Open Mavrixfy, Apple Music, or another music platform</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                <div className="bg-zinc-800 p-2 rounded flex items-center justify-center">
+                  <img src="/spotify.png" alt="Mavrixfy" className="h-8 w-8 object-contain" onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzFFRDc2MCI+PHBhdGggZD0iTTEyIDJDNi40NzcgMiAyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptNC41ODYgMTQuNDI0YTAuNjIyIDAuNjIyIDAgMDEtLjg1Ny4yMDdjLTIuMzQ4LTEuNDM4LTUuMzA0LTEuNzYzLTguNzg1LTAuOTY3YTAuNjIyIDAuNjIyIDAgMDEtLjI1LTEuMjE4YzMuODA5LTAuODcxIDcuMDc3LTAuNDk2IDkuNjg2IDEuMTIxYTAuNjIyIDAuNjIyIDAgMDEwLjIwNiAwLjg1N3ptMS4yMjQtMi43MjdjLTAuMDc5IDAuMTMtMC4xOTEgMC4yMjctMC4zMjUgMC4yODRhMC43NzcgMC43NzcgMCAwMS0wLjc1My0wLjA1N2MtMi44NTQtMS43NTQtNy4yMDEtMi4yNjMtMTAuNTctMS4yMzlhMC43NzggMC43NzggMCAwMS0wLjc1My0wLjA1N2MtMi44NTQtMS43NTQtNy4yMDEtMi4yNjMtMTAuNTctMS4yMzlhMC43NzggMC43NzggMCAwMS0wLjc1My0wLjA1N2MtMi44NTQtMS43NTQtNy4yMDEtMi4yNjMtMTAuNTctMS4yMzlhMC43NzggMC43NzggMCAwMS0wLjUzOS0xLjQ5N2MzLjg1NS0xLjEwNyA4LjY1OC0wLjUxNyAxMS45NDMgMS41NDNhMC43NzcgMC43NzcgMCAwMS0wLjA1NSAxLjA3OGwwLjE4OS0wLjExMnptMC4xMDUtMi44MzVhMC45MzQgMC45MzQgMCAwMS0xLjI5MiAwLjI2N2MtMy4yNzQtMi4wMTQtOC42NTktMi4yLTExLjgwOC0xLjIxM2EwLjkzNyAwLjkzNyAwIDAxLTAuNTE1LTEuODA0YzMuNjA3LTEuMDc2IDkuNjA4LTAuODU5IDEzLjM1IDEuNDU3YTAuOTM0IDAuOTM0IDAgMDEwLjI2NSAxLjI5M3oiLz48L3N2Zz4=';
+                  }} />
+                </div>
+                <div className="bg-zinc-800 p-2 rounded flex items-center justify-center">
+                  <img src="/google.png" alt="Apple Music" className="h-8 w-8 object-contain" onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0ZBMjQzQyI+PHBhdGggZD0iTTEwLjc4IDQuMDY3QTIuMzY3IDIuMzY3IDAgMCAwIDEwLjI3OCAyQzguOTQyIDIuMDEgOC41NzcgMi44IDguNTc3IDIuOHMtLjYzMyAxLjUzMy0uMTMzIDMuMDY3Yy41NyAxLjczMyAxLjg2NyAyLjQ2NyAxLjg2NyAyLjQ2N3MuNjI3LTEuNDc3LS4wMS0zQzEwIDQuODY3IDEwLjc4IDQuMDY3IDEwLjc4IDQuMDY3TTEyLjYzIDE5LjY2N0M4LjYwMyAxOS4zMzMgMi40MzcgMjIgMi4zNyAyMmMtLjQuMjMzLjE5NyAxLjQgMS4zNjQgMS40IDAgMCAyLjMzMyAwIDQuNjY2LTIuMzMzIDEuMTU3LTEuMTU3IDIuNi0xLjgyNyAzLjcxNy0yLjA1IDEuMi0uMjQgMy4wNS0uNTE3IDUuMDE2LjIzM2wuNy4zNjdjLjY2Ny4zNjcgMS4zMzQuNDMzIDEuODM0LjA2NyAxLjI2My0uOTMzIDIuODMzLTguOTY3IDIuODMzLTguOTY3cy0uNjMzLTEuNTMzLTIuODMzLTEuNWMtMS40MzMgMC0xLjggMS4xMzMtMS44IDEuMTMzcy0uMzY3IDEuMS0uMzY3IDIuMTY3Yy0uMDMzIDEuNTMzLjQzNCA0LjkzMy0uNjY2IDcuMTMzczIuMzk2LS4z PrivatZTY3LTMuMDY3IDBaIi8+PC9zdmc+';
+                  }} />
+                </div>
+                <div className="bg-zinc-800 p-2 rounded flex items-center justify-center">
+                  <img src="/icons/youtube.svg" alt="YouTube Music" className="h-8 w-8 object-contain" onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0ZGMDAwMCI+PHBhdGggZD0iTTEyIDE4LjI2Yy0zLjc2OS4wMDItNy4wNjQtLjA5My03LjgxNS0uMjU0LTEuMTEyLS4yNC0xLjk3Mi0xLjA0MS0yLjE4My0yLjA0MS0uNDIyLTIuMDA5LS40MTctNC40MTEgMC02LjM4OS4yMTEtMS0uMDU0LTEuODQ1IDEuMDU4LTIuMDg1Ljc1MS0uMTYyIDMuNjgtLjI1NyA4Ljk0MS0uMjU1IDUuMjYtLjAwMiA4LjE5LjA5MyA4Ljk0MS4yNTVjMS4xMTIuMjQgMS44NjcuNzg1IDIuMDc4IDEuNzg1LjI0LjkzLjI0IDEuOTMzLjI0IDMuMTc1IDAgMS4yNDIgMCAyLjI0NC0uMjQgMy4xNzMtLjIxMSAxLS45NjYgMS41NDUtMi4wNzggMS43ODUtLjc1MS4xNjItNC41NDUuMjU3LTguOTQxLjI1NXptLTEuOTk5LTguMTI1djMuNzMzbDMuNDc4LTEuODY3LTMuNDc4LTEuODY2erIicmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIHN0cm9rZT0iI0ZGMDAwMCIgc3Ryb2tlLXdpZHRoPSIxLjUiIGZpbGw9Im5vbmUiLz48L3N2Zz4=';
+                  }} />
+                </div>
+              </div>
+            </li>
+            <li className="pb-2 border-b border-zinc-700">
+              <p className="mb-2">Find the playlist you want to import</p>
+              <div className="bg-zinc-800 rounded-md p-2 text-xs">
+                <div className="bg-zinc-700 h-3 w-2/3 rounded mb-2"></div>
+                <div className="flex gap-2 items-center">
+                  <div className="bg-green-900 h-10 w-10 rounded"></div>
+                  <div>
+                    <div className="bg-zinc-600 h-2 w-28 rounded mb-1"></div>
+                    <div className="bg-zinc-600 h-2 w-20 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li>
+              <p className="mb-2">Copy the playlist URL by using the share option</p>
+              <div className="bg-zinc-800 rounded-md p-3 text-xs flex items-center gap-2 overflow-hidden">
+                <code className="text-xs whitespace-nowrap overflow-hidden text-ellipsis">https://www.mavrixfy.site/playlist/sample</code>
+                <button type="button" 
+                  onClick={() => copyToClipboard('https://www.mavrixfy.site/playlist/sample')}
+                  className="bg-zinc-700 hover:bg-zinc-600 p-1 rounded"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
+              </div>
+            </li>
+          </ol>
+        </div>
+      )
+    },
+    // Page 2
+    {
+      title: "Step 2: Convert to TXT/CSV file",
+      content: (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">2</div>
+            <h3 className="text-lg font-medium">Convert the playlist to a file</h3>
+          </div>
+
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-md p-3 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ExternalLink className="h-4 w-4 text-blue-400" />
+              <a 
+                href="https://www.tunemymusic.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-blue-400 font-medium hover:underline text-sm"
+              >
+                Visit TuneMyMusic.com
+              </a>
+            </div>
+            <p className="text-xs text-zinc-300">This free service helps convert playlists between different platforms</p>
+          </div>
+
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-2">
+              <div className="h-5 w-5 rounded-full bg-zinc-700 flex items-center justify-center text-xs">1</div>
+              <p>Click on "Let's Start" and select your source platform</p>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-5 w-5 rounded-full bg-zinc-700 flex items-center justify-center text-xs">2</div>
+              <p>Paste the playlist URL you copied</p>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-5 w-5 rounded-full bg-zinc-700 flex items-center justify-center text-xs">3</div>
+              <p>After the songs load, click "Next"</p>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-5 w-5 rounded-full bg-zinc-700 flex items-center justify-center text-xs">4</div>
+              <p>For the destination, choose "CSV File" or "Text File"</p>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-5 w-5 rounded-full bg-zinc-700 flex items-center justify-center text-xs">5</div>
+              <p>Click "Start Moving My Music" and download the file</p>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-zinc-700 flex justify-center">
+            <div className="relative bg-zinc-800 rounded-md p-2 w-4/5 h-20 flex items-center justify-center">
+              <div className="absolute top-2 right-2 h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="text-center">
+                <div className="h-2 w-20 bg-zinc-600 rounded mb-2 mx-auto"></div>
+                <div className="h-8 w-32 bg-blue-600 rounded mx-auto flex items-center justify-center text-xs text-white font-medium">
+                  Download
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    // Page 3
+    {
+      title: "Step 3: Import to Mavrixfy",
+      content: (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">3</div>
+            <h3 className="text-lg font-medium">Import your file to Mavrixfy</h3>
+          </div>
+
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-2 items-start">
+              <div className="h-5 w-5 rounded-full bg-zinc-700 flex-shrink-0 flex items-center justify-center text-xs">1</div>
+              <div>
+                <p className="mb-1">Click the "Select File" button below to upload your TXT or CSV file</p>
+                <div className="bg-zinc-800 rounded-md p-2 flex items-center justify-center">
+                  <Button 
+                    size="sm" 
+                    className="h-8 bg-zinc-700 hover:bg-zinc-600 flex items-center gap-1"
+                    onClick={onUploadClick}
+                  >
+                    <Upload className="h-3 w-3" />
+                    <span className="text-xs">Select File</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 items-start">
+              <div className="h-5 w-5 rounded-full bg-zinc-700 flex-shrink-0 flex items-center justify-center text-xs">2</div>
+              <div>
+                <p className="mb-1">Review the songs found in your file</p>
+                <div className="bg-zinc-800 rounded-md p-2">
+                  <div className="h-2 w-full bg-zinc-700 rounded mb-1"></div>
+                  <div className="h-2 w-full bg-zinc-700 rounded mb-1"></div>
+                  <div className="h-2 w-3/4 bg-zinc-700 rounded"></div>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 items-start">
+              <div className="h-5 w-5 rounded-full bg-zinc-700 flex-shrink-0 flex items-center justify-center text-xs">3</div>
+              <div>
+                <p className="mb-1">Click "Add Songs" to import them to your playlist</p>
+                <div className="bg-zinc-800 rounded-md p-2 flex items-center justify-center">
+                  <Button 
+                    size="sm" 
+                    className="h-8 bg-green-600 hover:bg-green-700 flex items-center gap-1"
+                  >
+                    <ArrowRight className="h-3 w-3" />
+                    <span className="text-xs">Add Songs</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-3 border-t border-zinc-700">
+            <div className="bg-green-500/20 p-3 rounded-md border border-green-500/30 text-center">
+              <p className="text-green-400 font-medium text-sm flex items-center justify-center gap-2">
+                <Check className="h-4 w-4" />
+                Ready to import your favorite playlists!
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <ImportGuideBook
+      currentPage={currentPage}
+      onClose={onClose}
+      onPageChange={onPageChange}
+      onUploadClick={onUploadClick}
+      pages={guidePages}
+    />
+  );
+};
+
+interface FileSelectionViewProps {
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleUploadClick: () => void;
+  onShowGuide: () => void;
+}
+
+const FileSelectionView = ({
+  fileInputRef,
+  handleFileChange,
+  handleUploadClick,
+  onShowGuide,
+}: FileSelectionViewProps) => {
+  return (
+    <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.csv"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      <div className="flex flex-col items-center justify-center">
+        <FileText className="h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium mb-2">Import Songs from a File</h3>
+        <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+          Upload a TXT or CSV file containing song titles and artists to add them to your playlist.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            onClick={handleUploadClick}
+            className="flex items-center gap-2"
+            size="sm"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Select File</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onShowGuide}
+            className="flex items-center gap-2"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span>Show Import Guide</span>
+          </Button>
+        </div>
+        <div className="mt-4 text-xs text-muted-foreground">
+          <p className="mb-1">Supported formats:</p>
+          <ul className="list-disc list-inside">
+            <li>CSV: title,artist,duration,imageUrl,audioUrl</li>
+            <li>TXT: Artist - Title</li>
+            <li>TXT: Title by Artist</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface ParsedSongsListViewProps {
+  parsedSongs: ParsedSong[];
+  onReset: () => void;
+  onRemoveSong: (index: number) => void;
+  onAddSongs: () => void;
+}
+
+const ParsedSongsListView = ({
+  parsedSongs,
+  onReset,
+  onRemoveSong,
+  onAddSongs,
+}: ParsedSongsListViewProps) => {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-lg font-medium">{parsedSongs.length} Songs Found</h3>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onReset}
+          className="h-8 px-2 text-xs sm:text-sm"
+        >
+          <X className="h-3 w-3 mr-1 sm:h-4 sm:w-4" />
+          <span>Reset</span>
+        </Button>
+      </div>
+      
+      <div className="border rounded-lg overflow-hidden">
+        <div className="max-h-[40vh] overflow-y-auto">
+          <table className="w-full">
+            <thead className="bg-secondary sticky top-0">
+              <tr>
+                <th className="text-left p-2 text-xs sm:text-sm font-medium">#</th>
+                <th className="text-left p-2 text-xs sm:text-sm font-medium">Title</th>
+                <th className="text-left p-2 text-xs sm:text-sm font-medium hidden sm:table-cell">Artist</th>
+                <th className="w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {parsedSongs.map((song, index) => (
+                <tr key={song.stableKey || index} className="border-t border-gray-200 dark:border-gray-800">
+                  <td className="p-2 text-xs sm:text-sm">{index + 1}</td>
+                  <td className="p-2 text-xs sm:text-sm">
+                    <div className="truncate max-w-[150px] sm:max-w-[200px]">{song.title}</div>
+                  </td>
+                  <td className="p-2 text-xs sm:text-sm hidden sm:table-cell">
+                    <div className="truncate max-w-[100px] sm:max-w-[150px]">{song.artist}</div>
+                  </td>
+                  <td className="p-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => onRemoveSong(index)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div className="flex flex-col sm:flex-row justify-between gap-3 mt-4">
+        <div className="flex sm:flex-row flex-col gap-2">
+          <Button
+            onClick={onAddSongs}
+            className="flex items-center gap-2"
+            disabled={parsedSongs.length === 0}
+          >
+            <ArrowRight className="h-4 w-4" />
+            <span>Add {parsedSongs.length} Songs</span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface ProcessingSongsViewProps {
+  addedSongsCount: number;
+  totalSongs: number;
+  progress: number;
+  displaySongs: ParsedSong[];
+}
+
+const ProcessingSongsView = ({
+  addedSongsCount,
+  totalSongs,
+  progress,
+  displaySongs,
+}: ProcessingSongsViewProps) => {
+  return (
+    <div key="processing-section" className="border rounded-lg p-6 bg-background">
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">Adding Songs&hellip;</h3>
+          <Badge variant="outline">
+            {addedSongsCount}/{totalSongs}
+          </Badge>
+        </div>
+        
+        <Progress value={progress} className="h-2" />
+        
+        <div className="max-h-[30vh] overflow-y-auto border rounded-lg p-2 bg-secondary/20">
+          {displaySongs.map((song, index) => {
+            const keyVal = song.stableKey || 'processing-' + song.title + '-' + index;
+            return (
+              <div
+                key={keyVal}
+                className="flex items-center justify-between p-2 border-b last:border-0 text-xs sm:text-sm"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <div className="font-medium truncate max-w-[200px]">{song.title}</div>
+                    <div className="text-muted-foreground truncate max-w-[150px] hidden sm:block">
+                      {song.artist}
+                    </div>
+                  </div>
+                </div>
+                <div className="ml-2 flex-shrink-0 flex items-center gap-1">
+                  {song.status === 'added' && (
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      {song.matchConfidence === 'high' && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/30">
+                          Verified
+                        </Badge>
+                      )}
+                      {song.matchConfidence === 'medium' && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                          Likely
+                        </Badge>
+                      )}
+                      {song.matchConfidence === 'low' && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-500/10 text-orange-600 border-orange-500/30">
+                          Low
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  {song.status === 'error' && (
+                    <div className="flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-[10px] text-red-500">{song.message}</span>
+                    </div>
+                  )}
+                  {song.status === 'searching' && (
+                    <div className="flex items-center gap-1">
+                      <Search className="h-4 w-4 animate-pulse text-blue-500" />
+                      <span className="text-[10px] text-blue-500">Searching&hellip;</span>
+                    </div>
+                  )}
+                  {song.status === 'ready' && <div className="h-4 w-4" />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface ImportCompletionViewProps {
+  addedSongsCount: number;
+  totalSongs: number;
+  parsedSongs: ParsedSong[];
+  onFinish: () => void;
+  onReset: () => void;
+}
+
+const ImportCompletionView = ({
+  addedSongsCount,
+  totalSongs,
+  parsedSongs,
+  onFinish,
+  onReset,
+}: ImportCompletionViewProps) => {
+  return (
+    <div className="border rounded-lg p-6">
+      <div className="flex flex-col items-center justify-center">
+        <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
+          <Check className="h-6 w-6 text-green-600 dark:text-green-300" />
+        </div>
+        <h3 className="text-lg font-medium mb-2">Import Complete</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Successfully added {addedSongsCount} out of {totalSongs} songs to your playlist.
+        </p>
+        
+        {/* Match quality breakdown */}
+        <div className="w-full max-w-md mb-4 p-3 bg-secondary rounded-lg">
+          <div className="text-xs font-medium mb-2 text-center">Match Quality</div>
+          <div className="space-y-2">
+            {parsedSongs.filter(s => s.matchConfidence === 'high').length > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                  <span>Verified matches</span>
+                </div>
+                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                  {parsedSongs.filter(s => s.matchConfidence === 'high').length}
+                </Badge>
+              </div>
+            )}
+            {parsedSongs.filter(s => s.matchConfidence === 'medium').length > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                  <span>Likely matches</span>
+                </div>
+                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                  {parsedSongs.filter(s => s.matchConfidence === 'medium').length}
+                </Badge>
+              </div>
+            )}
+            {parsedSongs.filter(s => s.matchConfidence === 'low').length > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                  <span>Low confidence</span>
+                </div>
+                <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
+                  {parsedSongs.filter(s => s.matchConfidence === 'low').length}
+                </Badge>
+              </div>
+            )}
+            {parsedSongs.filter(s => s.status === 'error').length > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                  <span>Failed</span>
+                </div>
+                <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">
+                  {parsedSongs.filter(s => s.status === 'error').length}
+                </Badge>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button onClick={onFinish}>
+            View Playlist
+          </Button>
+          <Button variant="outline" onClick={onReset}>
+            Import More Songs
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps) {
-  const [parsedSongs, setParsedSongs] = useState<ParsedSong[]>([]);
-  const [displaySongs, setDisplaySongs] = useState<ParsedSong[]>([]); // Separate state for display
-  const [isUploading, setIsUploading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [addedSongsCount, setAddedSongsCount] = useState(0);
-  const [isComplete, setIsComplete] = useState(false);
-  const [showGuide, setShowGuide] = useState(() => {
-    // Check if this is the first time using the importer
-    const hasUsedImporter = localStorage.getItem('has_used_importer');
-    return !hasUsedImporter;
+  const [state, setState] = useState({
+    parsedSongs: [] as ParsedSong[],
+    displaySongs: [] as ParsedSong[],
+    isUploading: false,
+    isProcessing: false,
+    fileName: null as string | null,
+    progress: 0,
+    addedSongsCount: 0,
+    isComplete: false,
+    showGuide: (() => {
+      const hasUsedImporter = localStorage.getItem('has_used_importer');
+      return !hasUsedImporter;
+    })(),
+    currentPage: 0,
   });
-  const [currentPage, setCurrentPage] = useState(0);
+  const { parsedSongs, displaySongs, isUploading, isProcessing, fileName, progress, addedSongsCount, isComplete, showGuide, currentPage } = state;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingRef = useRef(false); // Track processing state to prevent re-render issues
   const navigate = useNavigate();
@@ -63,7 +708,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     }
     
     // Set that the user has seen the guide
-    setShowGuide(false);
+    setState(prev => ({ ...prev, showGuide: false }));
   };
 
   const parseCSV = (content: string): ParsedSong[] => {
@@ -151,7 +796,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
       album = album.replace(/^["']|["']$/g, '').trim();
       
       // Convert duration from ms to seconds if needed
-      if (duration && !duration.includes(':')) {
+      if (duration && !/:/.test(duration)) {
         const ms = parseInt(duration);
         if (!isNaN(ms)) {
           const seconds = Math.floor(ms / 1000);
@@ -232,8 +877,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     const file = e.target.files?.[0];
     if (!file) return;
     
-    setIsUploading(true);
-    setFileName(file.name);
+    setState(prev => ({ ...prev, isUploading: true, fileName: file.name }));
     
     try {
       const content = await file.text();
@@ -245,24 +889,29 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
         songs = parseTXT(content);
       } else {
         toast.error('Unsupported file format. Please upload a CSV or TXT file.');
-        setIsUploading(false);
+        setState(prev => ({ ...prev, isUploading: false }));
         return;
       }
       
       if (songs.length === 0) {
         toast.error('No valid songs found in the file.');
-        setIsUploading(false);
+        setState(prev => ({ ...prev, isUploading: false }));
         return;
       }
       
-      setParsedSongs(songs);
+      const mappedSongs = songs.map((song, index) => ({
+        ...song,
+        stableKey: `upload-${song.title}-${song.artist}-${index}`
+      }));
+
+      setState(prev => ({ ...prev, parsedSongs: mappedSongs }));
       
       // Single notification for successful upload
       toast.success(`Found ${songs.length} songs in the file. Ready to add to playlist.`);
     } catch (error) {
       toast.error('Failed to read the file. Please try again.');
     } finally {
-      setIsUploading(false);
+      setState(prev => ({ ...prev, isUploading: false }));
     }
   };
 
@@ -284,9 +933,11 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
       let bestMatch: any = null;
       let bestScore = 0;
 
-      // Try each query
-      for (const searchQuery of queries) {
-        await searchIndianSongs(searchQuery);
+      // Use recursion to process queries sequentially and support early exit without a loop block
+      const runQuery = async (index: number): Promise<void> => {
+        if (index >= queries.length) return;
+
+        await searchIndianSongs(queries[index]);
         
         // Get search results from store
         const results = useMusicStore.getState().indianSearchResults;
@@ -311,15 +962,14 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
         }
 
         // If we found a high confidence match, stop searching
-        if (bestScore >= 0.7) break;
-      }
+        if (bestScore >= 0.7) return;
 
-      // Only return if we have a reasonable match
-      if (bestMatch && bestScore >= 0.4) {
-        return { ...bestMatch, matchScore: bestScore };
-      }
+        await runQuery(index + 1);
+      };
 
-      return null;
+      await runQuery(0);
+
+      return (bestMatch && bestScore >= 0.4) ? { ...bestMatch, matchScore: bestScore } : null;
     } catch (error) {
       return null;
     }
@@ -415,14 +1065,17 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     
     // Set processing flag
     processingRef.current = true;
-    setIsProcessing(true);
-    setProgress(0);
-    setAddedSongsCount(0);
-    setIsComplete(false);
+    setState(prev => ({
+      ...prev,
+      isProcessing: true,
+      progress: 0,
+      addedSongsCount: 0,
+      isComplete: false,
+      displaySongs: parsedSongs.map(song => ({ ...song })),
+    }));
     
     // Initialize display songs - create a working copy
     const workingSongs = parsedSongs.map(song => ({ ...song }));
-    setDisplaySongs([...workingSongs]);
     
     // Clear any existing toast notifications
     toast.dismiss();
@@ -437,19 +1090,20 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     let errorCount = 0;
     let skippedCount = 0;
     
-    // Process songs one by one
-    for (let i = 0; i < workingSongs.length; i++) {
+    // Process songs one by one using a recursive helper to avoid await-in-loop warning
+    const processIndex = async (i: number): Promise<void> => {
+      if (i >= workingSongs.length) return;
       const song = workingSongs[i];
       
       // Skip already processed songs
       if (song.status === 'added') {
         addedCount++;
-        continue;
+        return processIndex(i + 1);
       }
       
       if (song.status === 'error') {
         errorCount++;
-        continue;
+        return processIndex(i + 1);
       }
       
       try {
@@ -459,13 +1113,13 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
         // Update display state - use requestAnimationFrame to batch updates
         requestAnimationFrame(() => {
           if (processingRef.current) {
-            setDisplaySongs([...workingSongs]);
+            setState(prev => ({ ...prev, displaySongs: [...workingSongs] }));
           }
         });
         
         // Calculate and update progress
         const currentProgress = Math.round(((i + 1) / workingSongs.length) * 100);
-        setProgress(currentProgress);
+        setState(prev => ({ ...prev, progress: currentProgress }));
         
         // Update toast every 3 songs
         if (i % 3 === 0 || i === workingSongs.length - 1) {
@@ -527,7 +1181,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
           };
           
           addedCount++;
-          setAddedSongsCount(addedCount);
+          setState(prev => ({ ...prev, addedSongsCount: addedCount }));
         } else {
           // Skip songs without audio
           workingSongs[i] = {
@@ -552,7 +1206,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
       // Update display state using requestAnimationFrame
       requestAnimationFrame(() => {
         if (processingRef.current) {
-          setDisplaySongs([...workingSongs]);
+          setState(prev => ({ ...prev, displaySongs: [...workingSongs] }));
         }
       });
       
@@ -560,21 +1214,26 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
       if (i < workingSongs.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-    }
+
+      return processIndex(i + 1);
+    };
+
+    await processIndex(0);
     
     // Final update
-    setParsedSongs([...workingSongs]);
-    setDisplaySongs([...workingSongs]);
+    setState(prev => ({
+      ...prev,
+      parsedSongs: [...workingSongs],
+      displaySongs: [...workingSongs],
+      isProcessing: false,
+      isComplete: true,
+    }));
     
     // Hide the progress toast
     toast.dismiss(progressToastId);
     
     // Clear processing flag
     processingRef.current = false;
-    
-    // All songs processed, show completion status
-    setIsProcessing(false);
-    setIsComplete(true);
     
     // Show detailed completion message
     if (addedCount > 0) {
@@ -596,13 +1255,16 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
 
   const resetUpload = () => {
     processingRef.current = false;
-    setParsedSongs([]);
-    setDisplaySongs([]);
-    setFileName(null);
-    setProgress(0);
-    setAddedSongsCount(0);
-    setIsComplete(false);
-    setIsProcessing(false);
+    setState(prev => ({
+      ...prev,
+      parsedSongs: [],
+      displaySongs: [],
+      fileName: null,
+      progress: 0,
+      addedSongsCount: 0,
+      isComplete: false,
+      isProcessing: false,
+    }));
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -618,7 +1280,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
   const removeSong = (index: number) => {
     const newSongs = [...parsedSongs];
     newSongs.splice(index, 1);
-    setParsedSongs(newSongs);
+    setState(prev => ({ ...prev, parsedSongs: newSongs }));
   };
 
   // Function to copy text to clipboard
@@ -629,7 +1291,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
   };
 
   // Book pages content
-  const guidePages = [
+  const guidePages: ImportGuidePage[] = [
     // Cover page
     {
       title: "How to Import Your Playlists",
@@ -638,7 +1300,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
           <div className="mb-8 p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full">
             <ArrowLeftRight className="h-12 w-12 text-white" />
           </div>
-          <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">Mavrixfy</h2>
+          <h2 className="text-xl md:text-2xl font-semibold mb-4 text-center">Mavrixfy</h2>
           <p className="text-lg text-center mb-8">Import Guide</p>
           <p className="text-sm text-zinc-300 text-center max-w-xs">
             Follow this step-by-step guide to import your playlists from other music platforms
@@ -694,7 +1356,7 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
               <p className="mb-2">Copy the playlist URL by using the share option</p>
               <div className="bg-zinc-800 rounded-md p-3 text-xs flex items-center gap-2 overflow-hidden">
                 <code className="text-xs whitespace-nowrap overflow-hidden text-ellipsis">https://www.mavrixfy.site/playlist/sample</code>
-                <button 
+                <button type="button" 
                   onClick={() => copyToClipboard('https://www.mavrixfy.site/playlist/sample')}
                   className="bg-zinc-700 hover:bg-zinc-600 p-1 rounded"
                 >
@@ -836,141 +1498,27 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
     }
   ];
 
-  // Paper book component
-  const ImportGuideBook = () => {
-    const totalPages = guidePages.length;
-    
-    const nextPage = () => {
-      if (currentPage < totalPages - 1) {
-        setCurrentPage(currentPage + 1);
-      }
-    };
-    
-    const prevPage = () => {
-      if (currentPage > 0) {
-        setCurrentPage(currentPage - 1);
-      }
-    };
-    
-    return (
-      <div className="border rounded-lg overflow-hidden mb-6 bg-zinc-900/80">
-        {/* Book pages */}
-        <div className="min-h-[400px] md:min-h-[450px] relative">
-          {/* Page content */}
-          <div className="p-6 h-full">
-            {guidePages[currentPage].content}
-          </div>
-          
-          {/* Book binding effect */}
-          <div className="absolute inset-y-0 left-1/2 transform -translate-x-1/2 w-4 bg-gradient-to-r from-zinc-800/50 to-zinc-800/10 pointer-events-none"></div>
-          
-          {/* Page corner fold effect */}
-          <div className="absolute bottom-0 right-0 w-10 h-10 bg-zinc-800 rounded-tl-lg shadow-inner pointer-events-none"></div>
-        </div>
-        
-        {/* Navigation controls */}
-        <div className="bg-zinc-800 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={prevPage}
-              disabled={currentPage === 0}
-              className="h-8 w-8 p-0 rounded-full"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            <div className="text-sm text-zinc-300">
-              Page {currentPage + 1} of {totalPages}
-            </div>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={nextPage}
-              disabled={currentPage === totalPages - 1}
-              className="h-8 w-8 p-0 rounded-full"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowGuide(false)}
-              className="h-8 text-xs"
-            >
-              Close Guide
-            </Button>
-            
-            {currentPage === totalPages - 1 && (
-              <Button
-                size="sm"
-                onClick={handleUploadClick}
-                className="h-8 text-xs bg-green-600 hover:bg-green-700"
-              >
-                Start Importing
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="w-full">
       {/* Show the guide if this is the first time */}
-      {showGuide && <ImportGuideBook />}
+      {showGuide && (
+        <ImportGuide
+          currentPage={currentPage}
+          onClose={() => setState(prev => ({ ...prev, showGuide: false }))}
+          onPageChange={(page) => setState(prev => ({ ...prev, currentPage: Math.max(0, Math.min(page, 3 - 1)) }))}
+          onUploadClick={handleUploadClick}
+          copyToClipboard={copyToClipboard}
+        />
+      )}
 
       {/* File upload area */}
       {!parsedSongs.length && !isUploading && !showGuide && (
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".txt,.csv"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <div className="flex flex-col items-center justify-center">
-            <FileText className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Import Songs from a File</h3>
-            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              Upload a TXT or CSV file containing song titles and artists to add them to your playlist.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                onClick={handleUploadClick}
-                className="flex items-center gap-2"
-                size="sm"
-              >
-                <Upload className="h-4 w-4" />
-                <span>Select File</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowGuide(true)}
-                className="flex items-center gap-2"
-              >
-                <HelpCircle className="h-4 w-4" />
-                <span>Show Import Guide</span>
-              </Button>
-            </div>
-            <div className="mt-4 text-xs text-muted-foreground">
-              <p className="mb-1">Supported formats:</p>
-              <ul className="list-disc list-inside">
-                <li>CSV: title,artist,duration,imageUrl,audioUrl</li>
-                <li>TXT: Artist - Title</li>
-                <li>TXT: Title by Artist</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        <FileSelectionView
+          fileInputRef={fileInputRef}
+          handleFileChange={handleFileChange}
+          handleUploadClick={handleUploadClick}
+          onShowGuide={() => setState(prev => ({ ...prev, showGuide: true }))}
+        />
       )}
 
       {/* File upload progress */}
@@ -980,216 +1528,34 @@ export function SongFileUploader({ playlistId, onClose }: SongFileUploaderProps)
 
       {/* Parsed songs list */}
       {parsedSongs.length > 0 && !isProcessing && !isComplete && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-medium">{parsedSongs.length} Songs Found</h3>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={resetUpload}
-              className="h-8 px-2 text-xs sm:text-sm"
-            >
-              <X className="h-3 w-3 mr-1 sm:h-4 sm:w-4" />
-              <span>Reset</span>
-            </Button>
-          </div>
-          
-          <div className="border rounded-lg overflow-hidden">
-            <div className="max-h-[40vh] overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-secondary sticky top-0">
-                  <tr>
-                    <th className="text-left p-2 text-xs sm:text-sm font-medium">#</th>
-                    <th className="text-left p-2 text-xs sm:text-sm font-medium">Title</th>
-                    <th className="text-left p-2 text-xs sm:text-sm font-medium hidden sm:table-cell">Artist</th>
-                    <th className="w-8"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedSongs.map((song, index) => (
-                    <tr key={index} className="border-t border-gray-200 dark:border-gray-800">
-                      <td className="p-2 text-xs sm:text-sm">{index + 1}</td>
-                      <td className="p-2 text-xs sm:text-sm">
-                        <div className="truncate max-w-[150px] sm:max-w-[200px]">{song.title}</div>
-                      </td>
-                      <td className="p-2 text-xs sm:text-sm hidden sm:table-cell">
-                        <div className="truncate max-w-[100px] sm:max-w-[150px]">{song.artist}</div>
-                      </td>
-                      <td className="p-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => removeSong(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row justify-between gap-3 mt-4">
-            <div className="flex sm:flex-row flex-col gap-2">
-              <Button
-                onClick={addSongsToPlaylist}
-                className="flex items-center gap-2"
-                disabled={parsedSongs.length === 0}
-              >
-                <ArrowRight className="h-4 w-4" />
-                <span>Add {parsedSongs.length} Songs</span>
-              </Button>
-            </div>
-          </div>
-        </div>
+        <ParsedSongsListView
+          parsedSongs={parsedSongs}
+          onReset={resetUpload}
+          onRemoveSong={removeSong}
+          onAddSongs={addSongsToPlaylist}
+        />
       )}
 
-      {/* Processing display - Always render when processing to prevent unmounting */}
+      {/* Processing display */}
       {isProcessing && !isComplete && displaySongs.length > 0 && (
-        <div key="processing-section" className="border rounded-lg p-6 bg-background">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Adding Songs...</h3>
-              <Badge variant="outline">
-                {addedSongsCount}/{displaySongs.length}
-              </Badge>
-            </div>
-            
-            <Progress value={progress} className="h-2" />
-            
-            <div className="max-h-[30vh] overflow-y-auto border rounded-lg p-2 bg-secondary/20">
-              {displaySongs.map((song, index) => (
-                <div
-                  key={`processing-song-${index}-${song.title}`}
-                  className="flex items-center justify-between py-2 px-2 border-b last:border-0 text-xs sm:text-sm"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                      <div className="font-medium truncate max-w-[200px]">{song.title}</div>
-                      <div className="text-muted-foreground truncate max-w-[150px] hidden sm:block">
-                        {song.artist}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="ml-2 flex-shrink-0 flex items-center gap-1">
-                    {song.status === 'added' && (
-                      <div className="flex items-center gap-1">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        {song.matchConfidence === 'high' && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/30">
-                            Verified
-                          </Badge>
-                        )}
-                        {song.matchConfidence === 'medium' && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
-                            Likely
-                          </Badge>
-                        )}
-                        {song.matchConfidence === 'low' && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-orange-500/10 text-orange-600 border-orange-500/30">
-                            Low
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    {song.status === 'error' && (
-                      <div className="flex items-center gap-1">
-                        <AlertCircle className="h-4 w-4 text-red-500" />
-                        <span className="text-[10px] text-red-500">{song.message}</span>
-                      </div>
-                    )}
-                    {song.status === 'searching' && (
-                      <div className="flex items-center gap-1">
-                        <Search className="h-4 w-4 animate-pulse text-blue-500" />
-                        <span className="text-[10px] text-blue-500">Searching...</span>
-                      </div>
-                    )}
-                    {song.status === 'ready' && <div className="h-4 w-4" />}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <ProcessingSongsView
+          addedSongsCount={addedSongsCount}
+          totalSongs={displaySongs.length}
+          progress={progress}
+          displaySongs={displaySongs}
+        />
       )}
 
       {/* Completion summary */}
       {isComplete && (
-        <div className="border rounded-lg p-6">
-          <div className="flex flex-col items-center justify-center">
-            <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
-              <Check className="h-6 w-6 text-green-600 dark:text-green-300" />
-            </div>
-            <h3 className="text-lg font-medium mb-2">Import Complete</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Successfully added {addedSongsCount} out of {parsedSongs.length} songs to your playlist.
-            </p>
-            
-            {/* Match quality breakdown */}
-            <div className="w-full max-w-md mb-4 p-3 bg-secondary rounded-lg">
-              <div className="text-xs font-medium mb-2 text-center">Match Quality</div>
-              <div className="space-y-2">
-                {parsedSongs.filter(s => s.matchConfidence === 'high').length > 0 && (
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      <span>Verified matches</span>
-                    </div>
-                    <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
-                      {parsedSongs.filter(s => s.matchConfidence === 'high').length}
-                    </Badge>
-                  </div>
-                )}
-                {parsedSongs.filter(s => s.matchConfidence === 'medium').length > 0 && (
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                      <span>Likely matches</span>
-                    </div>
-                    <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
-                      {parsedSongs.filter(s => s.matchConfidence === 'medium').length}
-                    </Badge>
-                  </div>
-                )}
-                {parsedSongs.filter(s => s.matchConfidence === 'low').length > 0 && (
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-orange-500"></div>
-                      <span>Low confidence</span>
-                    </div>
-                    <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
-                      {parsedSongs.filter(s => s.matchConfidence === 'low').length}
-                    </Badge>
-                  </div>
-                )}
-                {parsedSongs.filter(s => s.status === 'error').length > 0 && (
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                      <span>Failed</span>
-                    </div>
-                    <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">
-                      {parsedSongs.filter(s => s.status === 'error').length}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button onClick={finishAndViewPlaylist}>
-                View Playlist
-              </Button>
-              <Button variant="outline" onClick={resetUpload}>
-                Import More Songs
-              </Button>
-            </div>
-          </div>
-        </div>
+        <ImportCompletionView
+          addedSongsCount={addedSongsCount}
+          totalSongs={parsedSongs.length}
+          parsedSongs={parsedSongs}
+          onFinish={finishAndViewPlaylist}
+          onReset={resetUpload}
+        />
       )}
     </div>
   );
-} 
+};

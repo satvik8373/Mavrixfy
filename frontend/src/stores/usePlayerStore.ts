@@ -2,6 +2,7 @@ import { createWithEqualityFn as create } from 'zustand/traditional';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Song } from '@/types';
 import { audioManager } from '@/utils/audioManager';
+import { trackSongSkip } from '@/services/recommendationService';
 
 export type ShuffleMode = 'off' | 'normal' | 'smart';
 
@@ -262,6 +263,12 @@ export const usePlayerStore = create<PlayerState>()(
       playNext: () => {
         const { queue, currentIndex, shuffleMode } = get();
         if (queue.length === 0) return;
+        const stateBeforeNext = get();
+        trackSongSkip(
+          stateBeforeNext.currentSong,
+          audioManager.getCurrentTime() || stateBeforeNext.currentTime,
+          audioManager.getDuration() || stateBeforeNext.duration,
+        );
 
         const now = Date.now();
         const lastPlayNextTime = get().lastPlayNextTime || 0;
@@ -318,6 +325,13 @@ export const usePlayerStore = create<PlayerState>()(
           }
           return;
         }
+
+        const stateBeforePrevious = get();
+        trackSongSkip(
+          stateBeforePrevious.currentSong,
+          elapsedSeconds || stateBeforePrevious.currentTime,
+          audioManager.getDuration() || stateBeforePrevious.duration,
+        );
 
         const previousIndex = (currentIndex - 1 + queue.length) % queue.length;
         const previousSong = queue[previousIndex];
@@ -549,7 +563,7 @@ export const usePlayerStore = create<PlayerState>()(
       },
     }),
     {
-      name: 'player-store',
+      name: 'player-store:v1',
       storage: persistedPlayerStorage,
       partialize: (state) => ({
         currentSong: state.currentSong,
@@ -595,3 +609,4 @@ setTimeout(() => {
   audioManager.setVolume(freshState.volume / 100);
   syncQueueWithAudioManager(freshState.queue, freshState.currentIndex);
 }, 0);
+

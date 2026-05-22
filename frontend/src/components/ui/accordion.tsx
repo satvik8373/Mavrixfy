@@ -38,7 +38,7 @@ const AccordionTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, children, ...props }, ref) => (
-  <button
+  <button type="button"
     ref={ref}
     className={cn(
       "flex flex-1 items-center justify-between py-4 text-sm font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",

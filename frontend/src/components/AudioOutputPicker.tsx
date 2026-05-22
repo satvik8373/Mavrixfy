@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 import { Bluetooth, Car, Check, Headphones, Monitor, RefreshCw, Smartphone, Speaker, Tv, Volume2 } from 'lucide-react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { detectAudioOutputDeviceType, type AudioOutputDeviceType } from '@/lib/audioOutputDevice';
@@ -53,34 +53,87 @@ const isUnwantedDeviceLabel = (label: string): boolean => {
   return false;
 };
 
+const OutputIcon = ({ type }: { type: AudioOutputDeviceType }) => {
+  switch (type) {
+    case 'car':
+      return <Car className="h-4 w-4 text-amber-300 flex-shrink-0" />;
+    case 'tv':
+      return <Tv className="h-4 w-4 text-violet-300 flex-shrink-0" />;
+    case 'headphones':
+      return <Headphones className="h-4 w-4 text-cyan-300 flex-shrink-0" />;
+    case 'speaker':
+      return <Speaker className="h-4 w-4 text-emerald-300 flex-shrink-0" />;
+    case 'bluetooth':
+      return <Bluetooth className="h-4 w-4 text-cyan-300 flex-shrink-0" />;
+    case 'browser':
+      return <Monitor className="h-4 w-4 text-white/80 flex-shrink-0" />;
+    default:
+      return <Smartphone className="h-4 w-4 text-white/75 flex-shrink-0" />;
+  }
+};
+
+interface PickerState {
+  devices: OutputDevice[];
+  loading: boolean;
+  error: string | null;
+  activeDeviceId: string;
+  switchingId: string | null;
+  sinkSupported: boolean;
+}
+
+type PickerAction =
+  | { type: 'START_LOAD' }
+  | { type: 'LOAD_SUCCESS'; payload: { devices: OutputDevice[]; activeDeviceId: string; sinkSupported: boolean } }
+  | { type: 'LOAD_ERROR'; payload: string }
+  | { type: 'START_SWITCH'; payload: string }
+  | { type: 'SWITCH_SUCCESS'; payload: string }
+  | { type: 'SWITCH_ERROR'; payload: string }
+  | { type: 'RESET_SWITCHING' }
+  | { type: 'SET_ERROR'; payload: string | null };
+
+const initialPickerState: PickerState = {
+  devices: [],
+  loading: false,
+  error: null,
+  activeDeviceId: 'default',
+  switchingId: null,
+  sinkSupported: false,
+};
+
+const pickerReducer = (state: PickerState, action: PickerAction): PickerState => {
+  switch (action.type) {
+    case 'START_LOAD':
+      return { ...state, loading: true, error: null };
+    case 'LOAD_SUCCESS':
+      return {
+        ...state,
+        loading: false,
+        devices: action.payload.devices,
+        activeDeviceId: action.payload.activeDeviceId,
+        sinkSupported: action.payload.sinkSupported,
+      };
+    case 'LOAD_ERROR':
+      return { ...state, loading: false, error: action.payload };
+    case 'START_SWITCH':
+      return { ...state, switchingId: action.payload, error: null };
+    case 'SWITCH_SUCCESS':
+      return { ...state, switchingId: null, activeDeviceId: action.payload };
+    case 'SWITCH_ERROR':
+      return { ...state, switchingId: null, error: action.payload };
+    case 'RESET_SWITCHING':
+      return { ...state, switchingId: null };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    default:
+      return state;
+  }
+};
+
 const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }) => {
-  const [devices, setDevices] = React.useState<OutputDevice[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [activeDeviceId, setActiveDeviceId] = React.useState<string>('default');
-  const [switchingId, setSwitchingId] = React.useState<string | null>(null);
-  const [sinkSupported, setSinkSupported] = React.useState(false);
+  const [state, dispatch] = React.useReducer(pickerReducer, initialPickerState);
+  const { devices, loading, error, activeDeviceId, switchingId, sinkSupported } = state;
 
   const preferredOutputId = usePlayerStore((state) => state.audioOutputDevice);
-
-  const renderOutputIcon = (type: AudioOutputDeviceType) => {
-    switch (type) {
-      case 'car':
-        return <Car className="h-4 w-4 text-amber-300 flex-shrink-0" />;
-      case 'tv':
-        return <Tv className="h-4 w-4 text-violet-300 flex-shrink-0" />;
-      case 'headphones':
-        return <Headphones className="h-4 w-4 text-cyan-300 flex-shrink-0" />;
-      case 'speaker':
-        return <Speaker className="h-4 w-4 text-emerald-300 flex-shrink-0" />;
-      case 'bluetooth':
-        return <Bluetooth className="h-4 w-4 text-cyan-300 flex-shrink-0" />;
-      case 'browser':
-        return <Monitor className="h-4 w-4 text-white/80 flex-shrink-0" />;
-      default:
-        return <Smartphone className="h-4 w-4 text-white/75 flex-shrink-0" />;
-    }
-  };
 
   const getAudioElement = React.useCallback((): AudioWithSink | null => {
     return audioManager.getCurrentNodeForOutput() as AudioWithSink | null;
@@ -88,12 +141,11 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
 
   const loadDevices = React.useCallback(async () => {
     if (!navigator.mediaDevices?.enumerateDevices) {
-      setError('Your browser does not support audio output device listing.');
+      dispatch({ type: 'LOAD_ERROR', payload: 'Your browser does not support audio output device listing.' });
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'START_LOAD' });
 
     try {
       const outputList = (await navigator.mediaDevices.enumerateDevices()).filter(
@@ -103,13 +155,16 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
       const sinkId = (audio?.sinkId || '').trim();
       const resolvedActive = sinkId || preferredOutputId || 'default';
 
-      setDevices(outputList);
-      setActiveDeviceId(resolvedActive);
-      setSinkSupported(!!audio && typeof audio.setSinkId === 'function');
+      dispatch({
+        type: 'LOAD_SUCCESS',
+        payload: {
+          devices: outputList,
+          activeDeviceId: resolvedActive,
+          sinkSupported: !!audio && typeof audio.setSinkId === 'function',
+        },
+      });
     } catch {
-      setError('Unable to fetch output devices. Allow permissions and try again.');
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'LOAD_ERROR', payload: 'Unable to fetch output devices. Allow permissions and try again.' });
     }
   }, [getAudioElement, preferredOutputId]);
 
@@ -119,15 +174,13 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'START_LOAD' });
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((track) => track.stop());
       await loadDevices();
     } catch {
-      setError('Permission denied. Connect Bluetooth in system settings, then refresh.');
-      setLoading(false);
+      dispatch({ type: 'LOAD_ERROR', payload: 'Permission denied. Connect Bluetooth in system settings, then refresh.' });
     }
   }, [loadDevices]);
 
@@ -135,28 +188,25 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
     async (deviceId: string) => {
       const audio = getAudioElement();
       if (!audio) {
-        setError('Audio element not found.');
+        dispatch({ type: 'SET_ERROR', payload: 'Audio element not found.' });
         return;
       }
 
       if (typeof audio.setSinkId !== 'function') {
-        setError('Output switching is not supported on this browser.');
+        dispatch({ type: 'SET_ERROR', payload: 'Output switching is not supported on this browser.' });
         return;
       }
 
-      setSwitchingId(deviceId);
-      setError(null);
+      dispatch({ type: 'START_SWITCH', payload: deviceId });
       try {
         const wasApplied = await audioManager.setOutputDevice(deviceId);
         if (!wasApplied) {
           throw new Error('Output device switch was rejected');
         }
         usePlayerStore.setState({ audioOutputDevice: deviceId });
-        setActiveDeviceId(deviceId);
+        dispatch({ type: 'SWITCH_SUCCESS', payload: deviceId });
       } catch {
-        setError('Unable to switch output. Keep device connected and try again.');
-      } finally {
-        setSwitchingId(null);
+        dispatch({ type: 'SWITCH_ERROR', payload: 'Unable to switch output. Keep device connected and try again.' });
       }
     },
     [getAudioElement]
@@ -224,16 +274,16 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.55 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black z-[80]"
+            className="fixed inset-0 bg-zinc-950 z-[80]"
           />
 
-          <motion.div
+          <m.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -250,7 +300,7 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
                 <Volume2 className="h-4 w-4 text-white/85" />
                 <h3 className="text-white text-sm font-semibold">Playback Device</h3>
               </div>
-              <button
+              <button type="button"
                 onClick={() => void requestPermissionAndRefresh()}
                 className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-white/85 bg-white/10 border border-white/15 active:scale-95 transition-transform"
                 aria-label="Refresh devices"
@@ -280,7 +330,7 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
                 const isSwitching = switchingId === device.deviceId;
 
                 return (
-                  <button
+                  <button type="button"
                     key={device.deviceId}
                     onClick={() => void selectOutput(device.deviceId)}
                     disabled={isSwitching || !sinkSupported}
@@ -291,7 +341,7 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
                     }`}
                   >
                     <div className="min-w-0 flex items-center gap-2">
-                      {renderOutputIcon(deviceType)}
+                      <OutputIcon type={deviceType} />
                       <span className={`text-sm truncate ${isActive ? 'text-emerald-300' : 'text-white'}`}>{label}</span>
                     </div>
                     <div className="flex-shrink-0">
@@ -305,7 +355,7 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
                 );
               })}
             </div>
-          </motion.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

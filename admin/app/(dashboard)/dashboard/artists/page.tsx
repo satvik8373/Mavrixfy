@@ -66,26 +66,26 @@ export default function ArtistsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Artists</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Artists</h1>
           <p className="mt-1 text-sm text-gray-500">{artists.length} artists total</p>
         </div>
         <button onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }}
           className="btn-primary flex items-center gap-2">
-          <Plus className="h-4 w-4" /> Add Artist
+          <Plus className="size-4" /> Add Artist
         </button>
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
         <input type="text" placeholder="Search artists..." value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)} className="input-field pl-10" />
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
+        <div className="flex items-center justify-center py-16"><Loader2 className="size-6 animate-spin text-blue-600" /></div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white py-16 text-center shadow-sm">
-          <Mic2 className="mx-auto h-10 w-10 text-gray-300" />
+          <Mic2 className="mx-auto size-10 text-gray-300" />
           <p className="mt-3 text-sm font-medium text-gray-900">{searchQuery ? 'No artists found' : 'No artists yet'}</p>
           <p className="mt-1 text-xs text-gray-500">Add your first artist to get started</p>
         </div>
@@ -94,25 +94,25 @@ export default function ArtistsPage() {
           {filtered.map(artist => (
             <div key={artist.id} className="rounded-lg border border-gray-200 bg-white p-5 text-center shadow-sm hover:shadow-md transition-shadow">
               {artist.imageUrl ? (
-                <img src={artist.imageUrl} alt={artist.name} className="mx-auto h-20 w-20 rounded-full object-cover" />
+                <img src={artist.imageUrl} alt={artist.name} className="mx-auto size-20 rounded-full object-cover" />
               ) : (
-                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
-                  <Mic2 className="h-8 w-8 text-gray-400" />
+                <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-gray-100">
+                  <Mic2 className="size-8 text-gray-400" />
                 </div>
               )}
               <div className="mt-3">
                 <div className="flex items-center justify-center gap-1">
                   <h3 className="font-semibold text-gray-900">{artist.name}</h3>
-                  {artist.verified && <CheckCircle className="h-4 w-4 text-blue-500" />}
+                  {artist.verified && <CheckCircle className="size-4 text-blue-500" />}
                 </div>
                 {artist.bio && <p className="mt-1 line-clamp-2 text-xs text-gray-500">{artist.bio}</p>}
               </div>
               <div className="mt-4 flex items-center justify-center gap-2">
                 <button onClick={() => openEdit(artist)} className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50">
-                  <Edit className="h-4 w-4" />
+                  <Edit className="size-4" />
                 </button>
-                <button onClick={() => handleDelete(artist.id)} className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600">
-                  <Trash2 className="h-4 w-4" />
+                <button onClick={() => handleDelete(artist.id)} className="rounded-md border border-gray-200 p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700">
+                  <Trash2 className="size-4" />
                 </button>
               </div>
             </div>
@@ -122,40 +122,40 @@ export default function ArtistsPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
+          <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={closeModal} />
           <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{editId ? 'Edit Artist' : 'Add Artist'}</h2>
-              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               {error && <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
-                <input className="input-field" placeholder="Artist name" value={form.name}
+                <label htmlFor="artists-name-1" className="block text-xs font-medium text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
+                <input id="artists-name-1" className="input-field" placeholder="Artist name" value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Bio</label>
-                <textarea className="input-field resize-none" rows={3} placeholder="Short bio..." value={form.bio}
+                <label htmlFor="artists-bio-2" className="block text-xs font-medium text-gray-700 mb-1">Bio</label>
+                <textarea id="artists-bio-2" className="input-field resize-none" rows={3} placeholder="Short bio..." value={form.bio}
                   onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Image URL</label>
-                <input className="input-field" placeholder="https://..." value={form.imageUrl}
+                <label htmlFor="artists-image-url-3" className="block text-xs font-medium text-gray-700 mb-1">Image URL</label>
+                <input id="artists-image-url-3" className="input-field" placeholder="https://..." value={form.imageUrl}
                   onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
               </div>
               <div className="flex items-center gap-3">
                 <input type="checkbox" id="verified" checked={form.verified}
                   onChange={e => setForm(f => ({ ...f, verified: e.target.checked }))}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+                  className="size-4 rounded border-gray-300 text-blue-600" />
                 <label htmlFor="verified" className="text-sm text-gray-700">Verified artist</label>
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
               <button onClick={closeModal} className="btn-secondary">Cancel</button>
               <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {editId ? 'Save Changes' : 'Add Artist'}
               </button>
             </div>

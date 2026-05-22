@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
@@ -40,7 +40,7 @@ export const ShuffleButton: React.FC<ShuffleButtonProps> = ({
 
   const config = sizeConfig[size];
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleShuffleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     
     // Enhanced touch feedback
@@ -62,7 +62,7 @@ export const ShuffleButton: React.FC<ShuffleButtonProps> = ({
   };
 
   // Touch handlers for better mobile experience
-  const [touchTimer, setTouchTimer] = useState<NodeJS.Timeout | null>(null);
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     e.stopPropagation();
@@ -72,26 +72,26 @@ export const ShuffleButton: React.FC<ShuffleButtonProps> = ({
     const timer = setTimeout(() => {
       handleLongPress(e as any);
     }, 500);
-    setTouchTimer(timer);
+    touchTimerRef.current = timer;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     e.stopPropagation();
     setIsPressed(false);
     
-    if (touchTimer) {
-      clearTimeout(touchTimer);
-      setTouchTimer(null);
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
       // If it was a short press, handle normal click
-      handleClick(e as any);
+      handleShuffleToggle(e as any);
     }
   };
 
   const handleTouchCancel = () => {
     setIsPressed(false);
-    if (touchTimer) {
-      clearTimeout(touchTimer);
-      setTouchTimer(null);
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
     }
   };
 
@@ -120,7 +120,7 @@ export const ShuffleButton: React.FC<ShuffleButtonProps> = ({
       style={{
         color: isShuffled ? getModeColor() : undefined,
       }}
-      onClick={handleClick}
+      onClick={handleShuffleToggle}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}

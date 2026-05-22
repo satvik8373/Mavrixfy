@@ -606,24 +606,24 @@ export default function SongsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Songs</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Songs</h1>
           <p className="mt-1 text-sm text-gray-500">
             {fsLoading ? 'Loading...' : `${firestoreSongs.length} songs in catalog`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchFirestoreSongs} disabled={fsLoading} className="btn-secondary flex items-center gap-2" title="Refresh catalog">
-            <RefreshCw className={`h-4 w-4 ${fsLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 ${fsLoading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={() => openCreateModal()} className="btn-primary flex items-center gap-2">
-            <Plus className="h-4 w-4" /> Add Song
+            <Plus className="size-4" /> Add Song
           </button>
         </div>
       </div>
 
       {/* Search bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           placeholder="Search full songs via JioSaavn mirrors (newest first)..."
@@ -638,7 +638,7 @@ export default function SongsPage() {
             setApiTotal(0); setApiPage(0);
           }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </button>
         )}
       </div>
@@ -651,7 +651,7 @@ export default function SongsPage() {
             viewMode === 'catalog' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          <Database className="h-4 w-4" />
+          <Database className="size-4" />
           Catalog ({firestoreSongs.length})
         </button>
         <button
@@ -660,7 +660,7 @@ export default function SongsPage() {
             viewMode === 'search' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          <Globe className="h-4 w-4" />
+          <Globe className="size-4" />
           Search Results {searched && !apiLoading ? `(${apiResults.length}${apiTotal > apiResults.length ? `/${apiTotal}` : ''})` : ''}
         </button>
       </div>
@@ -668,7 +668,7 @@ export default function SongsPage() {
       {/* Catalog filter (only in catalog mode) */}
       {viewMode === 'catalog' && (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder={`Filter ${firestoreSongs.length} catalog songs...`}
@@ -679,7 +679,7 @@ export default function SongsPage() {
           />
           {catalogFilter && (
             <button onClick={() => setCatalogFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X className="h-4 w-4" />
+              <X className="size-4" />
             </button>
           )}
         </div>
@@ -689,26 +689,26 @@ export default function SongsPage() {
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <Loader2 className="size-6 animate-spin text-blue-600" />
             <p className="text-sm text-gray-500">
               {viewMode === 'search' ? `Searching for "${searchQuery}"...` : 'Loading catalog...'}
             </p>
           </div>
         ) : viewMode === 'search' && !searched ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search className="h-10 w-10 text-gray-300" />
+            <Search className="size-10 text-gray-300" />
             <p className="mt-3 text-sm font-medium text-gray-900">Search for songs</p>
             <p className="mt-1 text-xs text-gray-500">Type in the search bar above to find full songs from the connected JioSaavn sources</p>
           </div>
         ) : apiError && viewMode === 'search' ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <X className="h-10 w-10 text-red-300" />
+            <X className="size-10 text-red-300" />
             <p className="mt-3 text-sm font-medium text-gray-900">Search failed</p>
             <p className="mt-1 text-xs text-gray-500">{apiError}</p>
           </div>
         ) : displaySongs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Music2 className="h-10 w-10 text-gray-300" />
+            <Music2 className="size-10 text-gray-300" />
             <p className="mt-3 text-sm font-medium text-gray-900">
               {viewMode === 'search' ? `No results for "${searchQuery}"` : 'No songs in catalog yet'}
             </p>
@@ -722,7 +722,7 @@ export default function SongsPage() {
                   }}
                   className="btn-primary mt-4 flex items-center gap-2"
                 >
-                  <Plus className="h-4 w-4" /> Upload "{searchQuery}" manually
+                  <Plus className="size-4" /> Upload "{searchQuery}" manually
                 </button>
             )}
           </div>
@@ -747,11 +747,11 @@ export default function SongsPage() {
                       <div className="flex items-center gap-3">
                         {song.imageUrl ? (
                           <img src={song.imageUrl} alt={song.title}
-                            className="h-10 w-10 flex-shrink-0 rounded-md object-cover"
+                            className="size-10 flex-shrink-0 rounded-md object-cover"
                             onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                         ) : (
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-gray-100">
-                            <Music2 className="h-5 w-5 text-gray-400" />
+                          <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-md bg-gray-100">
+                            <Music2 className="size-5 text-gray-400" />
                           </div>
                         )}
                         <span className="max-w-[160px] truncate font-medium text-gray-900" title={song.title}>
@@ -785,9 +785,9 @@ export default function SongsPage() {
                             title={activeSongId === song.id && isAudioPlaying ? 'Pause' : 'Play'}
                           >
                             {activeSongId === song.id && isAudioPlaying ? (
-                              <Pause className="h-4 w-4" />
+                              <Pause className="size-4" />
                             ) : (
-                              <Play className="h-4 w-4" />
+                              <Play className="size-4" />
                             )}
                           </button>
                         )}
@@ -799,7 +799,7 @@ export default function SongsPage() {
                             className="flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-50"
                             title="Add to catalog"
                           >
-                            {savingApiId === song.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                            {savingApiId === song.id ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
                             Add
                           </button>
                         )}
@@ -813,11 +813,11 @@ export default function SongsPage() {
                           <>
                             <button onClick={() => openEdit(song)}
                               className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Edit">
-                              <Edit className="h-4 w-4" />
+                              <Edit className="size-4" />
                             </button>
                             <button onClick={() => handleDelete(song.id)}
-                              className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete">
-                              <Trash2 className="h-4 w-4" />
+                              className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700" title="Delete">
+                              <Trash2 className="size-4" />
                             </button>
                           </>
                         )}
@@ -841,7 +841,7 @@ export default function SongsPage() {
                   disabled={loadingMore}
                   className="btn-secondary flex items-center gap-2 mx-auto text-sm"
                 >
-                  {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {loadingMore ? <Loader2 className="size-4 animate-spin" /> : null}
                   Load more ({apiResults.length} of {apiTotal})
                 </button>
               </div>
@@ -871,11 +871,11 @@ export default function SongsPage() {
       {/* Add / Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
+          <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={closeModal} />
           <div className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{editId ? 'Edit Song' : 'Add New Song'}</h2>
-              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-4">
               {formError && (
@@ -883,47 +883,47 @@ export default function SongsPage() {
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Title <span className="text-red-500">*</span></label>
-                  <input className="input-field" placeholder="Song title" value={form.title}
+                  <label htmlFor="songs-title-1" className="mb-1 block text-xs font-medium text-gray-700">Title <span className="text-red-500">*</span></label>
+                  <input id="songs-title-1" className="input-field" placeholder="Song title" value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Artist <span className="text-red-500">*</span></label>
-                  <input className="input-field" placeholder="Artist name" value={form.artist}
+                  <label htmlFor="songs-artist-2" className="mb-1 block text-xs font-medium text-gray-700">Artist <span className="text-red-500">*</span></label>
+                  <input id="songs-artist-2" className="input-field" placeholder="Artist name" value={form.artist}
                     onChange={e => setForm(f => ({ ...f, artist: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Album</label>
-                  <input className="input-field" placeholder="Album name" value={form.album}
+                  <label htmlFor="songs-album-3" className="mb-1 block text-xs font-medium text-gray-700">Album</label>
+                  <input id="songs-album-3" className="input-field" placeholder="Album name" value={form.album}
                     onChange={e => setForm(f => ({ ...f, album: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Genre</label>
-                  <select className="input-field" value={form.genre}
+                  <label htmlFor="songs-genre-4" className="mb-1 block text-xs font-medium text-gray-700">Genre</label>
+                  <select id="songs-genre-4" className="input-field" value={form.genre}
                     onChange={e => setForm(f => ({ ...f, genre: e.target.value }))}>
                     <option value="">Select genre</option>
                     {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Duration (seconds)</label>
-                  <input className="input-field" type="number" placeholder="e.g. 213" value={form.duration}
+                  <label htmlFor="songs-duration-seconds-5" className="mb-1 block text-xs font-medium text-gray-700">Duration (seconds)</label>
+                  <input id="songs-duration-seconds-5" className="input-field" type="number" placeholder="e.g. 213" value={form.duration}
                     onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Year</label>
-                  <input className="input-field" type="number" placeholder="e.g. 2024" value={form.year}
+                  <label htmlFor="songs-year-6" className="mb-1 block text-xs font-medium text-gray-700">Year</label>
+                  <input id="songs-year-6" className="input-field" type="number" placeholder="e.g. 2024" value={form.year}
                     onChange={e => setForm(f => ({ ...f, year: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Artwork URL</label>
-                  <input className="input-field" placeholder="https://..." value={form.imageUrl}
+                  <label htmlFor="songs-artwork-url-7" className="mb-1 block text-xs font-medium text-gray-700">Artwork URL</label>
+                  <input id="songs-artwork-url-7" className="input-field" placeholder="https://..." value={form.imageUrl}
                     onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                  <p className="mb-1 block text-xs font-medium text-gray-700">
                     MP3 File <span className="text-red-500">*</span>
-                  </label>
+                  </p>
                   <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
@@ -933,7 +933,7 @@ export default function SongsPage() {
                         </p>
                       </div>
                       <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:border-gray-300 hover:bg-gray-100">
-                        <Upload className="h-4 w-4" />
+                        <Upload className="size-4" />
                         Choose MP3
                         <input
                           key={fileInputKey}
@@ -979,7 +979,7 @@ export default function SongsPage() {
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
               <button onClick={closeModal} className="btn-secondary">Cancel</button>
               <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {saving ? (uploadingAudio ? 'Uploading MP3...' : (editId ? 'Saving Changes...' : 'Adding Song...')) : (editId ? 'Save Changes' : 'Add Song')}
               </button>
             </div>

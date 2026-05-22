@@ -12,7 +12,7 @@ const ProfilePage = () => {
   const { user, isAuthenticated } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
 
   useEffect(() => {
@@ -35,7 +35,7 @@ const ProfilePage = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
     try {
       await updateUserProfile(currentUser, { fullName: editedName.trim() });
       toast.success('Profile updated successfully');
@@ -43,7 +43,7 @@ const ProfilePage = () => {
     } catch (error) {
       toast.error('Failed to update profile');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -71,20 +71,20 @@ const ProfilePage = () => {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="flex items-center justify-between px-6 py-4 max-w-4xl mx-auto w-full">
-          <button
+          <button type="button"
             onClick={() => navigate(-1)}
             className="h-10 w-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors border border-white/5"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-bold tracking-wide">Profile</h1>
+          <h1 className="text-lg font-semibold tracking-wide">Profile</h1>
           <div className="w-10" />
         </div>
       </div>
 
       {/* Profile Content */}
       <div className="px-6 py-12 max-w-3xl mx-auto relative z-10">
-        <div className="flex flex-col items-center space-y-8 mb-12">
+        <div className="flex flex-col items-center gap-y-8 mb-12">
 
           {/* Profile Picture */}
           <div className="relative group">
@@ -99,7 +99,7 @@ const ProfilePage = () => {
                 <User className="h-20 w-20 text-muted-foreground" />
               )}
             </div>
-            <button className="absolute bottom-2 right-2 h-10 w-10 rounded-full bg-green-500 hover:bg-green-400 flex items-center justify-center transition-all shadow-lg border-4 border-background">
+            <button type="button" className="absolute bottom-2 right-2 h-10 w-10 rounded-full bg-green-500 hover:bg-green-400 flex items-center justify-center transition-all shadow-lg border-4 border-background">
               <Camera className="h-5 w-5 text-black" />
             </button>
           </div>
@@ -115,16 +115,15 @@ const ProfilePage = () => {
                   className="text-4xl font-bold bg-transparent border-b-2 border-green-500 focus:outline-none text-center w-full max-w-[250px] py-2 placeholder:text-white/20"
                   placeholder="Enter name"
                   maxLength={50}
-                  autoFocus
                 />
-                <button
+                <button type="button"
                   onClick={handleSave}
-                  disabled={isLoading || !editedName.trim()}
+                  disabled={isSaving || !editedName.trim()}
                   className="h-10 w-10 rounded-full bg-green-500 hover:bg-green-400 flex items-center justify-center transition-colors disabled:opacity-50 shadow-lg text-black"
                 >
                   <Save className="h-5 w-5" />
                 </button>
-                <button
+                <button type="button"
                   onClick={handleCancel}
                   className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-sm"
                 >
@@ -134,8 +133,8 @@ const ProfilePage = () => {
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-center gap-4 group">
-                  <h2 className="text-4xl font-bold tracking-tight">{user?.name || 'No name set'}</h2>
-                  <button
+                  <h2 className="text-4xl font-semibold tracking-tight">{user?.name || 'No name set'}</h2>
+                  <button type="button"
                     onClick={() => setIsEditing(true)}
                     className="h-10 w-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0"
                   >
@@ -150,7 +149,7 @@ const ProfilePage = () => {
 
         {/* Personal Information Section */}
         <div className="space-y-6">
-          <h3 className="text-xl font-bold text-white">Personal Information</h3>
+          <h3 className="text-xl font-semibold text-white">Personal Information</h3>
 
           <div className="bg-card rounded-lg divide-y divide-white/5 border border-white/5">
             {/* Email */}
@@ -199,9 +198,9 @@ const ProfilePage = () => {
               <Calendar className="h-5 w-5 text-muted-foreground" />
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">Member since</p>
-                <p className="text-foreground font-medium">
-                  {user?.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                <p className="text-foreground font-medium" suppressHydrationWarning>
+                  {(user as any)?.createdAt
+                    ? new Date((user as any).createdAt).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
@@ -217,7 +216,7 @@ const ProfilePage = () => {
 
         {/* Actions */}
         <div className="w-full pt-8 pb-12">
-          <button
+          <button type="button"
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-3 py-4 text-neutral-400 hover:text-white hover:bg-white/5 rounded-xl transition-all font-medium border border-transparent hover:border-white/5"
           >

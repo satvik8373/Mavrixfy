@@ -189,7 +189,7 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
   }
   
   try {
-    const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+    const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
     
     const duplicateQuery = query(
       likedSongsRef,
@@ -257,7 +257,7 @@ export const addLikedSong = async (
           }
 
           const documentId = String(song._id || getDedupeKey(song.title, song.artist)).replace(/\//g, '_');
-          const likedSongRef = doc(db, 'users', userId, 'likedSongs', documentId);
+          const likedSongRef = doc(db, 'users', userId, 'likedSongs:v1', documentId);
           
           // Determine the likedAt timestamp
           let likedAtTimestamp;
@@ -340,7 +340,7 @@ export const addMultipleLikedSongs = async (
   const errorSongs: BulkLikedSongIssue[] = [];
 
   try {
-    const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+    const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
     const existingSnapshot = await getDocs(likedSongsRef);
     const existingKeys = new Set<string>();
     const existingIds = new Set<string>();
@@ -392,6 +392,7 @@ export const addMultipleLikedSongs = async (
 
     const uniqueSongs = Array.from(normalizedInput.values());
     const batchSize = 200;
+    const commitPlans: Array<{ promise: Promise<void>; committedSongs: Song[] }> = [];
 
     for (let i = 0; i < uniqueSongs.length; i += batchSize) {
       const batch = writeBatch(db);
@@ -418,7 +419,7 @@ export const addMultipleLikedSongs = async (
         }
 
         try {
-          const likedSongRef = doc(db, 'users', userId, 'likedSongs', song._id);
+          const likedSongRef = doc(db, 'users', userId, 'likedSongs:v1', song._id);
           const likedAtIso = toIsoDateString(song.likedAt) ?? toIsoDateString(song.createdAt);
           const likedAtValue = likedAtIso ? new Date(likedAtIso) : serverTimestamp();
           const likedSongData: LikedSong = {
@@ -459,33 +460,38 @@ export const addMultipleLikedSongs = async (
       }
 
       if (writesInBatch > 0) {
-        try {
-          await batch.commit();
-
-          committedSongs.forEach((song) => {
-            const cacheKey = `${userId}:${normalizeForDedupe(song.title)}:${normalizeForDedupe(song.artist)}`;
-            duplicateCheckCache.set(cacheKey, { result: true, timestamp: Date.now() });
-          });
-        } catch (error) {
-          added -= committedSongs.length;
-          errors += committedSongs.length;
-
-          committedSongs.forEach((song) => {
-            const normalizedTitle = normalizeForDedupe(song.title);
-            const normalizedArtist = normalizeForDedupe(song.artist);
-            existingKeys.delete(`${normalizedTitle}|${normalizedArtist}`);
-            existingIds.delete(song._id);
-            errorSongs.push({
-              title: song.title,
-              artist: song.artist,
-              album: String(song.album || '').trim(),
-              addedAt: toIsoDateString(song.likedAt) ?? toIsoDateString(song.createdAt) ?? undefined,
-              reason: 'storage_failed',
-            });
-          });
-        }
+        commitPlans.push({ promise: batch.commit(), committedSongs });
       }
     }
+
+    const commitResults = await Promise.allSettled(commitPlans.map((plan) => plan.promise));
+    commitResults.forEach((result, index) => {
+      const { committedSongs } = commitPlans[index];
+      if (result.status === 'fulfilled') {
+        committedSongs.forEach((song) => {
+          const cacheKey = `${userId}:${normalizeForDedupe(song.title)}:${normalizeForDedupe(song.artist)}`;
+          duplicateCheckCache.set(cacheKey, { result: true, timestamp: Date.now() });
+        });
+        return;
+      }
+
+      added -= committedSongs.length;
+      errors += committedSongs.length;
+
+      committedSongs.forEach((song) => {
+        const normalizedTitle = normalizeForDedupe(song.title);
+        const normalizedArtist = normalizeForDedupe(song.artist);
+        existingKeys.delete(`${normalizedTitle}|${normalizedArtist}`);
+        existingIds.delete(song._id);
+        errorSongs.push({
+          title: song.title,
+          artist: song.artist,
+          album: String(song.album || '').trim(),
+          addedAt: toIsoDateString(song.likedAt) ?? toIsoDateString(song.createdAt) ?? undefined,
+          reason: 'storage_failed',
+        });
+      });
+    });
 
     document.dispatchEvent(new CustomEvent('likedSongsUpdated'));
     return {
@@ -522,13 +528,13 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
   
   try {
     // First, check if the document exists with the given ID
-    const likedSongRef = doc(db, 'users', userId, 'likedSongs', songId);
+    const likedSongRef = doc(db, 'users', userId, 'likedSongs:v1', songId);
     
     // Check if document exists before attempting deletion
     const docSnap = await getDoc(likedSongRef);
     if (!docSnap.exists()) {
       // Try to find the document by searching all liked songs
-      const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+      const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
       const snapshot = await getDocs(likedSongsRef);
       
       let foundDocId = null;
@@ -542,7 +548,7 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
       });
       
       if (foundDocId && foundDocId !== songId) {
-        const correctRef = doc(db, 'users', userId, 'likedSongs', foundDocId);
+        const correctRef = doc(db, 'users', userId, 'likedSongs:v1', foundDocId);
         await deleteDoc(correctRef);
       } else {
         throw new Error(`Song not found in Firestore with ID: ${songId}`);
@@ -571,7 +577,7 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
   }
 
   try {
-    const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+    const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
     
     let snapshot;
     try {
@@ -608,8 +614,8 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
         artist: data.artist,
         album: safeAlbumName || null,
         imageUrl: data.imageUrl,
-        audioUrl: data.audioUrl || data.streamUrl || '',
-        streamUrl: data.streamUrl || data.audioUrl || '',
+        audioUrl: data.audioUrl || (data as any).streamUrl || '',
+        streamUrl: (data as any).streamUrl || data.audioUrl || '',
         duration: data.duration || 0,
         albumId: safeAlbumName || null,
         createdAt: createdAtIso,
@@ -641,7 +647,7 @@ export const isSongLiked = async (songId: string): Promise<boolean> => {
   }
   
   try {
-    const likedSongRef = doc(db, 'users', userId, 'likedSongs', songId);
+    const likedSongRef = doc(db, 'users', userId, 'likedSongs:v1', songId);
     const songDoc = await getDoc(likedSongRef);
     
     return songDoc.exists();
@@ -681,13 +687,13 @@ export const getLikedSongsCount = async (): Promise<number> => {
   }
 
   try {
-    const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+    const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
     const snapshot = await getCountFromServer(likedSongsRef);
     return snapshot.data().count;
     
   } catch (error) {
     try {
-      const likedSongsRef = collection(db, 'users', userId, 'likedSongs');
+      const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
       const snapshot = await getDocs(likedSongsRef);
       return snapshot.size;
     } catch {
@@ -695,3 +701,4 @@ export const getLikedSongsCount = async (): Promise<number> => {
     }
   }
 };
+

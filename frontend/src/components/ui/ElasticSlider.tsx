@@ -1,4 +1,4 @@
-import { animate, motion, useMotionValue, useMotionValueEvent, useTransform } from 'framer-motion';
+import { animate, m, useMotionValue, useMotionValueEvent, useTransform } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import './ElasticSlider.css';
@@ -31,7 +31,8 @@ export default function ElasticSlider({
     return (
         <div className={`slider-container ${className}`}>
             <Slider
-                defaultValue={defaultValue}
+                key={defaultValue}
+                initialValue={defaultValue}
                 startingValue={startingValue}
                 maxValue={maxValue}
                 isStepped={isStepped}
@@ -45,7 +46,7 @@ export default function ElasticSlider({
 }
 
 interface SliderProps {
-    defaultValue: number;
+    initialValue: number;
     startingValue: number;
     maxValue: number;
     isStepped: boolean;
@@ -55,23 +56,19 @@ interface SliderProps {
     onValueChange?: (value: number) => void;
 }
 
-function Slider({ defaultValue, startingValue, maxValue, isStepped, stepSize, leftIcon, rightIcon, onValueChange }: SliderProps) {
-    const [value, setValue] = useState(defaultValue);
+function Slider({ initialValue, startingValue, maxValue, isStepped, stepSize, leftIcon, rightIcon, onValueChange }: SliderProps) {
+    const [value, setValue] = useState(() => initialValue);
     const sliderRef = useRef<HTMLDivElement>(null);
     const [region, setRegion] = useState('middle');
     const clientX = useMotionValue(0);
     const overflow = useMotionValue(0);
     const scale = useMotionValue(1);
 
-    useEffect(() => {
-        setValue(defaultValue);
-    }, [defaultValue]);
-
     useMotionValueEvent(clientX, 'change', latest => {
         if (sliderRef.current) {
             const { left, right } = sliderRef.current.getBoundingClientRect();
             let newValue;
-
+ 
             if (latest < left) {
                 setRegion('left');
                 newValue = left - latest;
@@ -125,7 +122,7 @@ function Slider({ defaultValue, startingValue, maxValue, isStepped, stepSize, le
 
     return (
         <>
-            <motion.div
+            <m.div
                 onHoverStart={() => animate(scale, 1.2)}
                 onHoverEnd={() => animate(scale, 1)}
                 onTouchStart={() => animate(scale, 1.2)}
@@ -136,7 +133,7 @@ function Slider({ defaultValue, startingValue, maxValue, isStepped, stepSize, le
                 }}
                 className="slider-wrapper"
             >
-                <motion.div
+                <m.div
                     animate={{
                         scale: region === 'left' ? [1, 1.4, 1] : 1,
                         transition: { duration: 0.25 }
@@ -146,7 +143,7 @@ function Slider({ defaultValue, startingValue, maxValue, isStepped, stepSize, le
                     }}
                 >
                     {leftIcon}
-                </motion.div>
+                </m.div>
 
                 <div
                     ref={sliderRef}
@@ -155,7 +152,7 @@ function Slider({ defaultValue, startingValue, maxValue, isStepped, stepSize, le
                     onPointerDown={handlePointerDown}
                     onPointerUp={handlePointerUp}
                 >
-                    <motion.div
+                    <m.div
                         style={{
                             scaleX: useTransform(() => {
                                 if (sliderRef.current) {
@@ -181,10 +178,10 @@ function Slider({ defaultValue, startingValue, maxValue, isStepped, stepSize, le
                         <div className="slider-track">
                             <div className="slider-range" style={{ width: `${getRangePercentage()}%` }} />
                         </div>
-                    </motion.div>
+                    </m.div>
                 </div>
 
-                <motion.div
+                <m.div
                     animate={{
                         scale: region === 'right' ? [1, 1.4, 1] : 1,
                         transition: { duration: 0.25 }
@@ -194,8 +191,8 @@ function Slider({ defaultValue, startingValue, maxValue, isStepped, stepSize, le
                     }}
                 >
                     {rightIcon}
-                </motion.div>
-            </motion.div>
+                </m.div>
+            </m.div>
             {/* <p className="value-indicator">{Math.round(value)}</p> */}
         </>
     );

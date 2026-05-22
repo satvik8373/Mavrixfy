@@ -39,7 +39,7 @@ export default function ModerationPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Content Moderation</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Content Moderation</h1>
         <p className="mt-1 text-sm text-gray-500">Review reported content and manage takedowns</p>
       </div>
 
@@ -56,7 +56,7 @@ export default function ModerationPage() {
                 <p className="mt-1 text-2xl font-bold text-gray-900">{loading ? '—' : value}</p>
               </div>
               <div className={`rounded-lg p-2 ${bg}`}>
-                <Icon className={`h-5 w-5 ${color}`} />
+                <Icon className={`size-5 ${color}`} />
               </div>
             </div>
           </div>
@@ -69,11 +69,11 @@ export default function ModerationPage() {
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <Loader2 className="size-6 animate-spin text-blue-600" />
           </div>
         ) : reports.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <ShieldAlert className="h-10 w-10 text-gray-300" />
+            <ShieldAlert className="size-10 text-gray-300" />
             <p className="mt-3 text-sm font-medium text-gray-900">No reports</p>
             <p className="mt-1 text-xs text-gray-500">Reported content will appear here</p>
           </div>

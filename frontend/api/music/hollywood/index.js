@@ -26,23 +26,24 @@ export default async function handler(req, res) {
     const data = await response.json();
     
     // Process and filter the data to ensure only valid entries are returned
-    const processedResults = data.data.results
-      .filter(item => item.downloadUrl && item.downloadUrl.length > 0)
-      .map(item => {
-        const audio = getHighestQualityDownload(item.downloadUrl);
+    const processedResults = data.data.results.flatMap(item => {
+      if (!item.downloadUrl || item.downloadUrl.length === 0) {
+        return [];
+      }
+      const audio = getHighestQualityDownload(item.downloadUrl);
 
-        return {
-          id: item.id,
-          title: item.name,
-          artist: item.primaryArtists,
-          album: item.album.name,
-          year: item.year,
-          duration: item.duration,
-          image: item.image[2].url,
-          audio,
-          url: audio?.url || audio?.link || '',
-        };
-      });
+      return [{
+        id: item.id,
+        title: item.name,
+        artist: item.primaryArtists,
+        album: item.album.name,
+        year: item.year,
+        duration: item.duration,
+        image: item.image[2].url,
+        audio,
+        url: audio?.url || audio?.link || '',
+      }];
+    });
     
     return res.status(200).json({ 
       status: 'success',

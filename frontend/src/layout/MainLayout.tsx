@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, memo } from 'react';
+import { useEffect, useReducer, useRef, useCallback, memo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import LeftSidebar from './components/LeftSidebar';
 import { PlaybackControls } from './components/PlaybackControls';
@@ -20,16 +20,49 @@ const MemoizedHeader = memo(Header);
 const MemoizedQueuePanel = memo(QueuePanel);
 const MemoizedDesktopFooter = memo(DesktopFooter);
 
+interface LayoutUiState {
+  isMobile: boolean;
+  showQueue: boolean;
+  isDocumentFullscreen: boolean;
+}
+
+type LayoutUiAction =
+  | { type: 'mobile'; value: boolean }
+  | { type: 'toggle_queue' }
+  | { type: 'queue'; value: boolean }
+  | { type: 'fullscreen'; value: boolean };
+
+const layoutUiReducer = (state: LayoutUiState, action: LayoutUiAction): LayoutUiState => {
+  switch (action.type) {
+    case 'mobile':
+      return { ...state, isMobile: action.value };
+    case 'toggle_queue':
+      return { ...state, showQueue: !state.showQueue };
+    case 'queue':
+      return { ...state, showQueue: action.value };
+    case 'fullscreen':
+      return {
+        ...state,
+        isDocumentFullscreen: action.value,
+        showQueue: action.value ? false : state.showQueue,
+      };
+    default:
+      return state;
+  }
+};
 
 const MainLayout = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [showQueue, setShowQueue] = useState(false);
-  const [isDocumentFullscreen, setIsDocumentFullscreen] = useState(false);
+  const [{ isMobile, showQueue, isDocumentFullscreen }, dispatchLayoutUi] = useReducer(layoutUiReducer, {
+    isMobile: window.innerWidth < 768,
+    showQueue: false,
+    isDocumentFullscreen: false,
+  });
   const currentSong = usePlayerStore(state => state.currentSong); // Selective subscription
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const hasActiveSong = !!currentSong;
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const location = useLocation();
+  const pathname = location.pathname;
   const { width, isCollapsed, setWidth, toggleCollapse, setCollapsed } = useSidebarStore();
   const isResizing = useRef(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -65,7 +98,7 @@ const MainLayout = () => {
     if (document.title !== playbackTitle) {
       document.title = playbackTitle;
     }
-  }, [isPlaying, currentSong?._id, currentSong?.title, currentSong?.artist, location.pathname]);
+  }, [isPlaying, currentSong?._id, currentSong?.title, currentSong?.artist, pathname]);
 
   useEffect(() => {
     return () => {
@@ -95,9 +128,9 @@ const MainLayout = () => {
 
   // Listen for queue toggle events (optimized)
   useEffect(() => {
-    const handleToggleQueue = () => setShowQueue(prev => !prev);
-    const handleOpenQueue = () => setShowQueue(true);
-    const handleCloseQueue = () => setShowQueue(false);
+    const handleToggleQueue = () => dispatchLayoutUi({ type: 'toggle_queue' });
+    const handleOpenQueue = () => dispatchLayoutUi({ type: 'queue', value: true });
+    const handleCloseQueue = () => dispatchLayoutUi({ type: 'queue', value: false });
 
     window.addEventListener('toggleQueue', handleToggleQueue, { passive: true });
     window.addEventListener('openQueue', handleOpenQueue, { passive: true });
@@ -113,7 +146,10 @@ const MainLayout = () => {
   useEffect(() => {
     const syncFullscreenState = () => {
       const doc = document as any;
-      setIsDocumentFullscreen(Boolean(document.fullscreenElement || doc.webkitFullscreenElement));
+      dispatchLayoutUi({
+        type: 'fullscreen',
+        value: Boolean(document.fullscreenElement || doc.webkitFullscreenElement),
+      });
     };
 
     syncFullscreenState();
@@ -126,19 +162,13 @@ const MainLayout = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (isDocumentFullscreen && showQueue) {
-      setShowQueue(false);
-    }
-  }, [isDocumentFullscreen, showQueue]);
-
   // Optimized mobile detection with debouncing
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     const checkMobile = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        setIsMobile(window.innerWidth < 768);
+        dispatchLayoutUi({ type: 'mobile', value: window.innerWidth < 768 });
       }, 100);
     };
 
@@ -149,36 +179,15 @@ const MainLayout = () => {
     };
   }, []);
 
-  // Optimized viewport width variable
-  useEffect(() => {
-    let rafId: number;
-    const setVw = () => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        document.documentElement.style.setProperty('--vw', `${window.innerWidth * 0.01}px`);
-      });
-    };
-
-    setVw();
-    window.addEventListener('resize', setVw, { passive: true });
-    window.addEventListener('orientationchange', setVw, { passive: true });
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('resize', setVw);
-      window.removeEventListener('orientationchange', setVw);
-    };
-  }, []);
-
   // Route-aware measurements for mobile header/nav spacing
   const MOBILE_HEADER_PX = 40;
   const MOBILE_NAV_BASE_PX = 48; // Reduced from 56px to 48px
   const MOBILE_PLAYER_PADDING_PX = 44; // paddingTop when song is active
   const MOBILE_SAFE_TOP = 'env(safe-area-inset-top, 0px)';
   const isMobileHeaderRoute = isMobile && (
-    location.pathname === '/home' ||
-    location.pathname.startsWith('/search') ||
-    location.pathname.startsWith('/library')
+    pathname === '/home' ||
+    pathname.startsWith('/search') ||
+    pathname.startsWith('/library')
   );
 
   // Routes that need safe-area top margin but have no mobile header
@@ -186,10 +195,10 @@ const MainLayout = () => {
 
   const showMobilePlayer = hasActiveSong;
   const hideDesktopFooter = (
-    location.pathname.startsWith('/playlist/') ||
-    location.pathname.startsWith('/jiosaavn/playlist/') ||
-    location.pathname === '/jiosaavn/playlists' ||
-    location.pathname === '/mood-playlist'
+    pathname.startsWith('/playlist/') ||
+    pathname.startsWith('/jiosaavn/playlist/') ||
+    pathname === '/jiosaavn/playlists' ||
+    pathname === '/mood-playlist'
   );
 
   const mobileBottomSubtractPx = MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
@@ -214,8 +223,10 @@ const MainLayout = () => {
     e.preventDefault();
     e.stopPropagation();
     isResizing.current = true;
-    document.body.style.cursor = 'grabbing';
-    document.body.style.userSelect = 'none';
+    Object.assign(document.body.style, {
+      cursor: 'grabbing',
+      userSelect: 'none'
+    });
 
     const startX = e.clientX;
     const startWidth = isCollapsed ? COLLAPSED_WIDTH : width;
@@ -245,8 +256,10 @@ const MainLayout = () => {
 
     const handleMouseUp = () => {
       isResizing.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      Object.assign(document.body.style, {
+        cursor: '',
+        userSelect: ''
+      });
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
@@ -254,6 +267,10 @@ const MainLayout = () => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
   }, [setWidth, isCollapsed, width, setCollapsed]);
+
+  const handleCloseQueuePanel = useCallback(() => {
+    dispatchLayoutUi({ type: 'queue', value: false });
+  }, []);
 
   const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
@@ -286,6 +303,9 @@ const MainLayout = () => {
             </div>
             {/* Resize handle */}
             <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
               onMouseDown={handleMouseDown}
               className="absolute right-0 top-0 bottom-0 w-2 cursor-grab active:cursor-grabbing z-10 flex items-center justify-center group/resize"
             >
@@ -306,7 +326,7 @@ const MainLayout = () => {
         {!isMobile && showQueue && !isDocumentFullscreen && (
           <div className="w-[280px] min-w-[280px] h-full flex-shrink-0">
             <div className="h-full bg-[#121212] rounded-lg overflow-hidden">
-              <MemoizedQueuePanel onClose={() => setShowQueue(false)} />
+              <MemoizedQueuePanel onClose={handleCloseQueuePanel} />
             </div>
           </div>
         )}

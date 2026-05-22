@@ -5,28 +5,34 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const compactNumberFormatter = new Intl.NumberFormat('en-US', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+const shortDateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
 export function formatNumber(num: number): string {
-  return new Intl.NumberFormat('en-US', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(num);
+  return compactNumberFormatter.format(num);
 }
 
 export function formatDate(date: Date | string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(date));
+  return shortDateFormatter.format(new Date(date));
 }
 
 export function formatDateTime(date: Date | string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(date));
+  return shortDateTimeFormatter.format(new Date(date));
 }
 
 export function formatRelativeTime(date: Date | string): string {
@@ -73,7 +79,7 @@ export function slugify(text: string): string {
 
 export function truncate(text: string, length: number): string {
   if (text.length <= length) return text;
-  return `${text.slice(0, length)}...`;
+  return `${text.slice(0, length)}…`;
 }
 
 export function debounce<T extends (...args: any[]) => any>(

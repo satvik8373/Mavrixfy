@@ -3,7 +3,7 @@ import { X, Check, HelpCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import EmbedPreview from '@/components/EmbedPreview';
 
 interface EmbedPlaylistModalProps {
@@ -33,11 +33,14 @@ const EmbedPlaylistModal = ({
   playlistCover,
   songs,
 }: EmbedPlaylistModalProps) => {
-  const [colorTheme, setColorTheme] = useState<ColorTheme>('green');
-  const [sizePreset, setSizePreset] = useState<SizePreset>('normal');
-  const [widthPercentage, setWidthPercentage] = useState(100);
-  const [showCode, setShowCode] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [state, setState] = useState({
+    colorTheme: 'green' as ColorTheme,
+    sizePreset: 'normal' as SizePreset,
+    widthPercentage: 100,
+    showCode: false,
+    copied: false,
+  });
+  const { colorTheme, sizePreset, widthPercentage, showCode, copied } = state;
 
   const getSizeHeight = () => {
     switch (sizePreset) {
@@ -74,15 +77,13 @@ const EmbedPlaylistModal = ({
     try {
       const code = generateEmbedCode();
       await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setState(prev => ({ ...prev, copied: true }));
+      setTimeout(() => setState(prev => ({ ...prev, copied: false })), 2000);
     } catch (err) {
       // Fallback for mobile/iOS
       const textArea = document.createElement('textarea');
       textArea.value = generateEmbedCode();
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      textArea.style.top = '0';
+      textArea.style.cssText = 'position: fixed; left: -999999px; top: 0;';
       textArea.setAttribute('readonly', '');
       document.body.appendChild(textArea);
       
@@ -90,8 +91,8 @@ const EmbedPlaylistModal = ({
         textArea.select();
         textArea.setSelectionRange(0, 99999);
         document.execCommand('copy');
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setState(prev => ({ ...prev, copied: true }));
+        setTimeout(() => setState(prev => ({ ...prev, copied: false })), 2000);
       } finally {
         document.body.removeChild(textArea);
       }
@@ -100,8 +101,7 @@ const EmbedPlaylistModal = ({
 
   useEffect(() => {
     if (!isOpen) {
-      setCopied(false);
-      setShowCode(false);
+      setState(prev => ({ ...prev, copied: false, showCode: false }));
     }
   }, [isOpen]);
 
@@ -113,7 +113,7 @@ const EmbedPlaylistModal = ({
           Customize and generate embed code for {playlistTitle} playlist
         </DialogDescription>
         
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
@@ -122,7 +122,7 @@ const EmbedPlaylistModal = ({
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 pb-4">
-            <h2 className="text-2xl font-bold text-white">Embed playlist</h2>
+            <h2 className="text-2xl font-semibold text-white">Embed playlist</h2>
             <Button
               variant="ghost"
               size="icon"
@@ -139,8 +139,8 @@ const EmbedPlaylistModal = ({
             <div className="flex items-center gap-3">
               <span className="text-sm text-[#b3b3b3]">Color</span>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setColorTheme('green')}
+                <button type="button"
+                  onClick={() => setState(prev => ({ ...prev, colorTheme: 'green' }))}
                   className={cn(
                     'w-8 h-8 rounded-full bg-[#1DB954] border-2 transition-all',
                     colorTheme === 'green'
@@ -149,8 +149,8 @@ const EmbedPlaylistModal = ({
                   )}
                   aria-label="Green theme"
                 />
-                <button
-                  onClick={() => setColorTheme('dark')}
+                <button type="button"
+                  onClick={() => setState(prev => ({ ...prev, colorTheme: 'dark' }))}
                   className={cn(
                     'w-8 h-8 rounded-full bg-[#282828] border-2 transition-all',
                     colorTheme === 'dark'
@@ -167,7 +167,7 @@ const EmbedPlaylistModal = ({
               <span className="text-sm text-[#b3b3b3]">Size:</span>
               <select
                 value={sizePreset}
-                onChange={(e) => setSizePreset(e.target.value as SizePreset)}
+                onChange={(e) => setState(prev => ({ ...prev, sizePreset: e.target.value as SizePreset }))}
                 className="bg-[#282828] text-white px-3 py-1.5 rounded text-sm border-none outline-none cursor-pointer hover:bg-[#3e3e3e] transition-colors"
               >
                 <option value="compact">Compact</option>
@@ -184,7 +184,7 @@ const EmbedPlaylistModal = ({
                 min="25"
                 max="100"
                 value={widthPercentage}
-                onChange={(e) => setWidthPercentage(Number(e.target.value))}
+                onChange={(e) => setState(prev => ({ ...prev, widthPercentage: Number(e.target.value) }))}
                 className="w-24 accent-[#1DB954]"
               />
               <span className="text-sm text-white w-12">{widthPercentage}%</span>
@@ -245,7 +245,7 @@ const EmbedPlaylistModal = ({
                 <input
                   type="checkbox"
                   checked={showCode}
-                  onChange={(e) => setShowCode(e.target.checked)}
+                  onChange={(e) => setState(prev => ({ ...prev, showCode: e.target.checked }))}
                   className="sr-only"
                 />
                 <span className="text-sm text-white">Show code</span>
@@ -261,14 +261,14 @@ const EmbedPlaylistModal = ({
                 )}
               >
                 {copied ? (
-                  <motion.span
+                  <m.span
                     initial={{ scale: 0.8 }}
                     animate={{ scale: 1 }}
                     className="flex items-center gap-2"
                   >
                     <Check className="h-4 w-4" />
                     Copied!
-                  </motion.span>
+                  </m.span>
                 ) : (
                   'Copy'
                 )}
@@ -279,7 +279,7 @@ const EmbedPlaylistModal = ({
           {/* Code Display */}
           <AnimatePresence>
             {showCode && (
-              <motion.div
+              <m.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
@@ -291,10 +291,10 @@ const EmbedPlaylistModal = ({
                     <code>{generateEmbedCode()}</code>
                   </pre>
                 </div>
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </m.div>
       </DialogContent>
     </Dialog>
   );

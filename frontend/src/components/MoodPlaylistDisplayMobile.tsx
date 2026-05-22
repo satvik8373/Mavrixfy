@@ -102,7 +102,7 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                         className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-1"
                     >
                         {stripSongs.map((song, index) => (
-                            <button
+                            <button type="button"
                                 key={song._id || `strip-${index}`}
                                 onClick={() => onPlay(index)}
                                 className="flex-shrink-0 snap-start flex flex-col items-start active:scale-95 transition-transform duration-150"
@@ -141,6 +141,9 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                 <div className="flex flex-col gap-1 pb-2">
                     {playlist.songs.map((song, index) => (
                         <div
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                             key={song._id || `song-${index}`}
                             onClick={() => onPlay(index)}
                             className="flex items-center gap-3 px-3 py-2.5 bg-black/45 backdrop-blur-sm active:bg-black/60 cursor-pointer rounded-xl border border-white/[0.08] transition-all active:scale-[0.99]"
@@ -195,13 +198,13 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                            <button
+                            <button type="button"
                                 onClick={onSave}
                                 className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-pink-400 active:bg-white/15 transition-colors"
                             >
                                 <Heart className="w-4 h-4" />
                             </button>
-                            <button
+                            <button type="button"
                                 onClick={onShare}
                                 className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-indigo-400 active:bg-white/15 transition-colors"
                             >
@@ -212,14 +215,14 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
 
                     {/* Row 2: Play All + New Mood — large easy tap targets */}
                     <div className="flex gap-2">
-                        <button
+                        <button type="button"
                             onClick={() => onPlay(0)}
                             className="flex-1 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-400 active:from-green-400 active:to-emerald-300 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
                         >
                             <Play className="w-4 h-4 fill-black" />
                             Play All
                         </button>
-                        <button
+                        <button type="button"
                             onClick={onTryAgain}
                             className="flex-1 h-12 rounded-xl bg-white/8 border border-white/15 text-white font-bold text-sm flex items-center justify-center gap-2 active:bg-white/15 active:scale-[0.98] transition-all"
                         >

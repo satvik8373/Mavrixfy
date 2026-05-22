@@ -12,10 +12,10 @@ interface Notification { id: string; title: string; message: string; sentAt: any
 const EMPTY_FORM = { title: '', message: '', platform: 'all' as Platform };
 
 const PLATFORM_OPTIONS: { value: Platform; label: string; icon: React.ReactNode; desc: string }[] = [
-  { value: 'all',     label: 'All',     icon: <Bell className="h-4 w-4" />,       desc: 'Web + Android + iOS' },
-  { value: 'web',     label: 'Web',     icon: <Globe className="h-4 w-4" />,      desc: 'Browser only' },
-  { value: 'android', label: 'Android', icon: <Smartphone className="h-4 w-4" />, desc: 'Android app' },
-  { value: 'ios',     label: 'iOS',     icon: <Monitor className="h-4 w-4" />,    desc: 'iPhone / iPad' },
+  { value: 'all',     label: 'All',     icon: <Bell className="size-4" />,       desc: 'Web + Android + iOS' },
+  { value: 'web',     label: 'Web',     icon: <Globe className="size-4" />,      desc: 'Browser only' },
+  { value: 'android', label: 'Android', icon: <Smartphone className="size-4" />, desc: 'Android app' },
+  { value: 'ios',     label: 'iOS',     icon: <Monitor className="size-4" />,    desc: 'iPhone / iPad' },
 ];
 
 export default function NotificationsPage() {
@@ -95,11 +95,11 @@ export default function NotificationsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Notifications</h1>
           <p className="mt-1 text-sm text-gray-500">Send push notifications to users</p>
         </div>
         <button onClick={() => { setShowModal(true); setSendResult(null); }} className="btn-primary flex items-center gap-2">
-          <Plus className="h-4 w-4" /> New Notification
+          <Plus className="size-4" /> New Notification
         </button>
       </div>
 
@@ -115,7 +115,7 @@ export default function NotificationsPage() {
                 <p className="text-xs font-medium text-gray-500">{label}</p>
                 <p className="mt-1 text-2xl font-bold text-gray-900">{loading ? '—' : value}</p>
               </div>
-              <div className={`rounded-lg p-2 ${bg}`}><Icon className={`h-5 w-5 ${color}`} /></div>
+              <div className={`rounded-lg p-2 ${bg}`}><Icon className={`size-5 ${color}`} /></div>
             </div>
           </div>
         ))}
@@ -126,10 +126,10 @@ export default function NotificationsPage() {
           <h2 className="text-sm font-semibold text-gray-900">Recent Notifications</h2>
         </div>
         {loading ? (
-          <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
+          <div className="flex items-center justify-center py-16"><Loader2 className="size-6 animate-spin text-blue-600" /></div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Bell className="h-10 w-10 text-gray-300" />
+            <Bell className="size-10 text-gray-300" />
             <p className="mt-3 text-sm font-medium text-gray-900">No notifications sent yet</p>
           </div>
         ) : (
@@ -155,11 +155,11 @@ export default function NotificationsPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40" onClick={() => setShowModal(false)} />
+          <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={() => setShowModal(false)} />
           <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">Send Notification</h2>
-              <button onClick={() => setShowModal(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+              <button onClick={() => setShowModal(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               {error && <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -179,25 +179,25 @@ export default function NotificationsPage() {
               )}
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Title <span className="text-red-500">*</span></label>
-                <input className="input-field" placeholder="Notification title" value={form.title}
+                <label htmlFor="notifications-title-1" className="block text-xs font-medium text-gray-700 mb-1">Title <span className="text-red-500">*</span></label>
+                <input id="notifications-title-1" className="input-field" placeholder="Notification title" value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Message <span className="text-red-500">*</span></label>
-                <textarea className="input-field resize-none" rows={3} placeholder="Notification message..."
+                <label htmlFor="notifications-message-2" className="block text-xs font-medium text-gray-700 mb-1">Message <span className="text-red-500">*</span></label>
+                <textarea id="notifications-message-2" className="input-field resize-none" rows={3} placeholder="Notification message..."
                   value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} />
               </div>
 
               {/* Platform selector */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Send To</label>
+                <p className="block text-xs font-medium text-gray-700 mb-2">Send To</p>
                 <div className="grid grid-cols-4 gap-2">
                   {PLATFORM_OPTIONS.map(opt => (
                     <button key={opt.value} type="button"
                       onClick={() => setForm(f => ({ ...f, platform: opt.value }))}
-                      className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition-colors flex flex-col items-center gap-1 ${
+                      className={`rounded-lg border p-2.5 text-xs font-medium transition-colors flex flex-col items-center gap-1 ${
                         form.platform === opt.value
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
                           : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
@@ -215,7 +215,7 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
               <button onClick={() => setShowModal(false)} className="btn-secondary">Cancel</button>
               <button onClick={handleSend} disabled={saving} className="btn-primary flex items-center gap-2">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
                 {saving ? 'Sending...' : 'Send'}
               </button>
             </div>

@@ -38,7 +38,7 @@ export default function DiscoveryPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Discovery & Search</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Discovery & Search</h1>
         <p className="mt-1 text-sm text-gray-500">Manage search rankings and discovery features</p>
       </div>
 
@@ -46,16 +46,16 @@ export default function DiscoveryPage() {
         {/* Top Songs */}
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
-            <TrendingUp className="h-4 w-4 text-blue-600" />
+            <TrendingUp className="size-4 text-blue-600" />
             <h2 className="text-sm font-semibold text-gray-900">Top Songs</h2>
           </div>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <Loader2 className="size-5 animate-spin text-blue-600" />
             </div>
           ) : topSongs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <TrendingUp className="h-8 w-8 text-gray-300" />
+              <TrendingUp className="size-8 text-gray-300" />
               <p className="mt-2 text-sm text-gray-500">No songs data yet</p>
             </div>
           ) : (
@@ -79,7 +79,7 @@ export default function DiscoveryPage() {
         {/* Search Config */}
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
-            <Search className="h-4 w-4 text-blue-600" />
+            <Search className="size-4 text-blue-600" />
             <h2 className="text-sm font-semibold text-gray-900">Search Configuration</h2>
           </div>
           <div className="divide-y divide-gray-100">

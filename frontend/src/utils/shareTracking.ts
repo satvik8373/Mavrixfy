@@ -1,3 +1,5 @@
+import { trackRecommendationEvent } from '@/services/recommendationService';
+
 /**
  * Utility for tracking social sharing events
  */
@@ -22,6 +24,12 @@ interface ShareEvent {
   userId?: string;
   timestamp: number;
 }
+
+const SHARE_EVENTS_KEY = 'share_events:v1';
+
+const readShareEvents = (): ShareEvent[] => {
+  return JSON.parse(localStorage.getItem(SHARE_EVENTS_KEY) || '[]');
+};
 
 /**
  * Track a share event
@@ -52,7 +60,7 @@ export const trackShare = (
 
   // Store locally for analytics
   try {
-    const shares = JSON.parse(localStorage.getItem('share_events') || '[]');
+    const shares = readShareEvents();
     shares.push(event);
     
     // Keep only last 100 events
@@ -60,12 +68,26 @@ export const trackShare = (
       shares.shift();
     }
     
-    localStorage.setItem('share_events', JSON.stringify(shares));
+    localStorage.setItem(SHARE_EVENTS_KEY, JSON.stringify(shares));
   } catch (error) {
     // Silent error handling
   }
 
   // Share tracked successfully
+  if (contentType === 'song') {
+    void trackRecommendationEvent({
+      eventType: 'share_song',
+      item: {
+        id: `${contentType}:${contentId}`,
+        contentId,
+        kind: 'song',
+        source: 'catalog',
+        title: contentId,
+        subtitle: '',
+      },
+      context: { surface: platform },
+    });
+  }
 };
 
 /**
@@ -73,7 +95,7 @@ export const trackShare = (
  */
 export const getShareStats = () => {
   try {
-    const shares = JSON.parse(localStorage.getItem('share_events') || '[]');
+    const shares = readShareEvents();
     
     const stats = {
       total: shares.length,
@@ -171,9 +193,10 @@ export const trackShareClick = () => {
     
     // Store for conversion tracking
     try {
-      localStorage.setItem('share_source', JSON.stringify(params));
+      localStorage.setItem('share_source:v1', JSON.stringify(params));
     } catch (error) {
       // Silent error handling
     }
   }
 };
+

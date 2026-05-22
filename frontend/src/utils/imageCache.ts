@@ -122,8 +122,14 @@ class ImageCache {
   private addToCache(url: string, blob?: Blob, objectUrl?: string, failed = false): void {
     // Remove oldest entries if cache is full
     if (this.cache.size >= this.maxCacheSize) {
-      const oldestKey = Array.from(this.cache.entries())
-        .sort((a, b) => a[1].timestamp - b[1].timestamp)[0]?.[0];
+      let oldestKey: string | undefined = undefined;
+      let oldestTimestamp = Infinity;
+      for (const [key, item] of this.cache.entries()) {
+        if (item.timestamp < oldestTimestamp) {
+          oldestTimestamp = item.timestamp;
+          oldestKey = key;
+        }
+      }
       
       if (oldestKey) {
         this.removeFromCache(oldestKey);

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useReducer, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
@@ -9,7 +9,7 @@ import { usePlayerSync } from '../../hooks/usePlayerSync';
 import { Button } from '../../components/ui/button';
 import { ShuffleButton } from '../../components/ShuffleButton';
 import '../../styles/playlist-page.css';
-import { ContentLoading, InlineLoading, PageLoading } from '../../components/ui/loading';
+import { InlineLoading } from '../../components/ui/loading';
 import { recentlyPlayedService } from '@/services/recentlyPlayedService';
 import {
   Play,
@@ -25,7 +25,6 @@ import {
   Image as ImageIcon,
   ChevronLeft,
   ListPlus,
-  MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
@@ -50,6 +49,29 @@ import {
 import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { updatePlaylistCoverFromSongs } from '../../services/playlistService';
+import { recommendationItemFromPlaylist, trackRecommendationEvent } from '@/services/recommendationService';
+
+const PLAYLIST_METRICS_KEY = 'playlist_metrics:v1';
+const LIKED_PLAYLISTS_KEY = 'liked_playlists:v1';
+const LIKED_PLAYLISTS_METADATA_KEY = 'liked_playlists_metadata:v1';
+const USER_PLAYED_PLAYLISTS_KEY = 'user_played_playlists:v1';
+
+const readJsonStorage = <T,>(key: string, fallback: T): T => {
+  const saved = localStorage.getItem(key);
+  return saved ? JSON.parse(saved) : fallback;
+};
+
+function ClientPlaylistDate({ value }: { value?: string | number | Date }) {
+  const [text, setText] = useState('3 days ago');
+
+  useEffect(() => {
+    if (value) {
+      setText(new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }));
+    }
+  }, [value]);
+
+  return <>{text}</>;
+}
 
 function AddSongsDialog({
   isOpen,
@@ -153,6 +175,18 @@ function AddSongsDialog({
       key={song.id || song._id}
       className="flex items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors cursor-pointer group"
       onClick={() => (isIndian ? handleAddIndianSong(song) : handleAddSong(song))}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (isIndian) {
+            handleAddIndianSong(song);
+          } else {
+            handleAddSong(song);
+          }
+        }
+      }}
     >
       <div className="h-12 w-12 overflow-hidden rounded-md">
         <img
@@ -231,27 +265,58 @@ function AddSongsDialog({
 // Create a custom song context menu component that supports the "Find Audio" action
 // Note: PlaylistSongMenu component is unused on this page and intentionally removed to reduce bundle size
 
+interface PlaylistUiState {
+  showEditDialog: boolean;
+  showAddSongsDialog: boolean;
+  isLiked: boolean;
+  metrics: { likes: number; shares: number; plays: number };
+  isEditMode: boolean;
+  showStickyHeader: boolean;
+  showRegenerateCoverDialog: boolean;
+  isRegeneratingCover: boolean;
+}
+
+type PlaylistUiAction = Partial<PlaylistUiState> | ((state: PlaylistUiState) => PlaylistUiState);
+
+const playlistUiReducer = (state: PlaylistUiState, action: PlaylistUiAction): PlaylistUiState => {
+  if (typeof action === 'function') {
+    return action(state);
+  }
+  return { ...state, ...action };
+};
+
 export function PlaylistPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { userId, isAuthenticated } = useAuthStore();
-  const { currentPlaylist, fetchPlaylistById, forceRefreshPlaylistById, deletePlaylist, isLoading, removeSongFromPlaylist } =
+  const { currentPlaylist, forceRefreshPlaylistById, deletePlaylist, isLoading, removeSongFromPlaylist } =
     usePlaylistStore();
   const { playAlbum } = usePlayerStore();
   const { isPlaying: playerIsPlaying, currentSong } = usePlayerSync();
   // Removed unused addSongToPlaylist from store
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showAddSongsDialog, setShowAddSongsDialog] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [metrics, setMetrics] = useState({ likes: 0, shares: 0, plays: 0 });
-  const [hasPlayed, setHasPlayed] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  // Removed unused playingSongId state to avoid warnings
+  const [{
+    showEditDialog,
+    showAddSongsDialog,
+    isLiked,
+    metrics,
+    isEditMode,
+    showStickyHeader,
+    showRegenerateCoverDialog,
+    isRegeneratingCover,
+  }, dispatchPlaylistUi] = useReducer(playlistUiReducer, {
+    showEditDialog: false,
+    showAddSongsDialog: false,
+    isLiked: false,
+    metrics: { likes: 0, shares: 0, plays: 0 },
+    isEditMode: false,
+    showStickyHeader: false,
+    showRegenerateCoverDialog: false,
+    isRegeneratingCover: false,
+  });
+  const hasPlayedRef = useRef(false);
+  const isPlayingRef = useRef(false);
 
-  // Track scroll position for sticky header
-  const [scrollY, setScrollY] = useState(0);
-  const [showStickyHeader, setShowStickyHeader] = useState(false);
+  // Removed unused playingSongId state to avoid warnings
 
   // Removed scroll position tracking for toolbar behavior
   const containerRef = useRef<HTMLDivElement>(null);
@@ -288,35 +353,18 @@ export function PlaylistPage() {
   const isCurrentPlaylistPlaying = playerIsPlaying &&
     currentPlaylist?.songs.some(song => song._id === currentSong?._id);
 
-  // Track shuffle state
-  const [isShuffleOn, setIsShuffleOn] = useState(false);
-
   // Determine if we've scrolled enough to hide other buttons
   // Removed scroll-based UI changes for toolbar; keep state for potential future use
-
-  // Keep shuffle state in sync with player store
-  useEffect(() => {
-    // Initial state
-    setIsShuffleOn(usePlayerStore.getState().shuffleMode !== 'off');
-
-    // Subscribe to changes
-    const unsubscribe = usePlayerStore.subscribe((state) => {
-      setIsShuffleOn(state.shuffleMode !== 'off');
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   // Add scroll listener for sticky header
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
-      setScrollY(scrollPosition);
       // Show sticky header when scrolled past the main header (around 400px)
-      setShowStickyHeader(scrollPosition > 400);
+      dispatchPlaylistUi({ showStickyHeader: scrollPosition > 400 });
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -337,18 +385,19 @@ export function PlaylistPage() {
       forceRefreshPlaylistById(id);
       // Load metrics from localStorage
       try {
-        const saved = localStorage.getItem('playlist_metrics') || '{}';
-        const allMetrics = JSON.parse(saved);
+        const allMetrics = readJsonStorage<Record<string, typeof metrics>>(PLAYLIST_METRICS_KEY, {});
         const playlistMetrics = allMetrics[id] || { likes: 0, shares: 0, plays: 0 };
-        setMetrics(playlistMetrics);
 
         // Check if user has liked this playlist
-        const likedPlaylists = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
-        setIsLiked(likedPlaylists.includes(id));
+        const likedPlaylists = readJsonStorage<string[]>(LIKED_PLAYLISTS_KEY, []);
+        dispatchPlaylistUi({
+          metrics: playlistMetrics,
+          isLiked: likedPlaylists.includes(id),
+        });
 
         // Check if user has already played this playlist
-        const playedPlaylists = JSON.parse(localStorage.getItem('user_played_playlists') || '[]');
-        setHasPlayed(playedPlaylists.includes(id));
+        const playedPlaylists = readJsonStorage<string[]>(USER_PLAYED_PLAYLISTS_KEY, []);
+        hasPlayedRef.current = playedPlaylists.includes(id);
       } catch (error) {
         // Silent error handling
       }
@@ -366,22 +415,21 @@ export function PlaylistPage() {
     if (!id) return;
 
     try {
-      const saved = localStorage.getItem('playlist_metrics') || '{}';
-      const allMetrics = JSON.parse(saved);
+      const allMetrics = readJsonStorage<Record<string, typeof metrics>>(PLAYLIST_METRICS_KEY, {});
 
       allMetrics[id] = allMetrics[id] || { likes: 0, shares: 0, plays: 0 };
 
       // For plays, only count if user hasn't played this playlist before
       if (metric === 'plays') {
-        const playedPlaylists = JSON.parse(localStorage.getItem('user_played_playlists') || '[]');
+        const playedPlaylists = readJsonStorage<string[]>(USER_PLAYED_PLAYLISTS_KEY, []);
         if (playedPlaylists.includes(id)) {
           return; // Don't count if already played
         }
 
         // Add to played playlists
         playedPlaylists.push(id);
-        localStorage.setItem('user_played_playlists', JSON.stringify(playedPlaylists));
-        setHasPlayed(true);
+        localStorage.setItem(USER_PLAYED_PLAYLISTS_KEY, JSON.stringify(playedPlaylists));
+        hasPlayedRef.current = true;
       }
 
       // For likes, we don't increment if it's an unlike action
@@ -390,11 +438,14 @@ export function PlaylistPage() {
       }
 
       allMetrics[id][metric]++;
-      localStorage.setItem('playlist_metrics', JSON.stringify(allMetrics));
+      localStorage.setItem(PLAYLIST_METRICS_KEY, JSON.stringify(allMetrics));
 
-      setMetrics(prev => ({
+      dispatchPlaylistUi(prev => ({
         ...prev,
-        [metric]: prev[metric] + 1,
+        metrics: {
+          ...prev.metrics,
+          [metric]: prev.metrics[metric] + 1,
+        },
       }));
     } catch (error) {
       // Silent error handling
@@ -413,31 +464,31 @@ export function PlaylistPage() {
     }
 
     try {
-      const likedPlaylists = JSON.parse(localStorage.getItem('liked_playlists') || '[]');
+      const likedPlaylists = readJsonStorage<string[]>(LIKED_PLAYLISTS_KEY, []);
 
       if (isLiked) {
         // Unlike - don't decrease the counter, just remove from liked list
         const updatedLikes = likedPlaylists.filter((playlistId: string) => playlistId !== id);
-        localStorage.setItem('liked_playlists', JSON.stringify(updatedLikes));
+        localStorage.setItem(LIKED_PLAYLISTS_KEY, JSON.stringify(updatedLikes));
 
         // Remove metadata
         try {
-          const metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+          const metadata = readJsonStorage<Record<string, any>>(LIKED_PLAYLISTS_METADATA_KEY, {});
           delete metadata[id];
-          localStorage.setItem('liked_playlists_metadata', JSON.stringify(metadata));
+          localStorage.setItem(LIKED_PLAYLISTS_METADATA_KEY, JSON.stringify(metadata));
         } catch (e) { }
 
-        setIsLiked(false);
+        dispatchPlaylistUi({ isLiked: false });
         try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch { }
       } else {
         // Like - only increment if not previously liked
         if (!likedPlaylists.includes(id)) {
           likedPlaylists.push(id);
-          localStorage.setItem('liked_playlists', JSON.stringify(likedPlaylists));
+          localStorage.setItem(LIKED_PLAYLISTS_KEY, JSON.stringify(likedPlaylists));
 
           // Persist lightweight metadata so sidebar/library can render favourites immediately.
           if (currentPlaylist) {
-            const metadata = JSON.parse(localStorage.getItem('liked_playlists_metadata') || '{}');
+            const metadata = readJsonStorage<Record<string, any>>(LIKED_PLAYLISTS_METADATA_KEY, {});
             metadata[id] = {
               _id: currentPlaylist._id,
               name: currentPlaylist.name,
@@ -448,11 +499,19 @@ export function PlaylistPage() {
               source: 'public',
               routePath: `/playlist/${id}`,
             };
-            localStorage.setItem('liked_playlists_metadata', JSON.stringify(metadata));
+            localStorage.setItem(LIKED_PLAYLISTS_METADATA_KEY, JSON.stringify(metadata));
           }
 
-          setIsLiked(true);
+          dispatchPlaylistUi({ isLiked: true });
           updateMetrics('likes');
+          const recommendationItem = recommendationItemFromPlaylist(currentPlaylist, 'catalog');
+          if (recommendationItem) {
+            void trackRecommendationEvent({
+              eventType: 'playlist_save',
+              item: recommendationItem,
+              context: { surface: 'playlist_page' },
+            });
+          }
           try { document.dispatchEvent(new Event('likedPlaylistsUpdated')); } catch { }
         }
       }
@@ -467,7 +526,7 @@ export function PlaylistPage() {
 
   // Add pause playlist functionality
   const handlePausePlaylist = () => {
-    if (isPlaying) return;
+    if (isPlayingRef.current) return;
 
     // Access the player store directly to toggle play state
     const playerStore = usePlayerStore.getState();
@@ -489,13 +548,13 @@ export function PlaylistPage() {
     }
 
     // If already playing, just return
-    if (isPlaying) return;
+    if (isPlayingRef.current) return;
 
     try {
-      setIsPlaying(true);
+      isPlayingRef.current = true;
 
       // Update play count only if user hasn't played this playlist before
-      if (!hasPlayed) {
+      if (!hasPlayedRef.current) {
         updateMetrics('plays');
       }
 
@@ -514,11 +573,11 @@ export function PlaylistPage() {
 
       // Reset isPlaying state after a delay
       setTimeout(() => {
-        setIsPlaying(false);
+        isPlayingRef.current = false;
       }, 300);
     } catch (error) {
       // Silent error handling
-      setIsPlaying(false);
+      isPlayingRef.current = false;
     }
   };
 
@@ -623,7 +682,7 @@ export function PlaylistPage() {
   };
 
   const openAddSongsDialog = () => {
-    setShowAddSongsDialog(true);
+    dispatchPlaylistUi({ showAddSongsDialog: true });
   };
 
   // Add this function to the PlaylistPage component
@@ -700,10 +759,6 @@ export function PlaylistPage() {
     }
   };
 
-  // Add a state for the regenerate cover dialog
-  const [showRegenerateCoverDialog, setShowRegenerateCoverDialog] = useState(false);
-  const [isRegeneratingCover, setIsRegeneratingCover] = useState(false);
-
   // Add a function to handle regenerating the cover
   const handleRegenerateCover = async () => {
     if (!currentPlaylist || !currentPlaylist.songs || currentPlaylist.songs.length === 0) {
@@ -711,7 +766,7 @@ export function PlaylistPage() {
       return;
     }
 
-    setIsRegeneratingCover(true);
+    dispatchPlaylistUi({ isRegeneratingCover: true });
     try {
       const updatedPlaylist = await updatePlaylistCoverFromSongs(
         currentPlaylist._id,
@@ -737,8 +792,10 @@ export function PlaylistPage() {
       // Error regenerating cover
       toast.error('Failed to update cover');
     } finally {
-      setIsRegeneratingCover(false);
-      setShowRegenerateCoverDialog(false);
+      dispatchPlaylistUi({
+        isRegeneratingCover: false,
+        showRegenerateCoverDialog: false,
+      });
     }
   };
 
@@ -749,7 +806,7 @@ export function PlaylistPage() {
   if (!currentPlaylist) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
-        <h1 className="text-2xl font-bold">Playlist not found</h1>
+        <h1 className="text-2xl font-semibold">Playlist not found</h1>
         <Button onClick={() => navigate('/library')}>Go to Library</Button>
       </div>
     );
@@ -815,7 +872,7 @@ export function PlaylistPage() {
           )}
 
           {/* Playlist name */}
-          <h2 className="text-xl font-bold text-white truncate playlist-text-shadow">
+          <h2 className="text-xl font-semibold text-white truncate playlist-text-shadow">
             {currentPlaylist.name}
           </h2>
         </div>
@@ -867,7 +924,7 @@ export function PlaylistPage() {
                     <Button
                       variant="ghost"
                       className="text-white hover:bg-white/20"
-                      onClick={() => setShowRegenerateCoverDialog(true)}
+                      onClick={() => dispatchPlaylistUi({ showRegenerateCoverDialog: true })}
                     >
                       <ImageIcon className="mr-2 h-4 w-4" />
                       Update Cover
@@ -879,7 +936,7 @@ export function PlaylistPage() {
               {/* Playlist info with Mavrixfy-like sizing */}
               <div className="flex flex-col justify-end text-foreground text-center md:text-left w-full">
                 <p className="text-xs uppercase font-medium mb-1 playlist-text-shadow">Public Playlist</p>
-                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-2 tracking-tight playlist-text-shadow leading-tight">
+                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold mb-2 tracking-tight playlist-text-shadow leading-tight">
                   {currentPlaylist.name}
                 </h1>
 
@@ -925,7 +982,7 @@ export function PlaylistPage() {
               )}
 
               {/* Shuffle button - normal size */}
-              <ShuffleButton songs={currentPlaylist.songs} />
+              <ShuffleButton />
 
               {/* Like button - normal size */}
               <Button
@@ -983,7 +1040,7 @@ export function PlaylistPage() {
                   {isOwner && (
                     <>
                       <DropdownMenuItem
-                        onClick={() => setShowEditDialog(true)}
+                        onClick={() => dispatchPlaylistUi({ showEditDialog: true })}
                         className="hover:bg-accent"
                       >
                         <Pencil className="h-4 w-4 mr-2" />
@@ -991,7 +1048,7 @@ export function PlaylistPage() {
                       </DropdownMenuItem>
 
                       <DropdownMenuItem
-                        onClick={() => setIsEditMode(!isEditMode)}
+                        onClick={() => dispatchPlaylistUi({ isEditMode: !isEditMode })}
                         className="hover:bg-accent"
                       >
                         <Pencil className="h-4 w-4 mr-2" />
@@ -1018,7 +1075,7 @@ export function PlaylistPage() {
                     variant="ghost"
                     size="icon"
                     className="w-10 h-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-                    onClick={() => setShowEditDialog(true)}
+                    onClick={() => dispatchPlaylistUi({ showEditDialog: true })}
                     title="Edit playlist"
                   >
                     <Pencil className="h-5 w-5" />
@@ -1076,6 +1133,14 @@ export function PlaylistPage() {
                         !song.audioUrl && 'opacity-60'
                       )}
                       onClick={() => handlePlaySong(song, index)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handlePlaySong(song, index);
+                        }
+                      }}
                     >
                       {/* Track number/play button - normal size */}
                       <div className="flex items-center justify-center">
@@ -1134,10 +1199,8 @@ export function PlaylistPage() {
                       </div>
 
                       {/* Date added (desktop only) */}
-                      <div className="text-muted-foreground text-sm truncate hidden md:block">
-                        {song.createdAt
-                          ? new Date(song.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-                          : '3 days ago'}
+                      <div suppressHydrationWarning className="text-muted-foreground text-sm truncate hidden md:block">
+                        <ClientPlaylistDate value={song.createdAt} />
                       </div>
 
                       {/* Actions column with normal sizes */}
@@ -1280,7 +1343,7 @@ export function PlaylistPage() {
                   <circle cx="18" cy="16" r="3" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-foreground">It's pretty quiet here</h2>
+              <h2 className="text-2xl font-semibold text-foreground">It's pretty quiet here</h2>
               <p className="mt-3 text-muted-foreground max-w-md">
                 Add some songs to your playlist by clicking the "Add songs" button.
               </p>
@@ -1313,20 +1376,20 @@ export function PlaylistPage() {
         <EditPlaylistDialog
           playlist={currentPlaylist}
           isOpen={showEditDialog}
-          onClose={() => setShowEditDialog(false)}
+          onClose={() => dispatchPlaylistUi({ showEditDialog: false })}
         />
       )}
 
       {showAddSongsDialog && (
         <AddSongsDialog
           isOpen={showAddSongsDialog}
-          onClose={() => setShowAddSongsDialog(false)}
+          onClose={() => dispatchPlaylistUi({ showAddSongsDialog: false })}
           playlistId={currentPlaylist._id}
         />
       )}
 
       {/* New dialog for regenerating cover image */}
-      <Dialog open={showRegenerateCoverDialog} onOpenChange={setShowRegenerateCoverDialog}>
+      <Dialog open={showRegenerateCoverDialog} onOpenChange={(open) => dispatchPlaylistUi({ showRegenerateCoverDialog: open })}>
         <DialogContent className="bg-zinc-900 text-white border-zinc-800 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Generate Cover Art</DialogTitle>
@@ -1339,7 +1402,7 @@ export function PlaylistPage() {
             <div className="grid grid-cols-2 gap-4">
               {/* Preview of existing songs for the collage */}
               {currentPlaylist.songs.slice(0, 4).map((song, index) => (
-                <div key={index} className="aspect-square bg-zinc-800 rounded overflow-hidden">
+                <div key={song._id || (song as any).id || index} className="aspect-square bg-zinc-800 rounded overflow-hidden">
                   <img
                     src={song.imageUrl || '/default-song.jpg'}
                     alt={song.title}
@@ -1369,7 +1432,7 @@ export function PlaylistPage() {
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"
-              onClick={() => setShowRegenerateCoverDialog(false)}
+              onClick={() => dispatchPlaylistUi({ showRegenerateCoverDialog: false })}
               className="bg-transparent border-zinc-700 text-white hover:bg-zinc-800"
             >
               Cancel

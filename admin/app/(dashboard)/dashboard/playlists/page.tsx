@@ -115,28 +115,28 @@ export default function PlaylistsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Playlists</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Playlists</h1>
           <p className="mt-1 text-sm text-gray-500">{playlists.length} playlists total</p>
         </div>
         <button onClick={() => { setEditId(null); setForm(EMPTY_FORM); setShowModal(true); }}
           className="btn-primary flex items-center gap-2">
-          <Plus className="h-4 w-4" /> Create Playlist
+          <Plus className="size-4" /> Create Playlist
         </button>
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
         <input type="text" placeholder="Search playlists..." value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)} className="input-field pl-10" />
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader2 className="size-6 animate-spin text-blue-600" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white py-16 text-center shadow-sm">
-          <ListMusic className="mx-auto h-10 w-10 text-gray-300" />
+          <ListMusic className="mx-auto size-10 text-gray-300" />
           <p className="mt-3 text-sm font-medium text-gray-900">{searchQuery ? 'No playlists found' : 'No playlists yet'}</p>
           <p className="mt-1 text-xs text-gray-500">Create your first playlist to get started</p>
         </div>
@@ -148,7 +148,7 @@ export default function PlaylistsPage() {
                 <img src={playlist.imageUrl} alt={playlist.name} className="h-40 w-full rounded-t-lg object-cover" />
               ) : (
                 <div className="flex h-40 w-full items-center justify-center rounded-t-lg bg-gray-100">
-                  <ListMusic className="h-10 w-10 text-gray-300" />
+                  <ListMusic className="size-10 text-gray-300" />
                 </div>
               )}
               <div className="p-4">
@@ -170,7 +170,7 @@ export default function PlaylistsPage() {
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Music2 className="h-3.5 w-3.5" />
+                    <Music2 className="size-3.5" />
                     <span>{playlist.songs?.length ?? 0} songs</span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -180,11 +180,11 @@ export default function PlaylistsPage() {
                     </button>
                     <button onClick={() => openEdit(playlist)}
                       className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
-                      <Edit className="h-4 w-4" />
+                      <Edit className="size-4" />
                     </button>
                     <button onClick={() => handleDelete(playlist.id)}
-                      className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600">
-                      <Trash2 className="h-4 w-4" />
+                      className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700">
+                      <Trash2 className="size-4" />
                     </button>
                   </div>
                 </div>
@@ -197,40 +197,40 @@ export default function PlaylistsPage() {
       {/* Create / Edit Playlist Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40" onClick={closeModal} />
+          <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={closeModal} />
           <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-base font-semibold text-gray-900">{editId ? 'Edit Playlist' : 'Create Playlist'}</h2>
-              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+              <button onClick={closeModal} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               {error && <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
-                <input className="input-field" placeholder="Playlist name" value={form.name}
+                <label htmlFor="playlists-name-1" className="block text-xs font-medium text-gray-700 mb-1">Name <span className="text-red-500">*</span></label>
+                <input id="playlists-name-1" className="input-field" placeholder="Playlist name" value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                <textarea className="input-field resize-none" rows={2} placeholder="Optional description"
+                <label htmlFor="playlists-description-2" className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <textarea id="playlists-description-2" className="input-field resize-none" rows={2} placeholder="Optional description"
                   value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cover Image URL</label>
-                <input className="input-field" placeholder="https://..." value={form.imageUrl}
+                <label htmlFor="playlists-cover-image-url-3" className="block text-xs font-medium text-gray-700 mb-1">Cover Image URL</label>
+                <input id="playlists-cover-image-url-3" className="input-field" placeholder="https://..." value={form.imageUrl}
                   onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
               </div>
               <div className="flex items-center gap-3">
                 <input type="checkbox" id="isPublic" checked={form.isPublic}
                   onChange={e => setForm(f => ({ ...f, isPublic: e.target.checked }))}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+                  className="size-4 rounded border-gray-300 text-blue-600" />
                 <label htmlFor="isPublic" className="text-sm text-gray-700">Public playlist</label>
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
               <button onClick={closeModal} className="btn-secondary">Cancel</button>
               <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                 {editId ? 'Save Changes' : 'Create'}
               </button>
             </div>
@@ -241,18 +241,18 @@ export default function PlaylistsPage() {
       {/* Manage Songs Modal */}
       {managingId && managingPlaylist && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40" onClick={() => setManagingId(null)} />
+          <button type="button" aria-label="Close modal" className="fixed inset-0 bg-black/40" onClick={() => setManagingId(null)} />
           <div className="relative flex w-full max-w-lg flex-col rounded-lg border border-gray-200 bg-white shadow-xl" style={{ maxHeight: '80vh' }}>
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <div>
                 <h2 className="text-base font-semibold text-gray-900">Manage Songs</h2>
                 <p className="text-xs text-gray-500">{managingPlaylist.name} · {managingPlaylist.songs?.length ?? 0} songs</p>
               </div>
-              <button onClick={() => setManagingId(null)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+              <button onClick={() => setManagingId(null)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-5" /></button>
             </div>
             <div className="px-4 py-3 border-b border-gray-100">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
                 <input type="text" placeholder="Search songs to add..." value={songSearch}
                   onChange={e => setSongSearch(e.target.value)} className="input-field pl-10 py-2 text-sm" />
               </div>
@@ -265,10 +265,10 @@ export default function PlaylistsPage() {
                 return (
                   <div key={song.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
                     {song.imageUrl ? (
-                      <img src={song.imageUrl} alt={song.title} className="h-9 w-9 rounded-md object-cover flex-shrink-0" />
+                      <img src={song.imageUrl} alt={song.title} className="size-9 rounded-md object-cover flex-shrink-0" />
                     ) : (
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-gray-100">
-                        <Music2 className="h-4 w-4 text-gray-400" />
+                      <div className="flex size-9 flex-shrink-0 items-center justify-center rounded-md bg-gray-100">
+                        <Music2 className="size-4 text-gray-400" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
@@ -278,14 +278,14 @@ export default function PlaylistsPage() {
                     <button onClick={() => toggleSong(managingId, song.id, inPlaylist)}
                       className={`flex-shrink-0 rounded-md p-1.5 transition-colors ${inPlaylist
                         ? 'text-red-500 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}>
-                      {inPlaylist ? <MinusCircle className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
+                      {inPlaylist ? <MinusCircle className="size-5" /> : <PlusCircle className="size-5" />}
                     </button>
                   </div>
                 );
               })}
             </div>
             <div className="border-t border-gray-200 px-6 py-3 text-right">
-              <button onClick={() => setManagingId(null)} className="btn-primary">Done</button>
+              <button onClick={() => setManagingId(null)} className="btn-primary">Finish editing songs</button>
             </div>
           </div>
         </div>

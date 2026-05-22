@@ -133,6 +133,9 @@ export default defineConfig(({ mode }) => {
 				'.ngrok-free.app',
 				'0b40-2401-4900-8fec-ca38-5daf-e2ce-d28a-7cef.ngrok-free.app'
 			],
+			headers: {
+				'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
+			},
 		
 			hmr: {
 				overlay: false,
@@ -148,6 +151,9 @@ export default defineConfig(({ mode }) => {
 		},
 		preview: {
 			port: 3000,
+			headers: {
+				'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
+			},
 			proxy: {
 				'/api': {
 					target: apiUrl,

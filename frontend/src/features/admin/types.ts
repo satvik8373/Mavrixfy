@@ -102,6 +102,7 @@ export interface SongRecord {
   title: string;
   artist: string;
   album: string;
+  artwork?: string;
   genre: string;
   language: string;
   duration: string;

@@ -36,17 +36,23 @@ const AVAILABLE_PLATFORMS: SharePlatform[] = [
 ];
 
 export const ShareSheet = ({ isOpen, onClose, content, title, description }: ShareSheetProps) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<SharePlatform | null>(null);
-  const [previewCard, setPreviewCard] = useState<string | null>(null);
-  const [showEmbedModal, setShowEmbedModal] = useState(false);
+  const [state, setState] = useState({
+    isGenerating: false,
+    selectedPlatform: null as SharePlatform | null,
+    previewCard: null as string | null,
+    showEmbedModal: false,
+  });
+  const { isGenerating, selectedPlatform, previewCard, showEmbedModal } = state;
 
   // Reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
-      setSelectedPlatform(null);
-      setPreviewCard(null);
-      setIsGenerating(false);
+      setState(prev => ({
+        ...prev,
+        selectedPlatform: null,
+        previewCard: null,
+        isGenerating: false,
+      }));
     }
   }, [isOpen]);
 
@@ -56,8 +62,7 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
       return;
     }
 
-    setSelectedPlatform(platform);
-    setIsGenerating(true);
+    setState(prev => ({ ...prev, selectedPlatform: platform, isGenerating: true }));
 
     let card: any = null;
     try {
@@ -88,7 +93,7 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
       card = result;
 
       // Show preview for a moment
-      setPreviewCard(card.imageUrl);
+      setState(prev => ({ ...prev, previewCard: card.imageUrl }));
 
       // Small delay to show preview
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -123,14 +128,13 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
           URL.revokeObjectURL(card.imageUrl);
         }, 2000);
       }
-      setIsGenerating(false);
-      setSelectedPlatform(null);
+      setState(prev => ({ ...prev, isGenerating: false, selectedPlatform: null }));
     }
   };
 
   const handleEmbedClick = () => {
     onClose(); // Close share sheet
-    setShowEmbedModal(true); // Open embed modal
+    setState(prev => ({ ...prev, showEmbedModal: true })); // Open embed modal
   };
 
   return (
@@ -184,7 +188,7 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
                 const isDisabled = isGenerating && !isSelected;
 
                 return (
-                  <button
+                  <button type="button"
                     key={platform}
                     onClick={() => handlePlatformClick(platform)}
                     disabled={isDisabled}
@@ -215,7 +219,7 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
               
               {/* Embed Option */}
               {content.type === 'playlist' && (
-                <button
+                <button type="button"
                   onClick={handleEmbedClick}
                   disabled={isGenerating}
                   className={cn(
@@ -265,7 +269,7 @@ export const ShareSheet = ({ isOpen, onClose, content, title, description }: Sha
     {content.type === 'playlist' && content.metadata?.songs && (
       <EmbedPlaylistModal
         isOpen={showEmbedModal}
-        onClose={() => setShowEmbedModal(false)}
+        onClose={() => setState(prev => ({ ...prev, showEmbedModal: false }))}
         playlistId={content.id}
         playlistTitle={content.title}
         playlistSubtitle={content.subtitle}

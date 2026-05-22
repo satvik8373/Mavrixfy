@@ -51,7 +51,7 @@ export default function RolesPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Admin Roles</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Admin Roles</h1>
         <p className="mt-1 text-sm text-gray-500">Manage admin permissions and access control</p>
       </div>
 
@@ -60,8 +60,8 @@ export default function RolesPage() {
         {ROLES.map(role => (
           <div key={role.key} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${role.color}`}>
-                <ShieldCheck className="h-5 w-5 text-white" />
+              <div className={`flex size-10 items-center justify-center rounded-lg ${role.color}`}>
+                <ShieldCheck className="size-5 text-white" />
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-semibold text-gray-900">{role.label}</h3>
@@ -69,7 +69,7 @@ export default function RolesPage() {
               </div>
             </div>
             <div className="mt-4 flex items-center gap-1.5 text-xs text-gray-500">
-              <Users className="h-3.5 w-3.5" />
+              <Users className="size-3.5" />
               {loading ? '—' : `${counts[role.key] ?? 0} ${counts[role.key] === 1 ? 'user' : 'users'}`}
             </div>
           </div>
@@ -96,11 +96,11 @@ export default function RolesPage() {
                 <tr key={perm} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-700">{perm}</td>
                   {access.map((has, i) => (
-                    <td key={i} className="px-4 py-3 text-center">
+                    <td key={`${perm}-${ROLES[i].key}`} className="px-4 py-3 text-center">
                       {has ? (
-                        <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                        <span className="inline-block size-2 rounded-full bg-green-500" />
                       ) : (
-                        <span className="inline-block h-2 w-2 rounded-full bg-gray-200" />
+                        <span className="inline-block size-2 rounded-full bg-gray-200" />
                       )}
                     </td>
                   ))}

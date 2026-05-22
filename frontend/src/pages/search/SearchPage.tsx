@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useReducer } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import {
@@ -13,8 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { SearchSkeleton } from '@/components/SearchSkeleton';
-import { SearchSuggestions, saveRecentSearch } from '@/components/SearchSuggestions';
+import { SearchSuggestions } from '@/components/SearchSuggestions';
+import { saveRecentSearch } from '@/utils/searchUtils';
 import { runSmartSearch, SmartSearchResult, SmartSearchSong } from '@/services/smartSearchService';
+import { trackRecommendationEvent } from '@/services/recommendationService';
 import { cn } from '@/lib/utils';
 
 const formatDuration = (seconds: number) => {
@@ -33,14 +35,80 @@ const EMOTION_ICONS: Record<string, any> = {
   devotional: Heart, desi: Zap, melancholy: Waves, dark: Mountain
 };
 
+interface SongRowProps {
+  allSongs: SmartSearchSong[];
+  index: number;
+  onPlay: (song: SmartSearchSong, allSongs: SmartSearchSong[]) => void;
+  song: SmartSearchSong;
+}
+
+interface SearchUiState {
+  showSuggestions: boolean;
+  isSearching: boolean;
+  smartResult: SmartSearchResult | null;
+}
+
+type SearchUiAction =
+  | { type: 'empty_query' }
+  | { type: 'search_started' }
+  | { type: 'search_succeeded'; result: SmartSearchResult }
+  | { type: 'search_finished' }
+  | { type: 'suggestions'; visible: boolean }
+  | { type: 'clear' };
+
+const searchUiReducer = (state: SearchUiState, action: SearchUiAction): SearchUiState => {
+  switch (action.type) {
+    case 'empty_query':
+      return { ...state, smartResult: null };
+    case 'search_started':
+      return { ...state, isSearching: true, showSuggestions: false };
+    case 'search_succeeded':
+      return { ...state, smartResult: action.result };
+    case 'search_finished':
+      return { ...state, isSearching: false };
+    case 'suggestions':
+      return { ...state, showSuggestions: action.visible };
+    case 'clear':
+      return { ...state, showSuggestions: false, smartResult: null };
+    default:
+      return state;
+  }
+};
+
+const SongRow = ({ song, index, allSongs, onPlay }: SongRowProps) => (
+  <button
+    type="button"
+    onClick={() => onPlay(song, allSongs)}
+    className="flex w-full items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group text-left"
+  >
+    <span className="w-6 text-center text-xs text-white/30 group-hover:hidden font-mono">{index + 1}</span>
+    <div className="w-6 h-6 hidden group-hover:flex items-center justify-center">
+      <Play className="w-3.5 h-3.5 text-green-400 fill-green-400" />
+    </div>
+    <div className="w-10 h-10 rounded-md overflow-hidden bg-white/5 flex-shrink-0">
+      {song.imageUrl
+        ? <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading={index < 5 ? "eager" : "lazy"} {...(index < 5 ? { fetchPriority: "high" } : {})} />
+        : <div className="w-full h-full flex items-center justify-center"><Music className="w-4 h-4 text-white/20" /></div>
+      }
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="font-semibold text-sm text-white truncate group-hover:text-green-400 transition-colors">{song.title}</p>
+      <p className="text-xs text-white/40 truncate">{song.artist}</p>
+    </div>
+    <span className="text-xs text-white/30 tabular-nums flex-shrink-0">{formatDuration(song.duration)}</span>
+  </button>
+);
+
 const SearchPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const query = searchParams.get('q') || '';
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [smartResult, setSmartResult] = useState<SmartSearchResult | null>(null);
+  const [{ showSuggestions, isSearching, smartResult }, dispatchSearchUi] = useReducer(searchUiReducer, {
+    showSuggestions: false,
+    isSearching: false,
+    smartResult: null,
+  });
   const hasSearched = useRef(false);
   const { playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
 
@@ -62,52 +130,58 @@ const SearchPage = () => {
   useEffect(() => {
     if (!query?.trim()) {
       hasSearched.current = false;
-      setSmartResult(null);
+      dispatchSearchUi({ type: 'empty_query' });
       return;
     }
 
-    setIsSearching(true);
     hasSearched.current = true;
-    setShowSuggestions(false);
+    dispatchSearchUi({ type: 'search_started' });
 
     runSmartSearch(query.trim())
       .then((result) => {
-        setSmartResult(result);
+        dispatchSearchUi({ type: 'search_succeeded', result });
         saveRecentSearch(query.trim());
+        void trackRecommendationEvent({
+          eventType: 'search_query',
+          query: query.trim(),
+          context: { surface: 'search' },
+        });
       })
       .catch((err) => {
         console.error('Smart search failed:', err);
         toast.error('Search failed, please try again.');
       })
-      .finally(() => setIsSearching(false));
+      .finally(() => dispatchSearchUi({ type: 'search_finished' }));
   }, [query]);
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setShowSuggestions(false);
+      dispatchSearchUi({ type: 'suggestions', visible: false });
     }
   }, [searchQuery, navigate]);
 
   const handleSuggestionSelect = useCallback((s: string) => {
     setSearchQuery(s);
     navigate(`/search?q=${encodeURIComponent(s)}`);
-    setShowSuggestions(false);
+    dispatchSearchUi({ type: 'suggestions', visible: false });
   }, [navigate]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery('');
     navigate('/search');
-    setShowSuggestions(false);
-    setSmartResult(null);
+    dispatchSearchUi({ type: 'clear' });
   }, [navigate]);
 
   // Play a song from smart results
   const playSong = useCallback((song: SmartSearchSong, allSongs: SmartSearchSong[]) => {
     if (!song.audioUrl) { toast.error('Song not available'); return; }
     setUserInteracted?.();
-    const converted = allSongs.map(convertSong).filter(s => s.audioUrl);
+    const converted = allSongs.flatMap(s => {
+      const convertedSong = convertSong(s);
+      return convertedSong.audioUrl ? [convertedSong] : [];
+    });
     const idx = converted.findIndex(s => s._id === song.id);
     playAlbum(converted, idx >= 0 ? idx : 0);
     setIsPlaying(true);
@@ -129,29 +203,6 @@ const SearchPage = () => {
     navigate(`/mood?preset=${encodeURIComponent(mood)}`);
   }, [navigate]);
 
-  const SongRow = ({ song, index, allSongs }: { song: SmartSearchSong, index: number, allSongs: SmartSearchSong[] }) => (
-    <div
-      onClick={() => playSong(song, allSongs)}
-      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group"
-    >
-      <span className="w-6 text-center text-xs text-white/30 group-hover:hidden font-mono">{index + 1}</span>
-      <div className="w-6 h-6 hidden group-hover:flex items-center justify-center">
-        <Play className="w-3.5 h-3.5 text-green-400 fill-green-400" />
-      </div>
-      <div className="w-10 h-10 rounded-md overflow-hidden bg-white/5 flex-shrink-0">
-        {song.imageUrl
-          ? <img src={song.imageUrl} alt={song.title} className="w-full h-full object-cover" loading={index < 5 ? "eager" : "lazy"} {...(index < 5 ? { fetchPriority: "high" } : {})} />
-          : <div className="w-full h-full flex items-center justify-center"><Music className="w-4 h-4 text-white/20" /></div>
-        }
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-white truncate group-hover:text-green-400 transition-colors">{song.title}</p>
-        <p className="text-xs text-white/40 truncate">{song.artist}</p>
-      </div>
-      <span className="text-xs text-white/30 tabular-nums flex-shrink-0">{formatDuration(song.duration)}</span>
-    </div>
-  );
-
   const allSimilar = smartResult ? [...(smartResult.results || []), ...(smartResult.similarSongs || [])] : [];
 
   return (
@@ -160,7 +211,7 @@ const SearchPage = () => {
 
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-1">Search</h1>
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-1">Search</h1>
           <p className="text-white/40 text-sm">Find songs, artists, or describe a vibe</p>
         </div>
 
@@ -173,8 +224,8 @@ const SearchPage = () => {
               placeholder="Song, artist, or describe a mood..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              onFocus={() => { if (!query) setShowSuggestions(true); }}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              onFocus={() => { if (!query) dispatchSearchUi({ type: 'suggestions', visible: true }); }}
+              onBlur={() => setTimeout(() => dispatchSearchUi({ type: 'suggestions', visible: false }), 200)}
               className="w-full h-14 pl-12 pr-12 bg-white/5 border border-white/10 text-white placeholder:text-white/30 text-base rounded-2xl focus:ring-2 focus:ring-green-500/50 focus:border-green-500/30 transition-all backdrop-blur-xl"
               autoComplete="off"
             />
@@ -223,7 +274,7 @@ const SearchPage = () => {
             {/* ── TOP RESULT ── */}
             {smartResult.topResult && (
               <section>
-                <h2 className="text-lg font-bold mb-3 text-white/80">Top Result</h2>
+                <h2 className="text-lg font-semibold mb-3 text-white/80">Top Result</h2>
                 <div className="relative rounded-2xl bg-gradient-to-br from-white/8 to-white/3 border border-white/8 p-5 flex flex-col sm:flex-row gap-5 items-start sm:items-center hover:from-white/12 transition-all group overflow-hidden">
                   {/* Ambient glow */}
                   <div className="absolute -top-20 -left-20 w-56 h-56 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -237,7 +288,7 @@ const SearchPage = () => {
 
                   <div className="flex-1 min-w-0 relative z-10">
                     <p className="text-xs text-green-400 font-semibold uppercase tracking-widest mb-1">{smartResult.intent}</p>
-                    <h3 className="text-2xl md:text-3xl font-black text-white truncate mb-1">{smartResult.topResult.title}</h3>
+                    <h3 className="text-2xl md:text-3xl font-semibold text-white truncate mb-1">{smartResult.topResult.title}</h3>
                     <p className="text-white/50 text-sm truncate mb-4">{smartResult.topResult.artist}
                       {smartResult.topResult.year ? ` • ${smartResult.topResult.year}` : ''}
                     </p>
@@ -255,12 +306,12 @@ const SearchPage = () => {
             {/* ── SIMILAR SONGS ── */}
             {allSimilar.length > 0 && (
               <section>
-                <h2 className="text-lg font-bold mb-3 text-white/80">
+                <h2 className="text-lg font-semibold mb-3 text-white/80">
                   {smartResult.intent === 'mood' ? 'Songs matching this vibe' : 'Similar Songs'}
                 </h2>
                 <div className="rounded-2xl bg-white/3 border border-white/6 divide-y divide-white/5">
                   {allSimilar.slice(0, 15).map((song, i) => (
-                    <SongRow key={song.id || i} song={song} index={i} allSongs={allSimilar} />
+                    <SongRow key={song.id || i} song={song} index={i} allSongs={allSimilar} onPlay={playSong} />
                   ))}
                 </div>
               </section>
@@ -271,13 +322,13 @@ const SearchPage = () => {
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <Zap className="w-4 h-4 text-orange-400" />
-                  <h2 className="text-lg font-bold text-white/80">Vibe Mode</h2>
+                  <h2 className="text-lg font-semibold text-white/80">Vibe Mode</h2>
                   <span className="text-xs text-white/30">Generate a full mood playlist</span>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   {smartResult.vibeMode.map((vibe, i) => (
-                    <button
-                      key={i}
+                    <button type="button"
+                      key={vibe.mood}
                       onClick={() => openVibeMode(vibe.mood)}
                       className={cn(
                         "px-4 py-2 rounded-full text-sm font-semibold transition-all hover:scale-105 border",

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface PingPongScrollProps {
@@ -21,11 +21,8 @@ export const PingPongScroll = ({
     const direction = useRef(1);
     const lastTime = useRef<number | null>(null);
     const pauseUntil = useRef<number | null>(null);
-    const rafId = useRef<number>();
 
-    const [maxOffset, setMaxOffset] = useState(0);
-
-    // Measure overflow with ResizeObserver for accuracy
+    // Measure overflow and manage smooth animation loop
     useEffect(() => {
         // Reset state on text change
         position.current = 0;
@@ -37,26 +34,8 @@ export const PingPongScroll = ({
 
         if (!containerRef.current || !textRef.current) return;
 
-        const checkOverflow = () => {
-            if (!containerRef.current || !textRef.current) return;
-            const containerWidth = containerRef.current.clientWidth;
-            const textWidth = textRef.current.scrollWidth;
-            const diff = textWidth - containerWidth;
-            // Add slight buffer (1px) to prevent subpixel jitter
-            setMaxOffset(diff > 1 ? diff : 0);
-        };
-
-        const observer = new ResizeObserver(checkOverflow);
-        observer.observe(containerRef.current);
-        // Also check initially
-        checkOverflow();
-
-        return () => observer.disconnect();
-    }, [text]);
-
-    // Smooth animation loop
-    useEffect(() => {
-        if (!maxOffset) return;
+        let maxOffsetVal = 0;
+        let animationFrameId: number | null = null;
 
         const animate = (time: number) => {
             if (lastTime.current === null) lastTime.current = time;
@@ -68,14 +47,14 @@ export const PingPongScroll = ({
 
             // Pause at edges
             if (pauseUntil.current && time < pauseUntil.current) {
-                rafId.current = requestAnimationFrame(animate);
+                animationFrameId = requestAnimationFrame(animate);
                 return;
             }
 
             position.current += direction.current * velocity * delta;
 
-            if (position.current >= maxOffset) {
-                position.current = maxOffset;
+            if (position.current >= maxOffsetVal) {
+                position.current = maxOffsetVal;
                 direction.current = -1;
                 pauseUntil.current = time + delay * 1000;
             } else if (position.current <= 0) {
@@ -92,17 +71,48 @@ export const PingPongScroll = ({
                     `translate3d(${-smoothX}px, 0, 0)`;
             }
 
-            rafId.current = requestAnimationFrame(animate);
+            animationFrameId = requestAnimationFrame(animate);
         };
 
-        rafId.current = requestAnimationFrame(animate);
+        const checkOverflow = () => {
+            if (!containerRef.current || !textRef.current) return;
+            const containerWidth = containerRef.current.clientWidth;
+            const textWidth = textRef.current.scrollWidth;
+            const diff = textWidth - containerWidth;
+            maxOffsetVal = diff > 1 ? diff : 0;
+
+            // Start or stop animation based on overflow
+            if (maxOffsetVal > 0) {
+                if (!animationFrameId) {
+                    lastTime.current = null;
+                    pauseUntil.current = null;
+                    animationFrameId = requestAnimationFrame(animate);
+                }
+            } else {
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                if (textRef.current) {
+                    textRef.current.style.transform = 'translate3d(0,0,0)';
+                }
+            }
+        };
+
+        const observer = new ResizeObserver(checkOverflow);
+        observer.observe(containerRef.current);
+        // Also check initially
+        checkOverflow();
 
         return () => {
-            if (rafId.current) cancelAnimationFrame(rafId.current);
+            observer.disconnect();
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
             lastTime.current = null;
             pauseUntil.current = null;
         };
-    }, [maxOffset, velocity, delay]);
+    }, [text, velocity, delay]);
 
     return (
         <div

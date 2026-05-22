@@ -13,9 +13,10 @@ import { ShareCardContent } from '@/lib/shareCard/types';
 interface SharePlaylistProps {
   playlist: Playlist;
   trigger?: React.ReactNode;
+  onShare?: () => void;
 }
 
-export const SharePlaylist = ({ playlist, trigger }: SharePlaylistProps) => {
+export const SharePlaylist = ({ playlist, trigger, onShare }: SharePlaylistProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   // Convert Playlist to ShareCardContent
@@ -40,12 +41,12 @@ export const SharePlaylist = ({ playlist, trigger }: SharePlaylistProps) => {
   return (
     <>
       {trigger ? (
-        <div onClick={() => setIsOpen(true)}>{trigger}</div>
+        <div role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} onClick={() => { setIsOpen(true); onShare?.(); }}>{trigger}</div>
       ) : (
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsOpen(true)}
+          onClick={() => { setIsOpen(true); onShare?.(); }}
           className="text-white/70 hover:text-white hover:bg-white/10"
         >
           <Share2 className="h-5 w-5" />

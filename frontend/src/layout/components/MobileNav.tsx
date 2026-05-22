@@ -20,6 +20,17 @@ import { useAudioOutputDevice } from '@/hooks/useAudioOutputDevice';
 import type { AudioOutputDeviceType } from '@/lib/audioOutputDevice';
 
 
+const MOOD_ICON_MASK_STYLE = {
+  WebkitMaskImage: "url('https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg')",
+  WebkitMaskRepeat: 'no-repeat',
+  WebkitMaskPosition: 'center',
+  WebkitMaskSize: 'contain',
+  maskImage: "url('https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg')",
+  maskRepeat: 'no-repeat',
+  maskPosition: 'center',
+  maskSize: 'contain',
+} as const;
+
 /**
  * Mobile Navigation with Profile Menu and Lockscreen Controls
  * 
@@ -97,38 +108,432 @@ const MobileProgressBar = React.memo(() => {
 
 MobileProgressBar.displayName = 'MobileProgressBar';
 
+// Standalone output icon component to prevent inline render warnings
+const OutputIcon = ({ type }: { type: AudioOutputDeviceType }) => {
+  switch (type) {
+    case 'car':
+      return <Car className="h-4 w-4" />;
+    case 'tv':
+      return <Tv className="h-4 w-4" />;
+    case 'headphones':
+      return <Headphones className="h-4 w-4" />;
+    case 'speaker':
+      return <Speaker className="h-4 w-4" />;
+    case 'bluetooth':
+      return <Bluetooth className="h-4 w-4" />;
+    case 'browser':
+      return <Monitor className="h-4 w-4" />;
+    default:
+      return <Smartphone className="h-4 w-4" />;
+  }
+};
+
+
+interface MobileTopHeaderProps {
+  user: any;
+  onProfileClick: (e: React.MouseEvent) => void;
+  onProfileClose: () => void;
+  onLogout: (e: React.MouseEvent) => void;
+  onLogin: () => void;
+  onWhatsNewOpen: () => void;
+  dropdownClassName: string;
+  dropdownStyle: React.CSSProperties;
+  routeState: MobileTopHeaderState;
+}
+
+
+type MobileTopHeaderState = {
+  showMobileTopHeader: boolean;
+  isLikedRoute: boolean;
+  isLibraryRoute: boolean;
+  isSearchRoute: boolean;
+  isAuthenticated: boolean;
+  showProfileMenu: boolean;
+};
+
+const MobileTopHeader = ({  routeState: { showMobileTopHeader, isLikedRoute, isLibraryRoute, isSearchRoute, isAuthenticated, showProfileMenu },
+
+  user,
+  onProfileClick,
+  onProfileClose,
+  onLogout,
+  onLogin,
+  onWhatsNewOpen,
+  dropdownClassName,
+  dropdownStyle,
+}: MobileTopHeaderProps) => {
+  if (!showMobileTopHeader || isLikedRoute) return null;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden pt-[env(safe-area-inset-top,0px)]">
+      {isLibraryRoute ? (
+        <div className="flex items-center justify-between px-4 h-10">
+          <div className="flex items-center gap-2">
+            {isAuthenticated ? (
+              <div className="relative">
+                <button type="button"
+                  onClick={onProfileClick}
+                  aria-label="Profile"
+                  className="p-0.5"
+                >
+                  {user?.picture ? (
+                    <img
+                      src={(user.picture || '').replace(/^http:\/\//, 'https://')}
+                      alt={user.name || 'User'}
+                      loading="lazy"
+                      decoding="async"
+                      width="26"
+                      height="26"
+                      className="rounded-full object-cover h-[26px] w-[26px]"
+                    />
+                  ) : (
+                    <User className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </button>
+                <ProfileDropdown
+                  isOpen={showProfileMenu}
+                  onClose={onProfileClose}
+                  onLogout={onLogout}
+                  className={dropdownClassName}
+                  style={dropdownStyle}
+                />
+              </div>
+            ) : (
+              <button type="button"
+                onClick={onLogin}
+                aria-label="Sign in"
+                className="p-1"
+              >
+                <LogIn className="h-5 w-5 text-foreground" />
+              </button>
+            )}
+            <h2 className="text-sm font-semibold text-foreground">Your Library</h2>
+          </div>
+          <div className="flex items-center gap-2">
+          </div>
+        </div>
+      ) : isSearchRoute ? (
+        <div className="flex items-center justify-between px-4 h-10">
+          <div className="flex items-center gap-2">
+            {isAuthenticated ? (
+              <div className="relative">
+                <button type="button"
+                  onClick={onProfileClick}
+                  aria-label="Profile"
+                  className="p-0.5"
+                >
+                  {user?.picture ? (
+                    <img
+                      src={(user.picture || '').replace(/^http:\/\//, 'https://')}
+                      alt={user.name || 'User'}
+                      loading="lazy"
+                      decoding="async"
+                      width="26"
+                      height="26"
+                      className="rounded-full object-cover h-[26px] w-[26px]"
+                    />
+                  ) : (
+                    <User className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </button>
+                <ProfileDropdown
+                  isOpen={showProfileMenu}
+                  onClose={onProfileClose}
+                  onLogout={onLogout}
+                  className={dropdownClassName}
+                  style={dropdownStyle}
+                />
+              </div>
+            ) : (
+              <button type="button"
+                onClick={onLogin}
+                aria-label="Sign in"
+                className="p-1"
+              >
+                <LogIn className="h-5 w-5 text-foreground" />
+              </button>
+            )}
+            <h2 className="text-sm font-semibold text-foreground">Search</h2>
+          </div>
+          <div className="flex items-center gap-2" />
+        </div>
+      ) : (
+        <div className="flex items-center justify-between px-4 h-10">
+          <div className="flex items-center gap-2">
+            {isAuthenticated ? (
+              <div className="relative">
+                <button type="button"
+                  onClick={onProfileClick}
+                  aria-label="Profile"
+                  className="p-0.5"
+                >
+                  {user?.picture ? (
+                    <img
+                      src={(user.picture || '').replace(/^http:\/\//, 'https://')}
+                      alt={user.name || 'User'}
+                      loading="lazy"
+                      decoding="async"
+                      width="26"
+                      height="26"
+                      className="rounded-full object-cover h-[26px] w-[26px]"
+                    />
+                  ) : (
+                    <User className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </button>
+                <ProfileDropdown
+                  isOpen={showProfileMenu}
+                  onClose={onProfileClose}
+                  onLogout={onLogout}
+                  className={dropdownClassName}
+                  style={dropdownStyle}
+                />
+              </div>
+            ) : (
+              <button type="button"
+                onClick={onLogin}
+                aria-label="Sign in"
+                className="p-0.5"
+              >
+                <LogIn className="h-5 w-5 text-foreground" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button"
+              onClick={onWhatsNewOpen}
+              className="w-7 h-7 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
+              aria-label="What's New"
+            >
+              <Bell size={18} className="text-white transition-colors" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface BottomPlayerNavProps {
+  hasActiveSong: boolean;
+  currentSong: any;
+  isPlaying: boolean;
+  albumColors: any;
+  deviceLabel: string;
+  deviceType: AudioOutputDeviceType;
+  togglePlay: () => void;
+  onSongTap: () => void;
+  onShowOutputPicker: () => void;
+  onShowQueue: () => void;
+  leftNavItems: NavItem[];
+  rightNavItems: NavItem[];
+  isActive: (path: string) => boolean;
+  moodIconMaskStyle: React.CSSProperties;
+}
+
+const BottomPlayerNav = ({
+  hasActiveSong,
+  currentSong,
+  isPlaying,
+  albumColors,
+  deviceLabel,
+  deviceType,
+  togglePlay,
+  onSongTap,
+  onShowOutputPicker,
+  onShowQueue,
+  leftNavItems,
+  rightNavItems,
+  isActive,
+  moodIconMaskStyle,
+}: BottomPlayerNavProps) => {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-col justify-end pointer-events-none md:hidden pb-2">
+      {/* Floating Navigation Pill */}
+      <div className="w-full flex justify-center pointer-events-auto">
+        <div className="nav-container">
+          {/* Background Layer */}
+          <div className="nav-background"></div>
+
+          {/* Combined Mobile Player Segment */}
+          {hasActiveSong && currentSong && (
+            <div className="relative z-20 w-full border-b border-white/5 bg-[#101522]/45">
+              {/* Album Color Tint */}
+              <div
+                className="absolute inset-0 opacity-30 mix-blend-screen"
+                style={{
+                  background: `linear-gradient(90deg, ${albumColors.primary || 'transparent'} 0%, transparent 72%)`,
+                  transition: 'background 320ms ease',
+                }}
+              />
+
+              {/* Player Content */}
+              <div className="relative px-3 flex items-center justify-between w-full h-[48px]">
+                {/* Left: Album Art + Song Info */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer touch-manipulation"
+                  onClick={onSongTap}
+                >
+                  <div className="h-full w-[42px] -ml-3 flex-shrink-0 overflow-hidden rounded-none shadow-none">
+                    <img
+                      src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')}
+                      alt={currentSong.title}
+                      className="w-full h-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                      width="42"
+                      height="42"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 overflow-hidden mr-2">
+                    <div className="w-full overflow-hidden mb-0" style={{ color: albumColors.text || '#ffffff' }}>
+                      <PingPongScroll
+                        text={currentSong.title}
+                        className="text-[11px] font-bold leading-tight py-0.5"
+                        velocity={15}
+                      />
+                    </div>
+                    <div className="mt-0" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 35%)' }}>
+                      <PingPongScroll
+                        text={currentSong.artist}
+                        className="text-[9px] font-medium leading-tight"
+                        velocity={12}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Controls */}
+                <div className="flex items-center gap-1" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
+                  <button type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePlay();
+                    }}
+                    className="p-2 transition-transform duration-200 active:scale-90 touch-manipulation"
+                    aria-label={isPlaying ? 'Pause' : 'Play'}
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-4.5 w-4.5" fill="currentColor" />
+                    ) : (
+                      <Play className="h-4.5 w-4.5 ml-0.5" fill="currentColor" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShowOutputPicker();
+                    }}
+                    className="p-1.5 transition-transform duration-200 active:scale-90 opacity-90 touch-manipulation"
+                    aria-label={`Open output devices. Current output: ${deviceLabel}`}
+                    title={deviceLabel}
+                  >
+                    <OutputIcon type={deviceType} />
+                  </button>
+                  <button type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShowQueue();
+                    }}
+                    className="p-2 transition-transform duration-200 active:scale-90 opacity-90 touch-manipulation"
+                    aria-label="Open queue"
+                  >
+                    <ListMusic className="h-4.5 w-4.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Progress Bar Divider */}
+              <MobileProgressBar />
+            </div>
+          )}
+
+          {/* Nav Items Inline */}
+          <nav className="nav-content w-full flex justify-between">
+            {/* Left Side */}
+            <div className="flex flex-1 justify-evenly items-center">
+              {leftNavItems.map(item => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1 touch-manipulation select-none',
+                    isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
+                  )}
+                >
+                  <item.icon
+                    className={cn('h-[17px] w-[17px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
+                    strokeWidth={isActive(item.path) ? 2.5 : 2}
+                  />
+                  <span className="text-[7.5px] font-medium tracking-wide">
+                    {item.label}
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            {/* Central AI Button - Icon-only gradient glow */}
+            <Link
+              to="/mood-playlist"
+              aria-label="AI Mood"
+              className="flex items-center justify-center group flex-shrink-0 transition-transform duration-300 active:scale-95 px-1.5 touch-manipulation select-none"
+            >
+              <span className="relative flex items-center justify-center w-[40px] h-[40px] sm:w-[42px] sm:h-[42px]">
+                <span
+                  className="relative z-10 w-[32px] h-[32px] sm:w-[34px] sm:h-[34px] bg-gradient-to-br from-[#ff7de8] via-[#b792ff] to-[#72c8ff] transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,132,232,0.52)]"
+                  style={moodIconMaskStyle}
+                />
+              </span>
+            </Link>
+
+            {/* Right Side */}
+            <div className="flex flex-1 justify-evenly items-center">
+              {rightNavItems.map(item => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1 touch-manipulation select-none',
+                    isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
+                  )}
+                >
+                  <item.icon
+                    className={cn('h-[17px] w-[17px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
+                    strokeWidth={isActive(item.path) ? 2.5 : 2}
+                  />
+                  <span className="text-[7.5px] font-medium tracking-wide">
+                    {item.label}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MobileNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const togglePlay = usePlayerStore((state) => state.togglePlay);
   const { isPlaying, currentSong } = usePlayerSync();
   const { isAuthenticated, user } = useAuth();
-  const [showSongDetails, setShowSongDetails] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showQueue, setShowQueue] = useState(false);
-  const [showOutputPicker, setShowOutputPicker] = useState(false);
-  const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [state, setState] = useState({
+    showSongDetails: false,
+    showProfileMenu: false,
+    showQueue: false,
+    showOutputPicker: false,
+    showWhatsNew: false,
+  });
+  const { showSongDetails, showProfileMenu, showQueue, showOutputPicker, showWhatsNew } = state;
   const albumColors = useAlbumColors(currentSong?.imageUrl);
   const { deviceLabel, deviceType } = useAudioOutputDevice(!!currentSong && isPlaying);
-
-  const renderOutputIcon = (type: AudioOutputDeviceType) => {
-    switch (type) {
-      case 'car':
-        return <Car className="h-4 w-4" />;
-      case 'tv':
-        return <Tv className="h-4 w-4" />;
-      case 'headphones':
-        return <Headphones className="h-4 w-4" />;
-      case 'speaker':
-        return <Speaker className="h-4 w-4" />;
-      case 'bluetooth':
-        return <Bluetooth className="h-4 w-4" />;
-      case 'browser':
-        return <Monitor className="h-4 w-4" />;
-      default:
-        return <Smartphone className="h-4 w-4" />;
-    }
-  };
 
   // Check if we have an active song to add padding to the bottom nav
   const hasActiveSong = !!currentSong;
@@ -137,7 +542,7 @@ const MobileNav = () => {
   useEffect(() => {
     const handleClickOutside = () => {
       if (showProfileMenu) {
-        setShowProfileMenu(false);
+        setState(prev => ({ ...prev, showProfileMenu: false }));
       }
     };
 
@@ -151,19 +556,21 @@ const MobileNav = () => {
     };
   }, [showProfileMenu]);
 
+  const pathname = location.pathname;
+
   const isActive = React.useCallback((path: string) => {
-    if (path === '/home' && location.pathname === '/home') return true;
-    if (path !== '/home' && location.pathname.startsWith(path)) return true;
+    if (path === '/home' && pathname === '/home') return true;
+    if (path !== '/home' && pathname.startsWith(path)) return true;
     return false;
-  }, [location.pathname]);
+  }, [pathname]);
 
   // Show compact top header on specific routes
-  const isLibraryRoute = location.pathname.startsWith('/library');
-  const isSearchRoute = location.pathname.startsWith('/search');
-  const isLikedRoute = location.pathname.startsWith('/liked-songs');
+  const isLibraryRoute = pathname.startsWith('/library');
+  const isSearchRoute = pathname.startsWith('/search');
+  const isLikedRoute = pathname.startsWith('/liked-songs');
   const showMobileTopHeader = (
-    location.pathname === '/home' ||
-    location.pathname === '/' ||
+    pathname === '/home' ||
+    pathname === '/' ||
     isLibraryRoute ||
     isSearchRoute
   );
@@ -180,7 +587,7 @@ const MobileNav = () => {
     e.stopPropagation();
     try {
       // Navigate to welcome page first for faster perceived performance
-      setShowProfileMenu(false);
+      setState(prev => ({ ...prev, showProfileMenu: false }));
       navigate('/', { replace: true });
 
       // Then perform the actual logout
@@ -190,7 +597,7 @@ const MobileNav = () => {
       }
     } catch (error) {
       // Still close the menu and reset auth store
-      setShowProfileMenu(false);
+      setState(prev => ({ ...prev, showProfileMenu: false }));
     }
   };
 
@@ -201,7 +608,7 @@ const MobileNav = () => {
   // Handle song tap to open song details view
   const handleSongTap = () => {
     if (currentSong) {
-      setShowSongDetails(true);
+      setState(prev => ({ ...prev, showSongDetails: true }));
     }
   };
 
@@ -210,7 +617,7 @@ const MobileNav = () => {
   // Handle profile click
   const handleProfileClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowProfileMenu(prev => !prev);
+    setState(prev => ({ ...prev, showProfileMenu: !prev.showProfileMenu }));
   };
 
   // Calculate dropdown position to stay within viewport
@@ -244,22 +651,22 @@ const MobileNav = () => {
 
   return (
     <>
-      <WhatsNewDialog open={showWhatsNew} onOpenChange={setShowWhatsNew} />
+      <WhatsNewDialog open={showWhatsNew} onOpenChange={(val) => setState(prev => ({ ...prev, showWhatsNew: val }))} />
 
       {/* Song Details View — always mounted so AnimatePresence can animate exit */}
       <SongDetailsView
         isOpen={showSongDetails}
-        onClose={() => setShowSongDetails(false)}
+        onClose={() => setState(prev => ({ ...prev, showSongDetails: false }))}
       />
 
       {/* Queue Drawer */}
       <QueueDrawer
         isOpen={showQueue}
-        onClose={() => setShowQueue(false)}
+        onClose={() => setState(prev => ({ ...prev, showQueue: false }))}
       />
       <AudioOutputPicker
         isOpen={showOutputPicker}
-        onClose={() => setShowOutputPicker(false)}
+        onClose={() => setState(prev => ({ ...prev, showOutputPicker: false }))}
       />
 
       <style>{`
@@ -304,330 +711,36 @@ const MobileNav = () => {
         }
       `}</style>
 
-      {/* Mobile Header - Mavrixfy style (only on home) */}
-      {showMobileTopHeader && !isLikedRoute && (
-        <div className="fixed top-0 left-0 right-0 z-30 bg-[#121212] dark:bg-[#121212] md:hidden pt-[env(safe-area-inset-top,0px)]">
-          {isLibraryRoute ? (
-            <div className="flex items-center justify-between px-4 h-10">
-              <div className="flex items-center gap-2">
-                {isAuthenticated ? (
-                  <div className="relative">
-                    <button
-                      onClick={handleProfileClick}
-                      aria-label="Profile"
-                      className="p-0.5"
-                    >
-                      {user?.picture ? (
-                        <img
-                          src={(user.picture || '').replace(/^http:\/\//, 'https://')}
-                          alt={user.name || 'User'}
-                          loading="lazy"
-                          decoding="async"
-                          width="26"
-                          height="26"
-                          className="rounded-full object-cover h-[26px] w-[26px]"
-                        />
-                      ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </button>
-                    <ProfileDropdown
-                      isOpen={showProfileMenu}
-                      onClose={() => setShowProfileMenu(false)}
-                      onLogout={handleLogout}
-                      className={getDropdownStyles().className}
-                      style={getDropdownStyles().style}
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleLogin}
-                    aria-label="Sign in"
-                    className="p-1"
-                  >
-                    <LogIn className="h-5 w-5 text-foreground" />
-                  </button>
-                )}
-                <h2 className="text-sm font-bold text-foreground">Your Library</h2>
-              </div>
-              <div className="flex items-center gap-2">
-              </div>
-            </div>
-          ) : isSearchRoute ? (
-            <div className="flex items-center justify-between px-4 h-10">
-              <div className="flex items-center gap-2">
-                {isAuthenticated ? (
-                  <div className="relative">
-                    <button
-                      onClick={handleProfileClick}
-                      aria-label="Profile"
-                      className="p-0.5"
-                    >
-                      {user?.picture ? (
-                        <img
-                          src={(user.picture || '').replace(/^http:\/\//, 'https://')}
-                          alt={user.name || 'User'}
-                          loading="lazy"
-                          decoding="async"
-                          width="26"
-                          height="26"
-                          className="rounded-full object-cover h-[26px] w-[26px]"
-                        />
-                      ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </button>
-                    <ProfileDropdown
-                      isOpen={showProfileMenu}
-                      onClose={() => setShowProfileMenu(false)}
-                      onLogout={handleLogout}
-                      className={getDropdownStyles().className}
-                      style={getDropdownStyles().style}
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleLogin}
-                    aria-label="Sign in"
-                    className="p-1"
-                  >
-                    <LogIn className="h-5 w-5 text-foreground" />
-                  </button>
-                )}
-                <h2 className="text-sm font-bold text-foreground">Search</h2>
-              </div>
-              <div className="flex items-center gap-2" />
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-4 h-10">
-              <div className="flex items-center gap-2">
-                {isAuthenticated ? (
-                  <div className="relative">
-                    <button
-                      onClick={handleProfileClick}
-                      aria-label="Profile"
-                      className="p-0.5"
-                    >
-                      {user?.picture ? (
-                        <img
-                          src={(user.picture || '').replace(/^http:\/\//, 'https://')}
-                          alt={user.name || 'User'}
-                          loading="lazy"
-                          decoding="async"
-                          width="26"
-                          height="26"
-                          className="rounded-full object-cover h-[26px] w-[26px]"
-                        />
-                      ) : (
-                        <User className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </button>
-                    <ProfileDropdown
-                      isOpen={showProfileMenu}
-                      onClose={() => setShowProfileMenu(false)}
-                      onLogout={handleLogout}
-                      className={getDropdownStyles().className}
-                      style={getDropdownStyles().style}
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleLogin}
-                    aria-label="Sign in"
-                    className="p-0.5"
-                  >
-                    <LogIn className="h-5 w-5 text-foreground" />
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowWhatsNew(true)}
-                  className="w-7 h-7 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
-                  aria-label="What's New"
-                >
-                  <Bell size={18} className="text-white transition-colors" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Mobile Header - Mavrixfy style */}
+      <MobileTopHeader
+        user={user}
+        onProfileClick={handleProfileClick}
+        onProfileClose={() => setState(prev => ({ ...prev, showProfileMenu: false }))}
+        onLogout={handleLogout}
+        onLogin={handleLogin}
+        onWhatsNewOpen={() => setState(prev => ({ ...prev, showWhatsNew: true }))}
+        dropdownClassName={getDropdownStyles().className}
+        dropdownStyle={getDropdownStyles().style}
+        routeState={{ showMobileTopHeader: showMobileTopHeader, isLikedRoute: isLikedRoute, isLibraryRoute: isLibraryRoute, isSearchRoute: isSearchRoute, isAuthenticated: isAuthenticated, showProfileMenu: showProfileMenu }}
+      />
 
-      {/* Bottom Navigation Wrapper - Fully transparent background */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-col justify-end pointer-events-none md:hidden pb-2">
-        {/* Floating Navigation Pill */}
-        <div className="w-full flex justify-center pointer-events-auto">
-          <div className="nav-container">
-            {/* Background Layer */}
-            <div className="nav-background"></div>
-
-            {/* Combined Mobile Player Segment */}
-            {hasActiveSong && (
-              <div className="relative z-20 w-full border-b border-white/5 bg-[#101522]/45">
-                {/* Album Color Tint */}
-                <div
-                  className="absolute inset-0 opacity-30 mix-blend-screen"
-                  style={{
-                    background: `linear-gradient(90deg, ${albumColors.primary || 'transparent'} 0%, transparent 72%)`,
-                    transition: 'background 320ms ease',
-                  }}
-                />
-
-                {/* Player Content */}
-                <div className="relative px-3 flex items-center justify-between w-full h-[48px]">
-                  {/* Left: Album Art + Song Info */}
-                  <div
-                    className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer touch-manipulation"
-                    onClick={handleSongTap}
-                  >
-                    <div className="h-full w-[42px] -ml-3 flex-shrink-0 overflow-hidden rounded-none shadow-none">
-                      <img
-                        src={(currentSong.imageUrl || '').replace(/^http:\/\//, 'https://')}
-                        alt={currentSong.title}
-                        className="w-full h-full object-cover"
-                        loading="eager"
-                        decoding="async"
-                        width="42"
-                        height="42"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0 overflow-hidden mr-2">
-                      <div className="w-full overflow-hidden mb-0" style={{ color: albumColors.text || '#ffffff' }}>
-                        <PingPongScroll
-                          text={currentSong.title}
-                          className="text-[11px] font-bold leading-tight py-0.5"
-                          velocity={15}
-                        />
-                      </div>
-                      <div className="mt-0" style={{ color: 'color-mix(in srgb, ' + (albumColors.text || '#ffffff') + ', transparent 35%)' }}>
-                        <PingPongScroll
-                          text={currentSong.artist}
-                          className="text-[9px] font-medium leading-tight"
-                          velocity={12}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Controls */}
-                    <div className="flex items-center gap-1" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePlay();
-                        }}
-                        className="p-2 transition-transform duration-200 active:scale-90 touch-manipulation"
-                        aria-label={isPlaying ? 'Pause' : 'Play'}
-                      >
-                        {isPlaying ? (
-                          <Pause className="h-4.5 w-4.5" fill="currentColor" />
-                        ) : (
-                          <Play className="h-4.5 w-4.5 ml-0.5" fill="currentColor" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowOutputPicker(true);
-                        }}
-                        className="p-1.5 transition-transform duration-200 active:scale-90 opacity-90 touch-manipulation"
-                        aria-label={`Open output devices. Current output: ${deviceLabel}`}
-                        title={deviceLabel}
-                      >
-                        {renderOutputIcon(deviceType)}
-                      </button>
-                      <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowQueue(true);
-                      }}
-                        className="p-2 transition-transform duration-200 active:scale-90 opacity-90 touch-manipulation"
-                        aria-label="Open queue"
-                      >
-                        <ListMusic className="h-4.5 w-4.5" />
-                      </button>
-                    </div>
-                </div>
-
-                {/* Progress Bar Divider */}
-                <MobileProgressBar />
-              </div>
-            )}
-
-            {/* Nav Items Inline */}
-            <nav className="nav-content w-full flex justify-between">
-              {/* Left Side */}
-              <div className="flex flex-1 justify-evenly items-center">
-                {LEFT_NAV_ITEMS.map(item => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1 touch-manipulation select-none',
-                      isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
-                    )}
-                  >
-                    <item.icon
-                      className={cn('h-[17px] w-[17px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
-                      strokeWidth={isActive(item.path) ? 2.5 : 2}
-                    />
-                    <span className="text-[7.5px] font-medium tracking-wide">
-                      {item.label}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-
-              {/* Central AI Button - Icon-only gradient glow (no surrounding gradient circle) */}
-              <Link
-                to="/mood-playlist"
-                aria-label="AI Mood"
-                className="flex items-center justify-center group flex-shrink-0 transition-transform duration-300 active:scale-95 px-1.5 touch-manipulation select-none"
-              >
-                <span className="relative flex items-center justify-center w-[40px] h-[40px] sm:w-[42px] sm:h-[42px]">
-                  <span
-                    className="relative z-10 w-[32px] h-[32px] sm:w-[34px] sm:h-[34px] bg-gradient-to-br from-[#ff7de8] via-[#b792ff] to-[#72c8ff] transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,132,232,0.52)]"
-                    style={{
-                      WebkitMaskImage: "url('https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg')",
-                      WebkitMaskRepeat: 'no-repeat',
-                      WebkitMaskPosition: 'center',
-                      WebkitMaskSize: 'contain',
-                      maskImage: "url('https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg')",
-                      maskRepeat: 'no-repeat',
-                      maskPosition: 'center',
-                      maskSize: 'contain',
-                    }}
-                  />
-                </span>
-              </Link>
-
-              {/* Right Side */}
-              <div className="flex flex-1 justify-evenly items-center">
-                {RIGHT_NAV_ITEMS.map(item => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      'flex flex-col items-center justify-center gap-0.5 transition-all duration-300 flex-1 touch-manipulation select-none',
-                      isActive(item.path) ? 'text-white' : 'text-[#888] hover:text-white'
-                    )}
-                  >
-                    <item.icon
-                      className={cn('h-[17px] w-[17px] transition-transform duration-300', isActive(item.path) && 'scale-110')}
-                      strokeWidth={isActive(item.path) ? 2.5 : 2}
-                    />
-                    <span className="text-[7.5px] font-medium tracking-wide">
-                      {item.label}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </nav>
-          </div>
-        </div>
-      </div >
+      {/* Bottom Navigation Wrapper */}
+      <BottomPlayerNav
+        hasActiveSong={hasActiveSong}
+        currentSong={currentSong}
+        isPlaying={isPlaying}
+        albumColors={albumColors}
+        deviceLabel={deviceLabel}
+        deviceType={deviceType}
+        togglePlay={togglePlay}
+        onSongTap={handleSongTap}
+        onShowOutputPicker={() => setState(prev => ({ ...prev, showOutputPicker: true }))}
+        onShowQueue={() => setState(prev => ({ ...prev, showQueue: true }))}
+        leftNavItems={LEFT_NAV_ITEMS}
+        rightNavItems={RIGHT_NAV_ITEMS}
+        isActive={isActive}
+        moodIconMaskStyle={MOOD_ICON_MASK_STYLE}
+      />
     </>
   );
 };

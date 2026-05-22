@@ -105,6 +105,23 @@
         { "fieldPath": "genre", "order": "ASCENDING" },
         { "fieldPath": "moodTags", "arrayConfig": "CONTAINS" }
       ]
+    },
+    {
+      "collectionGroup": "recommendation_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "occurredAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recommendation_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "eventType", "order": "ASCENDING" },
+        { "fieldPath": "occurredAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

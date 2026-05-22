@@ -7,7 +7,7 @@ import { useAuthStore } from './useAuthStore';
 // Local backup service for offline or error scenarios
 const localLikedSongsService = {
   getLikedSongs: (): Song[] => {
-    const songs = localStorage.getItem('likedSongs');
+    const songs = localStorage.getItem('likedSongs:v1');
     return songs ? JSON.parse(songs) : [];
   },
 
@@ -22,13 +22,13 @@ const localLikedSongsService = {
 
     // Add the song
     songs.unshift(song);
-    localStorage.setItem('likedSongs', JSON.stringify(songs));
+    localStorage.setItem('likedSongs:v1', JSON.stringify(songs));
   },
 
   removeLikedSong: (songId: string): void => {
     const songs = localLikedSongsService.getLikedSongs();
     const filteredSongs = songs.filter((song: Song) => song._id !== songId);
-    localStorage.setItem('likedSongs', JSON.stringify(filteredSongs));
+    localStorage.setItem('likedSongs:v1', JSON.stringify(filteredSongs));
   },
 
   isLiked: (songId: string): boolean => {
@@ -350,4 +350,5 @@ queueMicrotask(() => {
     // Error handling without logging
   });
 });
+
 

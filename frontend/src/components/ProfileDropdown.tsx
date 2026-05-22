@@ -54,7 +54,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 
         <div className="border-t border-border my-1"></div>
 
-        <button
+        <button type="button"
           onClick={onLogout}
           className="w-full text-left px-4 py-3 text-sm text-popover-foreground hover:bg-accent flex items-center transition-colors"
         >
@@ -63,9 +63,9 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 
         <div className="border-t border-border my-1"></div>
 
-        <div className="px-2 py-2">
+        <div className="p-2">
           <div className="flex items-center justify-between mb-2 px-2">
-            <h3 className="text-popover-foreground font-bold text-sm">Your Updates</h3>
+            <h3 className="text-popover-foreground font-semibold text-sm">Your Updates</h3>
           </div>
 
           <div className="space-y-2">

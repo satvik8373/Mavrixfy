@@ -100,18 +100,15 @@ export const TouchRipple = ({
       {ripples.map((ripple) => (
         <span
           key={ripple.id}
+          className="absolute rounded-full pointer-events-none scale-0"
           style={{
-            position: 'absolute',
             top: ripple.y - ripple.size / 2,
             left: ripple.x - ripple.size / 2,
             width: ripple.size,
             height: ripple.size,
-            borderRadius: '50%',
             backgroundColor: color,
             opacity: opacity,
-            transform: 'scale(0)',
             animation: `touch-ripple-animation ${duration}ms ease-out`,
-            pointerEvents: 'none',
           }}
         />
       ))}

@@ -43,7 +43,7 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8">
         <div className="flex items-center mb-8">
           <Button 
@@ -60,7 +60,7 @@ const ResetPassword = () => {
               alt="Mavrixfy"
               className="h-8 w-8 object-contain"
             />
-            <h1 className="text-2xl font-bold text-white">Reset password</h1>
+            <h1 className="text-2xl font-semibold text-white">Reset password</h1>
           </div>
         </div>
         

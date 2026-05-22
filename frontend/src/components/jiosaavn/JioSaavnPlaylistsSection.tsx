@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useReducer, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { JioSaavnPlaylistCard } from './JioSaavnPlaylistCard';
 import { JioSaavnPlaylist, jioSaavnService, PlaylistCategory } from '@/services/jioSaavnService';
@@ -22,6 +22,41 @@ type CachedPlaylistPayload = {
   data: JioSaavnPlaylist[];
   updatedAt: number;
   ctxSignature: string;
+};
+
+interface PlaylistsSectionState {
+  playlists: JioSaavnPlaylist[];
+  isLoading: boolean;
+  error: string | null;
+}
+
+type PlaylistsSectionAction =
+  | { type: 'sync'; playlists: JioSaavnPlaylist[]; isLoading?: boolean; error?: string | null }
+  | { type: 'loading' }
+  | { type: 'loaded'; playlists: JioSaavnPlaylist[] }
+  | { type: 'failed' };
+
+const playlistsSectionReducer = (
+  state: PlaylistsSectionState,
+  action: PlaylistsSectionAction
+): PlaylistsSectionState => {
+  switch (action.type) {
+    case 'sync':
+      return {
+        ...state,
+        playlists: action.playlists,
+        isLoading: action.isLoading ?? state.isLoading,
+        error: 'error' in action ? action.error ?? null : state.error,
+      };
+    case 'loading':
+      return { ...state, isLoading: true, error: null };
+    case 'loaded':
+      return { ...state, playlists: action.playlists, isLoading: false, error: null };
+    case 'failed':
+      return { ...state, isLoading: false, error: 'Failed to load playlists' };
+    default:
+      return state;
+  }
 };
 
 const CACHE_PREFIX = 'jiosaavn-cache-';
@@ -139,40 +174,53 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
   playlistsOverride = null,
   disableAutoFetch = false,
 }) => {
-  const [playlists, setPlaylists] = useState<JioSaavnPlaylist[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [category, setCategory] = useState<PlaylistCategory | null>(null);
+  const category = jioSaavnService.getCategoryById(categoryId) || null;
+  const [state, dispatchSection] = useReducer(playlistsSectionReducer, {
+    playlists: (() => {
+      if (Array.isArray(playlistsOverride)) {
+        return playlistsOverride.slice(0, limit);
+      }
+      if (disableAutoFetch) {
+        return [];
+      }
+      const cached = readCachedPlaylists(categoryId);
+      return cached?.data?.slice(0, limit) || [];
+    })() as JioSaavnPlaylist[],
+    isLoading: false,
+    error: null as string | null,
+  });
+  const { playlists, isLoading, error } = state;
   const navigate = useNavigate();
   const cardScrollWidth = 160;
   const cardItemWidth = 160;
 
   useEffect(() => {
-    const foundCategory = jioSaavnService.getCategoryById(categoryId);
-    setCategory(foundCategory || null);
-
     if (Array.isArray(playlistsOverride)) {
-      setPlaylists(playlistsOverride.slice(0, limit));
-      setIsLoading(false);
-      setError(null);
+      dispatchSection({
+        type: 'sync',
+        playlists: playlistsOverride.slice(0, limit),
+        isLoading: false,
+        error: null,
+      });
       return;
     }
 
     if (disableAutoFetch) {
-      setPlaylists([]);
-      setIsLoading(false);
+      dispatchSection({
+        type: 'sync',
+        playlists: [],
+        isLoading: false,
+      });
       return;
     }
 
-    const ctxSignature = getContextSignature(categoryId);
     const cached = readCachedPlaylists(categoryId);
+    dispatchSection({
+      type: 'sync',
+      playlists: cached?.data?.length ? cached.data.slice(0, limit) : [],
+    });
 
-    if (cached?.data?.length) {
-      setPlaylists(cached.data.slice(0, limit));
-    }
-
-    // Always fetch fresh data - don't rely on cache for homepage
-    // This ensures randomization and fresh playlists on every load
+    const ctxSignature = getContextSignature(categoryId);
     fetchPlaylists({ forceRefresh: true, ctxSignature });
   }, [categoryId, disableAutoFetch, limit, playlistsOverride]);
 
@@ -181,8 +229,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
     const ctxSignature = opts?.ctxSignature ?? getContextSignature(categoryId);
 
     try {
-      setIsLoading(true);
-      setError(null);
+      dispatchSection({ type: 'loading' });
 
       let data: JioSaavnPlaylist[];
       
@@ -214,7 +261,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         data = data.slice(0, limit);
       }
       
-      setPlaylists(data);
+      dispatchSection({ type: 'loaded', playlists: data });
       
       writeCachedPlaylists(categoryId, {
         data,
@@ -222,10 +269,8 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
         ctxSignature,
       });
     } catch (err) {
-      setError('Failed to load playlists');
+      dispatchSection({ type: 'failed' });
       toast.error('Failed to load playlists');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -292,7 +337,7 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
     });
     
     // Force a fresh fetch with randomization
-    setPlaylists([]); // Clear current playlists to show loading
+    dispatchSection({ type: 'sync', playlists: [] }); // Clear current playlists to show loading
     fetchPlaylists({ forceRefresh: true, ctxSignature: getContextSignature(categoryId) });
   };
 

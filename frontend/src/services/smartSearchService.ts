@@ -62,13 +62,14 @@ async function fetchJioSaavnDirect(query: string, limit = 20): Promise<SmartSear
         const json = await res.json();
         const raw: any[] = json?.data?.results || json?.results || [];
         return raw
-            .filter((s: any) => s?.id)
-            .map((s: any) => {
+            .flatMap((s: any) => {
+                if (!s?.id) return [];
                 const downloads: any[] = Array.isArray(s.downloadUrl) ? s.downloadUrl : [];
                 const audioUrl =
                     downloads.find((d: any) => d.quality === '320kbps')?.url ||
                     downloads.find((d: any) => d.quality === '160kbps')?.url ||
                     downloads[downloads.length - 1]?.url || '';
+                if (!audioUrl) return [];
                 const images: any[] = Array.isArray(s.image) ? s.image : [];
                 const imageUrl =
                     images.find((i: any) => i.quality === '500x500')?.url ||
@@ -76,7 +77,7 @@ async function fetchJioSaavnDirect(query: string, limit = 20): Promise<SmartSear
                 const artist =
                     s.artists?.primary?.map((a: any) => a.name).join(', ') ||
                     s.primaryArtists || s.artist || 'Unknown Artist';
-                return {
+                return [{
                     id: s.id,
                     title: s.name || s.title || '',
                     artist,
@@ -86,9 +87,8 @@ async function fetchJioSaavnDirect(query: string, limit = 20): Promise<SmartSear
                     imageUrl,
                     audioUrl,
                     source: 'jiosaavn',
-                };
-            })
-            .filter((s: SmartSearchSong) => s.audioUrl);
+                }];
+            });
     } catch {
         return [];
     }
@@ -125,9 +125,7 @@ export const runSmartSearch = async (query: string): Promise<SmartSearchResult> 
         const jiosaavnSongs = await fetchJioSaavnDirect(query, 20);
         const matchingCatalog = filterCatalogSongs(catalogSongs, query);
         const existingIds = new Set(jiosaavnSongs.map(s => s.id));
-        const catalogResults: SmartSearchSong[] = matchingCatalog
-            .filter(s => !existingIds.has(s._id))
-            .map(s => ({
+        const catalogResults: SmartSearchSong[] = matchingCatalog.flatMap(s => existingIds.has(s._id) ? [] : [{
                 id: s._id,
                 title: s.title,
                 artist: s.artist,
@@ -137,7 +135,7 @@ export const runSmartSearch = async (query: string): Promise<SmartSearchResult> 
                 imageUrl: s.imageUrl || '',
                 audioUrl: s.audioUrl,
                 source: 'catalog',
-            }));
+            }]);
 
         allResults = [...jiosaavnSongs, ...catalogResults]
             .sort((a, b) => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, useRef, useCallback, useMemo } from 'react';
 import { onAuthStateChanged, getIdToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -34,33 +34,64 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+interface AuthState {
+  user: User | null;
+  loading: boolean;
+  error: Error | null;
+  isOnline: boolean;
+}
+
+type AuthAction =
+  | { type: 'loading'; value: boolean }
+  | { type: 'user'; user: User | null; loading?: boolean }
+  | { type: 'error'; error: Error; user?: User | null }
+  | { type: 'online'; value: boolean };
+
+const authReducer = (state: AuthState, action: AuthAction): AuthState => {
+  switch (action.type) {
+    case 'loading':
+      return { ...state, loading: action.value };
+    case 'user':
+      return { ...state, user: action.user, loading: action.loading ?? state.loading };
+    case 'error':
+      return { ...state, error: action.error, user: action.user ?? state.user };
+    case 'online':
+      return { ...state, isOnline: action.value };
+    default:
+      return state;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Check for cached auth immediately to avoid loading state
   const cachedAuthStore = (() => {
     try {
       const parsed = getLocalStorageJSON('auth-store', null);
       if (!parsed) return null;
-      return parsed?.state || parsed;
+      return (parsed as any)?.state || parsed;
     } catch {
       return null;
     }
   })();
 
-  const [user, setUser] = useState<User | null>(() => {
-    // Initialize with cached user if available for instant render
-    if (cachedAuthStore?.isAuthenticated && cachedAuthStore?.userId) {
-      return {
-        id: cachedAuthStore.userId,
-        email: '',
-        name: cachedAuthStore.user?.fullName || 'User',
-        picture: cachedAuthStore.user?.imageUrl || ''
-      };
-    }
-    return null;
+  const [authState, dispatchAuth] = useReducer(authReducer, undefined, () => {
+    const cachedUser = cachedAuthStore?.isAuthenticated && cachedAuthStore?.userId
+      ? {
+          id: cachedAuthStore.userId,
+          email: '',
+          name: cachedAuthStore.user?.fullName || 'User',
+          picture: cachedAuthStore.user?.imageUrl || '',
+        }
+      : null;
+
+    return {
+      user: cachedUser,
+      loading: !cachedAuthStore?.isAuthenticated,
+      error: null,
+      isOnline: true,
+    };
   });
-  const [loading, setLoading] = useState(!cachedAuthStore?.isAuthenticated); // Don't show loading if we have cached auth
-  const [error, setError] = useState<Error | null>(null);
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const { user, loading, error, isOnline } = authState;
   const loadingRef = useRef(false);
   const initialLoadCompletedRef = useRef(false);
   const authStateCheckedRef = useRef(false);
@@ -87,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Never show loading state if we already have a user (prevents flickering)
       const currentUser = userRef.current;
       if (!currentUser && !authStateCheckedRef.current && !initialLoadCompletedRef.current) {
-        setLoading(true);
+        dispatchAuth({ type: 'loading', value: true });
       }
 
       const firebaseUser = auth.currentUser;
@@ -116,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               picture: userData?.imageUrl || firebaseUser.photoURL || ''
             };
 
-            setUser(userObj);
+            dispatchAuth({ type: 'user', user: userObj });
 
             // Register web push notifications (silent — only if permission already granted)
             if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
@@ -150,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               picture: firebaseUser.photoURL || ''
             };
 
-            setUser(basicUser);
+            dispatchAuth({ type: 'user', user: basicUser });
             useAuthStore.getState().setAuthStatus(true, firebaseUser.uid);
           }
         }
@@ -158,34 +189,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const currentUser = userRef.current;
         // Only reset if we previously had a user AND we've confirmed auth state with Firebase
         if (currentUser !== null && authStateCheckedRef.current) {
-          setUser(null);
+          dispatchAuth({ type: 'user', user: null });
           // Reset auth store
           useAuthStore.getState().reset();
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load user'));
+      const nextError = err instanceof Error ? err : new Error('Failed to load user');
 
       // CRITICAL FIX: Don't log out if we have a firebase user but just failed to load data
       const firebaseUser = auth.currentUser;
       if (firebaseUser) {
         // Ensure we have at least basic user data
         if (!userRef.current) {
-          setUser({
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            name: firebaseUser.displayName || 'User',
-            picture: firebaseUser.photoURL || ''
+          dispatchAuth({
+            type: 'error',
+            error: nextError,
+            user: {
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              name: firebaseUser.displayName || 'User',
+              picture: firebaseUser.photoURL || ''
+            }
           });
+        } else {
+          dispatchAuth({ type: 'error', error: nextError });
         }
       } else {
         // Only clear user if we truly have no firebase user
-        setUser(null);
+        dispatchAuth({ type: 'error', error: nextError, user: null });
         // Reset auth store
         useAuthStore.getState().reset();
       }
     } finally {
-      setLoading(false);
+      dispatchAuth({ type: 'loading', value: false });
       loadingRef.current = false;
       authStateCheckedRef.current = true;
       initialLoadCompletedRef.current = true;
@@ -219,7 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Set up auth state listener
   useEffect(() => {
     // Network status listeners
-    const updateOnline = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    const updateOnline = () => dispatchAuth({ type: 'online', value: typeof navigator !== 'undefined' ? navigator.onLine : true });
 
     updateOnline();
     window.addEventListener('online', updateOnline);
@@ -236,9 +273,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await loadUser();
       } else {
         // Explicitly clear state on logout detection
-        setUser(null);
+        dispatchAuth({ type: 'user', user: null, loading: false });
         useAuthStore.getState().reset();
-        setLoading(false);
       }
     });
 
@@ -257,15 +293,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await loadUser(true);
   };
 
+  const contextValue = useMemo(() => ({
+    user,
+    loading,
+    error,
+    isAuthenticated: !!user,
+    refreshUserData,
+    isOnline
+  }), [user, loading, error, refreshUserData, isOnline]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      error,
-      isAuthenticated: !!user,
-      refreshUserData,
-      isOnline
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

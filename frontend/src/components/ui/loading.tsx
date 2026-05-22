@@ -149,7 +149,7 @@ export const ListSkeleton: React.FC<{
   return (
     <div className={cn('space-y-3', className)}>
       {Array.from({ length: items }).map((_, i) => (
-        <div key={i} className="skeleton-pulse flex items-center space-x-3" style={{ animationDelay: `${i * 0.1}s` }}>
+        <div key={i} className="skeleton-pulse flex items-center gap-x-3" style={{ animationDelay: `${i * 0.1}s` }}>
           <div className="h-12 w-12 rounded-md skeleton-pulse" />
           <div className="flex-1 space-y-2">
             <div className="h-4 rounded w-3/4 skeleton-pulse" />
