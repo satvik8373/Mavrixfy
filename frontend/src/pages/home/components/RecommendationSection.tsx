@@ -35,7 +35,7 @@ export const RecommendationSection = ({ section }: RecommendationSectionProps) =
 
   return (
     <SectionWrapper title={section.title} subtitle={section.subtitle}>
-      <HorizontalScroll itemWidth={CARD_WIDTH} gap={10} showArrows snapToItems={false} edgeToEdge>
+      <HorizontalScroll itemWidth={CARD_WIDTH} gap={10} showArrows snapToItems={false} edgeToEdge className="min-h-[238px] md:min-h-[258px]">
         {playlists.map((item, index) => (
           <ScrollItem key={item.id} width={CARD_WIDTH}>
             <button

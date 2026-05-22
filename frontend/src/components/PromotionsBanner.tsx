@@ -156,22 +156,28 @@ function AudioMedia({ url }: { url: string }) {
 
 // ── Main Banner ─────────────────────────────────────────────────────────────
 
-export function PromotionsBanner() {
-  const isLighthouse = typeof navigator !== 'undefined' && 
-    (navigator.webdriver || /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent));
+const PROMOS_CACHE_KEY = 'mavrixfy_promos_cache';
+const CACHE_DURATION = 15 * 60 * 1000;
 
+export function PromotionsBanner() {
+  const [current, setCurrent] = useState(0);
+  const navigate = useNavigate();
   const [promos, setPromos] = useState<Promotion[] | undefined>(() => {
-    if (isLighthouse) return [];
     try {
-      const cached = localStorage.getItem('has_active_promotions');
-      if (cached === 'false') return [];
+      const cached = localStorage.getItem(PROMOS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Date.now() - parsed.timestamp < CACHE_DURATION && parsed.data?.length > 0) {
+          return parsed.data.filter((promo: Promotion) => isForWeb(promo.platforms));
+        }
+      }
     } catch {
-      // Ignore storage error
+      // Ignore parse errors
     }
     return undefined;
   });
-  const [current, setCurrent] = useState(0);
-  const navigate = useNavigate();
+  const isLighthouse = typeof navigator !== 'undefined' && 
+    (navigator.webdriver || /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent));
 
   useEffect(() => {
     if (isLighthouse) return;
@@ -197,6 +203,10 @@ export function PromotionsBanner() {
 
         try {
           localStorage.setItem('has_active_promotions', String(valid.length > 0));
+          localStorage.setItem(PROMOS_CACHE_KEY, JSON.stringify({
+            data: valid,
+            timestamp: Date.now()
+          }));
         } catch {
           // Ignore storage error
         }
@@ -231,14 +241,7 @@ export function PromotionsBanner() {
   }, [promos, current]);
 
   if (promos === undefined) {
-    return (
-      <div className="px-4 md:px-6 mb-2">
-        <div
-          className="relative w-full rounded-xl overflow-hidden bg-white/5 animate-pulse"
-          style={{ paddingTop: '31.25%' }}
-        />
-      </div>
-    );
+    return null;
   }
 
   if (!promos || !promos.length) return null;

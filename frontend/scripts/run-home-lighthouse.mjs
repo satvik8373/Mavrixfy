@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
 const reportPath = join(process.cwd(), 'lighthouse-home-preview.json');
@@ -26,6 +26,7 @@ const run = (commandLine, options = {}) =>
       if (code === 0 || options.allowFailure) {
         resolve({ code, stdout, stderr });
       } else {
+        console.error(stderr);
         reject(new Error(`${commandLine} exited with ${code}`));
       }
     });
@@ -63,10 +64,13 @@ process.on('SIGINT', () => {
 });
 
 try {
+  if (existsSync(reportPath)) {
+    unlinkSync(reportPath);
+  }
   await waitForPreview();
   await run(
     `npx lighthouse ${url} --only-categories=performance,accessibility,best-practices,seo --output=json --output-path="${reportPath}" --chrome-flags="--headless=new --disable-extensions --no-sandbox" --quiet`,
-    { allowFailure: true, stdio: 'pipe' },
+    { allowFailure: false, stdio: 'pipe' },
   );
 
   if (!existsSync(reportPath)) {

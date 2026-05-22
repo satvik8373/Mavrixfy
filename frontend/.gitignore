@@ -36,3 +36,4 @@ dist-ssr
 .cache/
 build/
 *.tmp
+lighthouse-home-preview.json

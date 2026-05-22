@@ -376,31 +376,44 @@ export const JioSaavnPlaylistsSection: React.FC<JioSaavnPlaylistsSectionProps> =
 
   if (error && playlists.length === 0) {
     return (
-      <SectionWrapper
-        title={getSectionTitle()}
-        showViewAll={false}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex-1">
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive-foreground text-sm rounded-md px-4 py-3">
+      <div ref={inViewRef} className="w-full">
+        <SectionWrapper
+          title={getSectionTitle()}
+          showViewAll={false}
+        >
+          <div className="min-h-[238px] md:min-h-[258px] flex flex-col items-center justify-center mb-4 bg-destructive/5 border border-destructive/10 rounded-md p-6">
+            <div className="text-destructive-foreground text-sm text-center mb-4">
               {error}. Check your internet connection and try again.
             </div>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="inline-flex h-9 items-center justify-center rounded-md px-4 text-sm font-medium bg-destructive/10 text-destructive-foreground transition-colors hover:bg-destructive/20"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="ml-4 inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Retry
-          </button>
-        </div>
-      </SectionWrapper>
+        </SectionWrapper>
+      </div>
     );
   }
 
   if (playlists.length === 0 && !isLoading) {
-    return null;
+    return (
+      <div ref={inViewRef} className="w-full">
+        <SectionWrapper
+          title={getSectionTitle()}
+          showViewAll={false}
+        >
+          <div className="min-h-[238px] md:min-h-[258px] flex items-center justify-center mb-4 bg-white/[0.02] border border-white/5 rounded-md p-6">
+            <div className="text-muted-foreground text-sm text-center">
+              No playlists found for this category.
+            </div>
+          </div>
+        </SectionWrapper>
+      </div>
+    );
   }
 
   return (

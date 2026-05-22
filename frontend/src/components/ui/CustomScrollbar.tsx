@@ -215,14 +215,14 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
             onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
             ref={scrollThumbRef}
             className={cn(
-              'absolute right-0.5 w-2.5 rounded-md cursor-pointer transition-all duration-200',
+              'absolute top-0 right-0.5 w-2.5 rounded-md cursor-pointer transition-colors duration-200',
               'bg-[#5a5a5a] hover:bg-[#7a7a7a] active:bg-[#8a8a8a]',
               state.isDragging && 'bg-[#8a8a8a]',
               thumbClassName
             )}
             style={{
               height: `${state.thumbHeight}px`,
-              top: `${state.thumbTop}px`,
+              transform: `translate3d(0, ${state.thumbTop}px, 0)`,
             }}
             onMouseDown={handleMouseDown}
           />

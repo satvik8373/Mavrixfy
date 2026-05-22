@@ -77,6 +77,8 @@ export function PlaylistCard({
                 src={coverUrl}
                 alt={playlist.name}
                 className="w-full h-full object-cover rounded-[4px]"
+                width={192}
+                height={192}
                 onError={e => ((e.target as HTMLImageElement).src = '/default-playlist.jpg')}
                 loading={eagerLoad ? "eager" : "lazy"}
                 ref={eagerLoad ? (el) => { if (el) (el as any).fetchPriority = 'high'; } : undefined}

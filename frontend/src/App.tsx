@@ -360,6 +360,24 @@ function AppContent() {
 
 function App() {
 	useEffect(() => {
+		if (import.meta.env.DEV || window.location.search.includes('debug_cls=true')) {
+			try {
+				new PerformanceObserver((list) => {
+					for (const entry of list.getEntries()) {
+						if (!entry.hadRecentInput) {
+							console.warn('[CLS DETECTED]', entry.value, entry.sources);
+							const badge = document.createElement('div');
+							badge.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(255,0,0,0.9);color:white;padding:8px;z-index:999999;font-size:12px;font-family:monospace;border-radius:4px;max-width:300px;word-break:break-all;pointer-events:none;';
+							badge.innerHTML = `CLS: ${entry.value.toFixed(4)}<br/>Node: ${entry.sources[0]?.node?.nodeName || 'unknown'}.${entry.sources[0]?.node?.className || ''}`;
+							document.body.appendChild(badge);
+						}
+					}
+				}).observe({ type: 'layout-shift', buffered: true });
+			} catch (e) {}
+		}
+	}, []);
+
+	useEffect(() => {
 		let started = false;
 		const interactionEvents = ['pointerdown', 'keydown', 'touchstart'];
 		const startTracking = async () => {

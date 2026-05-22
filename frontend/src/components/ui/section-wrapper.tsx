@@ -3,8 +3,8 @@ import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SectionWrapperProps {
-  title: string;
-  subtitle?: string;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
   showViewAll?: boolean;
   onViewAll?: () => void;
   children: React.ReactNode;

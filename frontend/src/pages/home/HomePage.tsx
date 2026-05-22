@@ -1,9 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { JioSaavnPlaylistsSection } from '@/components/jiosaavn/JioSaavnPlaylistsSection';
 import { RecentlyPlayedCard } from '@/components/RecentlyPlayedCard';
 import { HomeJioSaavnCategoryData, jioSaavnService } from '@/services/jioSaavnService';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { HorizontalScroll, ScrollItem } from '@/components/ui/horizontal-scroll';
@@ -20,11 +20,8 @@ import {
 } from '@/services/recommendationService';
 import { RecommendationSection } from './components/RecommendationSection';
 
-const PlaylistCard = lazy(() =>
-  import('../../components/playlist/PlaylistCard').then((module) => ({
-    default: module.PlaylistCard,
-  }))
-);
+import { PlaylistCard } from '../../components/playlist/PlaylistCard';
+
 
 const ALL_JIOSAAVN_CATEGORIES = [
   'trending',
@@ -32,18 +29,9 @@ const ALL_JIOSAAVN_CATEGORIES = [
   'most-played',
   'top-dhurandhar',
   'new-arrivals',
-  'party',
-  'workout',
-  'romance',
-  'devotional',
-  'indie',
-  'ghazals',
-  'classical',
-  'dance',
-  'pop',
 ] as const;
 
-const HOME_JIOSAAVN_TITLES: Record<(typeof ALL_JIOSAAVN_CATEGORIES)[number], string> = {
+const HOME_JIOSAAVN_TITLES: Record<string, string> = {
   trending: 'Trending Now',
   'most-viral': 'Most Viral',
   'most-played': 'Most Played',
@@ -263,22 +251,36 @@ const HomeTopBanners = ({ navigate }: HomeTopBannersProps) => {
 
 interface HomeRecentlyPlayedGridProps {
   isAuthenticated: boolean;
+  isLoaded: boolean;
   getDisplayedItems: () => any[];
   handlePlaylistClick: (item: any) => void;
   handleColorChange: (color: string | null, isLikedSongs?: boolean) => void;
-  navigate: any;
+  navigate: NavigateFunction;
 }
 
 const HomeRecentlyPlayedGrid = ({
   isAuthenticated,
+  isLoaded,
   getDisplayedItems,
   handlePlaylistClick,
   handleColorChange,
   navigate,
 }: HomeRecentlyPlayedGridProps) => {
   if (!isAuthenticated) return null;
+
+  const items = getDisplayedItems();
+  // Show skeletons until we have either loaded the fallback public playlists 
+  // or we definitively know there are no fallback playlists.
+  // This prevents the grid from temporarily collapsing to 1 row and causing a massive CLS.
+  const showSkeletons = !isLoaded && items.length < 7;
+
+  // We want exactly 8 cards (Liked Songs + 7 recently played/skeletons)
+  const itemsToRender = showSkeletons
+    ? Array.from({ length: 7 }).map((_, index) => ({ id: `recently-played-skeleton-${index}`, isSkeleton: true }))
+    : items.slice(0, 7);
+
   return (
-    <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out] pt-4 md:pt-0">
+    <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out] pt-4 md:pt-0 min-h-[226px] md:min-h-[94px]">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-[6px] w-full max-w-full">
         <RecentlyPlayedCard
           id="liked-songs"
@@ -291,7 +293,22 @@ const HomeRecentlyPlayedGrid = ({
           onHoverChange={(color) => handleColorChange(color, true)}
         />
 
-        {getDisplayedItems().slice(0, 7).map((item: any) => {
+        {itemsToRender.map((item: any) => {
+          if (item.isSkeleton) {
+            return (
+              <div 
+                key={item.id} 
+                className="h-[48px] md:h-[44px] w-full rounded-[4px] bg-white/5 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:before-shimmer before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent"
+              >
+                <div className="relative flex items-center h-full z-10">
+                  <div className="relative w-[48px] md:w-[44px] h-full flex-shrink-0 bg-white/5 rounded-[4px]" />
+                  <div className="flex-1 min-w-0 pl-2.5 pr-2 py-1 flex items-center">
+                    <div className="h-3 bg-white/10 rounded w-2/3 animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            );
+          }
           const itemId = item._id || item.id;
           return (
             <RecentlyPlayedCard
@@ -337,7 +354,9 @@ const ScrollCardsSkeleton = ({ count = 6, itemWidth = 160 }: { count?: number; i
 
 const HomePage = () => {
   const publicPlaylists = usePlaylistStore(state => state.publicPlaylists);
+  const featuredPlaylists = usePlaylistStore(state => state.featuredPlaylists);
   const fetchPublicPlaylists = usePlaylistStore(state => state.fetchPublicPlaylists);
+  const fetchFeaturedPlaylists = usePlaylistStore(state => state.fetchFeaturedPlaylists);
   const isLoading = usePlaylistStore(state => state.isLoading);
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
 
@@ -353,9 +372,8 @@ const HomePage = () => {
     isRecommendationFeedLoading,
     hasRecommendationFeedFailed,
     canLoadGuestJio,
-    renderDeferredSections // Added for performance
   }, dispatchHome] = useReducer(homeReducer, {
-    isInitialLoading: false,
+    isInitialLoading: true,
     displayItems: [],
     hasLoadedOnce: false,
     hoveredColor: null,
@@ -467,13 +485,25 @@ const HomePage = () => {
   }, [fetchPublicPlaylists, hasLoadedOnce, isAuthenticated, publicPlaylists.length]);
 
   useEffect(() => {
-    // Calculate recent items inside the effect to avoid dependency issues
-    const currentRecentItems = recentlyPlayedService.getDisplayItems(publicPlaylists);
-    dispatchHome({ type: 'display_items', items: currentRecentItems });
+    let interval: NodeJS.Timeout;
 
-    // Listen for updates to recently played
+    if (!hasLoadedOnce && isAuthenticated) {
+      fetchPublicPlaylists();
+      fetchFeaturedPlaylists();
+      
+      const currentRecentItems = recentlyPlayedService.getDisplayItems([...publicPlaylists, ...featuredPlaylists]);
+      dispatchHome({ type: 'display_items', items: currentRecentItems });
+    }
+
+    if (isAuthenticated) {
+      interval = setInterval(() => {
+        const newItems = recentlyPlayedService.getDisplayItems([...publicPlaylists, ...featuredPlaylists]);
+        dispatchHome({ type: 'display_items', items: newItems });
+      }, 5000);
+    }
+
     const handleRecentlyPlayedUpdated = () => {
-      const newItems = recentlyPlayedService.getDisplayItems(publicPlaylists);
+      const newItems = recentlyPlayedService.getDisplayItems([...publicPlaylists, ...featuredPlaylists]);
       dispatchHome({ type: 'display_items', items: newItems });
     };
 
@@ -482,8 +512,9 @@ const HomePage = () => {
 
     return () => {
       window.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
+      if (interval) clearInterval(interval);
     };
-  }, [publicPlaylists]); // Only depend on publicPlaylists, not recentItems
+  }, [publicPlaylists, featuredPlaylists, hasLoadedOnce, isAuthenticated, fetchPublicPlaylists, fetchFeaturedPlaylists]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -575,37 +606,7 @@ const HomePage = () => {
     }
   };
 
-  if (isInitialLoading && !hasLoadedOnce) {
-    return (
-      <div className="min-h-screen bg-transparent py-4 space-y-6 relative w-full z-10 pb-32 md:pb-8 animate-[fadeIn_0.3s_ease-out]">
-          <HomeRecentlyPlayedGrid
-            isAuthenticated={isAuthenticated}
-            getDisplayedItems={getDisplayedItems}
-            handlePlaylistClick={handlePlaylistClick}
-            handleColorChange={handleColorChange}
-            navigate={navigate}
-          />
 
-        {/* Made for you section skeleton */}
-        <div className="px-4 md:px-6">
-          <div className="mb-4 space-y-2">
-            <div className="h-6 bg-white/10 rounded-full w-32 animate-pulse" />
-            <div className="h-4 bg-white/8 rounded-full w-48 animate-pulse" />
-          </div>
-          <HomeSkeleton count={6} type="card" className="" />
-        </div>
-
-        {/* Additional sections skeleton */}
-        <div className="px-4 md:px-6">
-          <div className="mb-4 space-y-2">
-            <div className="h-6 bg-white/10 rounded-full w-28 animate-pulse" />
-            <div className="h-4 bg-white/8 rounded-full w-40 animate-pulse" />
-          </div>
-          <HomeSkeleton count={5} type="card" className="" />
-        </div>
-      </div>
-    );
-  }
 
 
 
@@ -637,53 +638,26 @@ const HomePage = () => {
         <HomeTopBanners navigate={navigate} />
 
         <div className="w-full overflow-x-hidden">
-          {isAuthenticated && (
-            <section className="px-4 md:px-6 mb-6 w-full animate-[scaleIn_0.4s_ease-out] pt-4 md:pt-0">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-[6px] w-full max-w-full">
-                <RecentlyPlayedCard
-                  id="liked-songs"
-                  title="Liked Songs"
-                  imageUrl="https://res.cloudinary.com/djqq8kba8/image/upload/v1765037854/spotify_clone/playlists/IMG_5130_enrlhm.jpg"
-                  subtitle="Playlist"
-                  type="playlist"
-                  onClick={() => navigate('/liked-songs')}
-                  onPlay={() => navigate('/liked-songs')}
-                  onHoverChange={(color) => handleColorChange(color, true)}
-                />
-
-                {getDisplayedItems().slice(0, 7).map((item: any) => {
-                  const itemId = item._id || item.id;
-                  return (
-                    <RecentlyPlayedCard
-                      key={itemId}
-                      id={itemId}
-                      title={item.title || item.name}
-                      imageUrl={item.image || item.imageUrl}
-                      subtitle={item.description || 'Playlist'}
-                      type="playlist"
-                      onClick={() => handlePlaylistClick(item)}
-                      onPlay={() => handlePlaylistClick(item)}
-                      onHoverChange={handleColorChange}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          )}
-          {recommendationFeed ? (
-            recommendationFeed.sections.map((section) => (
-              <RecommendationSection key={section.id} section={section} />
-            ))
-          ) : (
-            <>
-              {isAuthenticated && recommendationFeedEnabled() && (
-                isRecommendationFeedLoading ? (
+          <HomeRecentlyPlayedGrid
+            isAuthenticated={isAuthenticated}
+            isLoaded={publicPlaylists.length > 0 || hasLoadedOnce}
+            getDisplayedItems={getDisplayedItems}
+            handlePlaylistClick={handlePlaylistClick}
+            handleColorChange={handleColorChange}
+            navigate={navigate}
+          />
+          {/* Recommendation Feed (New) */}
+          {isAuthenticated && recommendationFeedEnabled() && (
+            isRecommendationFeedLoading ? (
+              <div className="flex flex-col w-full">
+                {[1, 2, 3].map((idx) => (
                   <SectionWrapper
+                    key={idx}
                     title="Recommended for you"
                     subtitle="Personalized recommendations based on your taste"
                   >
                     <HorizontalScroll
-                      itemWidth={homePlaylistCardScrollWidth}
+                      itemWidth={homePlaylistCardScrollWidth} className="min-h-[238px] md:min-h-[258px]"
                       gap={10}
                       showArrows={true}
                       snapToItems={false}
@@ -692,23 +666,28 @@ const HomePage = () => {
                       <ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />
                     </HorizontalScroll>
                   </SectionWrapper>
-                ) : hasRecommendationFeedFailed ? (
-                  <section className="px-4 md:px-6 mb-6 mt-4">
-                    <div className="rounded-md border border-white/10 bg-white/[0.04] px-4 py-5">
-                      <h2 className="text-lg font-semibold text-white">Recommendations are warming up</h2>
-                      <p className="mt-1 text-sm text-white/55">
-                        Your personalized feed could not load yet. Play a few songs and refresh shortly.
-                      </p>
-                    </div>
-                  </section>
-                ) : recommendationFeed && (
-                  <RecommendationSection 
-                    feed={recommendationFeed}
-                    onPlayItem={(item) => handlePlaylistClick(item)}
-                    onHoverChange={handleColorChange}
-                  />
-                )
-              )}
+                ))}
+              </div>
+            ) : hasRecommendationFeedFailed || (recommendationFeed && recommendationFeed.sections.length === 0) ? (
+              <SectionWrapper
+                title="Recommended for you"
+                subtitle="Personalized recommendations based on your taste"
+              >
+                <div className="min-h-[238px] md:min-h-[258px] flex items-center justify-center w-full rounded-md border border-white/10 bg-white/[0.04] px-4 py-5">
+                  <div className="text-center">
+                    <h2 className="text-lg font-semibold text-white">Recommendations are warming up</h2>
+                    <p className="mt-1 text-sm text-white/55">
+                      Your personalized feed could not load yet. Play a few songs and refresh shortly.
+                    </p>
+                  </div>
+                </div>
+              </SectionWrapper>
+            ) : recommendationFeed ? (
+              recommendationFeed.sections.map((section) => (
+                <RecommendationSection key={section.id} section={section} />
+              ))
+            ) : null
+          )}
               
               {/* Public Playlists Section */}
               <SectionWrapper
@@ -718,30 +697,28 @@ const HomePage = () => {
                 onViewAll={() => navigate('/library')}
               >
                 <HorizontalScroll
-                  itemWidth={homePlaylistCardScrollWidth}
+                  itemWidth={homePlaylistCardScrollWidth} className="min-h-[238px] md:min-h-[258px]"
                   gap={10}
                   showArrows={true}
                   snapToItems={false}
                   edgeToEdge={true}
                 >
                   {publicPlaylists.length > 0 ? (
-                    <Suspense fallback={<ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />}>
-                      {publicPlaylists.slice(0, 20).map((playlist, index) => (
-                        <ScrollItem key={playlist._id} width={homePlaylistCardItemWidth}>
-                          <div
-                            className="animate-[scaleIn_0.3s_ease-out]"
-                            style={{ animationDelay: `${index * 0.05}s` }}
-                          >
-                            <PlaylistCard
-                              playlist={playlist}
-                              showDescription={true}
-                              eagerLoad={index < 4}
-                              className="hover:bg-card/50 transition-all duration-200"
-                            />
-                          </div>
-                        </ScrollItem>
-                      ))}
-                    </Suspense>
+                    publicPlaylists.slice(0, 20).map((playlist, index) => (
+                      <ScrollItem key={playlist._id} width={homePlaylistCardItemWidth}>
+                        <div
+                          className="animate-[scaleIn_0.3s_ease-out]"
+                          style={{ animationDelay: `${index * 0.05}s` }}
+                        >
+                          <PlaylistCard
+                            playlist={playlist}
+                            showDescription={true}
+                            eagerLoad={index < 4}
+                            className="hover:bg-card/50 transition-all duration-200"
+                          />
+                        </div>
+                      </ScrollItem>
+                    ))
                   ) : (isInitialLoading || isLoading || !isAuthenticated) ? (
                     <ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />
                   ) : hasLoadedOnce ? (
@@ -772,8 +749,6 @@ const HomePage = () => {
                   </section>
                 );
               })}
-            </>
-          )}
         </div>
       </div>
     </div>

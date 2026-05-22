@@ -4,7 +4,6 @@ import MobileNav from './components/MobileNav';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
-import { CustomScrollbar } from '@/components/ui/CustomScrollbar';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 
 const LeftSidebar = lazy(() => import('./components/LeftSidebar'));
@@ -31,6 +30,7 @@ type LayoutUiAction =
 const layoutUiReducer = (state: LayoutUiState, action: LayoutUiAction): LayoutUiState => {
   switch (action.type) {
     case 'mobile':
+      if (state.isMobile === action.value) return state;
       return { ...state, isMobile: action.value };
     case 'toggle_queue':
       return { ...state, showQueue: !state.showQueue };
@@ -53,6 +53,10 @@ const MainLayout = () => {
     showQueue: false,
     isDocumentFullscreen: false,
   });
+  const isMobileRef = useRef(isMobile);
+  useEffect(() => {
+    isMobileRef.current = isMobile;
+  }, [isMobile]);
   const currentSong = usePlayerStore(state => state.currentSong); // Selective subscription
   const isPlaying = usePlayerStore(state => state.isPlaying);
   const hasActiveSong = !!currentSong;
@@ -158,61 +162,44 @@ const MainLayout = () => {
     };
   }, []);
 
-  // Optimized mobile detection with debouncing
+  // Instantly synchronize mobile detection on mount and resize events without debounce,
+  // using a ref guard to completely eliminate Cumulative Layout Shifts (CLS) during browser viewport changes.
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
     const checkMobile = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        dispatchLayoutUi({ type: 'mobile', value: window.innerWidth < 768 });
-      }, 100);
+      const isMobileNow = window.innerWidth < 768;
+      if (isMobileNow !== isMobileRef.current) {
+        dispatchLayoutUi({ type: 'mobile', value: isMobileNow });
+      }
     };
 
     window.addEventListener('resize', checkMobile, { passive: true });
     return () => {
-      clearTimeout(timeoutId);
       window.removeEventListener('resize', checkMobile);
     };
   }, []);
 
   // Route-aware measurements for mobile header/nav spacing
-  const MOBILE_HEADER_PX = 40;
-  const MOBILE_NAV_BASE_PX = 48; // Reduced from 56px to 48px
-  const MOBILE_PLAYER_PADDING_PX = 44; // paddingTop when song is active
-  const MOBILE_SAFE_TOP = 'env(safe-area-inset-top, 0px)';
-  const isMobileHeaderRoute = isMobile && (
+  const isHeaderRoute =
     pathname === '/home' ||
     pathname.startsWith('/search') ||
-    pathname.startsWith('/library')
-  );
+    pathname.startsWith('/library');
 
-  // Routes that need safe-area top margin but have no mobile header
-  const isMobileSafeAreaRoute = isMobile && !isMobileHeaderRoute;
+  const isNavRoute =
+    pathname === '/home' ||
+    pathname.startsWith('/search') ||
+    pathname.startsWith('/library') ||
+    pathname.startsWith('/playlist/') ||
+    pathname.startsWith('/artist/') ||
+    pathname.startsWith('/album/') ||
+    pathname.startsWith('/genre/') ||
+    pathname.startsWith('/jiosaavn/playlist/');
 
-  const showMobilePlayer = hasActiveSong;
   const hideDesktopFooter = (
     pathname.startsWith('/playlist/') ||
     pathname.startsWith('/jiosaavn/playlist/') ||
     pathname === '/jiosaavn/playlists' ||
     pathname === '/mood-playlist'
   );
-
-  const mobileBottomSubtractPx = MOBILE_NAV_BASE_PX + (showMobilePlayer ? MOBILE_PLAYER_PADDING_PX : 0);
-  // Use 100dvh (dynamic viewport height) so the layout accounts for browser chrome on mobile.
-  // Fall back to the JS-measured --vh variable for browsers that don't support dvh yet.
-  const dvh = 'calc(var(--vh, 1dvh) * 100)';
-  const mobileHeight = isMobile
-    ? isMobileHeaderRoute
-      ? `calc(${dvh} - ${mobileBottomSubtractPx}px - ${MOBILE_HEADER_PX}px - ${MOBILE_SAFE_TOP})`
-      : isMobileSafeAreaRoute
-        ? `calc(${dvh} - ${mobileBottomSubtractPx}px - ${MOBILE_SAFE_TOP})`
-        : `calc(${dvh} - ${mobileBottomSubtractPx}px)`
-    : 'auto';
-  const mobileTopOffset = isMobileHeaderRoute
-    ? `calc(${MOBILE_HEADER_PX}px + ${MOBILE_SAFE_TOP})`
-    : isMobileSafeAreaRoute
-      ? MOBILE_SAFE_TOP
-      : '0px';
 
   // Handle resize functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -285,11 +272,10 @@ const MainLayout = () => {
 
       {/* Main content area */}
       <div
-        className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-transparent"
-        style={{
-          height: mobileHeight,
-          marginTop: mobileTopOffset,
-        }}
+        className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-transparent main-content-layout"
+        data-route-header={isHeaderRoute}
+        data-route-nav={isNavRoute}
+        data-active-song={hasActiveSong}
       >
         {/* Left sidebar - hidden on mobile */}
         {!isMobile && (
@@ -319,7 +305,7 @@ const MainLayout = () => {
 
         {/* Main content */}
         <div className="flex-1 h-full overflow-hidden">
-          <CustomScrollbar className="h-full mobile-scroll-fix bg-transparent md:rounded-lg">
+          <div className="h-full overflow-y-auto overflow-x-hidden mobile-scroll-fix bg-transparent md:rounded-lg">
             <main id="main-content" className="min-h-full">
               <Outlet />
               {!isMobile && !hideDesktopFooter && (
@@ -328,7 +314,7 @@ const MainLayout = () => {
                 </Suspense>
               )}
             </main>
-          </CustomScrollbar>
+          </div>
         </div>
 
         {/* Queue Panel - Desktop only */}

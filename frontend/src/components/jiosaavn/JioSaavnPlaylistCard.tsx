@@ -60,6 +60,8 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
               src={imageUrl}
               alt={playlist.name}
               className="w-full h-full object-cover rounded-[4px]"
+              width={150}
+              height={150}
               loading="lazy"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = '/placeholder-playlist.jpg';
