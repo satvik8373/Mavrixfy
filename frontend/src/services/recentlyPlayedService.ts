@@ -50,7 +50,7 @@ class RecentlyPlayedService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(limitedItems));
       
       // Dispatch event for components to listen to
-      document.dispatchEvent(new CustomEvent('recentlyPlayedUpdated', { 
+      window.dispatchEvent(new CustomEvent('recentlyPlayedUpdated', { 
         detail: limitedItems 
       }));
     } catch (error) {
@@ -203,7 +203,7 @@ class RecentlyPlayedService {
   clearRecentlyPlayed(): void {
     try {
       localStorage.removeItem(this.STORAGE_KEY);
-      document.dispatchEvent(new CustomEvent('recentlyPlayedUpdated', { 
+      window.dispatchEvent(new CustomEvent('recentlyPlayedUpdated', { 
         detail: [] 
       }));
     } catch (error) {
@@ -233,7 +233,7 @@ class RecentlyPlayedService {
       const filteredItems = items.filter(item => !(item.id === id && item.type === type));
       
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredItems));
-      document.dispatchEvent(new CustomEvent('recentlyPlayedUpdated', { 
+      window.dispatchEvent(new CustomEvent('recentlyPlayedUpdated', { 
         detail: filteredItems 
       }));
     } catch (error) {

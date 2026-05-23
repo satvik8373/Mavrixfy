@@ -3,7 +3,7 @@
  * Mavrixfy-style bottom sheet for sharing content
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Code } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';

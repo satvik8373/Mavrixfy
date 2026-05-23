@@ -62,17 +62,16 @@ export function RecentlyPlayedCard({
       }}
       onMouseLeave={() => onHoverChange?.(null)}
     >
-      <button
-        type="button"
-        className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
-        onClick={!isMobile ? handleCardClick : undefined}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={isMobile ? handleTap : undefined}
-        aria-label={`Open ${title}`}
-      />
-
       {/* Content */}
       <div className="relative flex items-center h-full z-10">
+        <button
+          type="button"
+          className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
+          onClick={!isMobile ? handleCardClick : undefined}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={isMobile ? handleTap : undefined}
+          aria-label={`Open ${title}`}
+        />
         {/* Image */}
         <div className="relative w-[48px] md:w-[44px] h-full flex-shrink-0">
           <div className="relative w-full h-full rounded-[4px] overflow-hidden shadow-md">

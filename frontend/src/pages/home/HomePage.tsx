@@ -326,6 +326,7 @@ const HomePage = () => {
   const fetchFeaturedPlaylists = usePlaylistStore(state => state.fetchFeaturedPlaylists);
   const isLoading = usePlaylistStore(state => state.isLoading);
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const isAuthReady = useAuthStore(state => state.isAuthReady);
 
   const [{
     isInitialLoading,
@@ -387,6 +388,8 @@ const HomePage = () => {
   // Keep home data stable like app: load on first mount, manual refresh handles hard updates.
 
   useEffect(() => {
+    if (!isAuthReady) return;
+
     let isCancelled = false;
     let cancelGuestFetch: (() => void) | undefined;
 
@@ -436,7 +439,7 @@ const HomePage = () => {
       isCancelled = true;
       cancelGuestFetch?.();
     };
-  }, [fetchPublicPlaylists, fetchFeaturedPlaylists, hasLoadedOnce, isAuthenticated, publicPlaylists.length, featuredPlaylists.length]);
+  }, [fetchPublicPlaylists, fetchFeaturedPlaylists, hasLoadedOnce, isAuthenticated, isAuthReady, publicPlaylists.length, featuredPlaylists.length]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

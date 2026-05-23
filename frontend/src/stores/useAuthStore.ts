@@ -12,6 +12,7 @@ interface AuthStore {
     fullName?: string;
     imageUrl?: string;
   } | null;
+  isAuthReady: boolean;
 
   reset: () => void;
   setAuthStatus: (isAuthenticated: boolean, userId: string | null) => void;
@@ -26,6 +27,7 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       userId: null,
       user: null,
+      isAuthReady: false,
 
       reset: () => {
         set({
@@ -33,20 +35,26 @@ export const useAuthStore = create<AuthStore>()(
           error: null,
           isAuthenticated: false,
           userId: null,
-          user: null
+          user: null,
+          isAuthReady: true
         });
       },
 
       setAuthStatus: (isAuthenticated, userId) => {
         // Skip update if nothing changed to prevent loops
-        if (get().isAuthenticated === isAuthenticated && get().userId === userId) {
+        if (
+          get().isAuthenticated === isAuthenticated && 
+          get().userId === userId && 
+          get().isAuthReady
+        ) {
           return;
         }
         
         set({ 
           isAuthenticated, 
           userId,
-          user: userId ? { id: userId } : null
+          user: userId ? { id: userId } : null,
+          isAuthReady: true
         });
 
         // Note: Liked songs are now automatically synced via Firestore

@@ -50,10 +50,10 @@ export function RecentlyPlayed() {
 
     // Listen for updates to recently played
     const handleRecentlyPlayedUpdated = () => loadRecentItems();
-    document.addEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
+    window.addEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
 
     return () => {
-      document.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
+      window.removeEventListener('recentlyPlayedUpdated', handleRecentlyPlayedUpdated);
     };
   }, []);
 
@@ -77,7 +77,7 @@ export function RecentlyPlayed() {
       }
 
       localStorage.setItem(RECENTLY_PLAYED_KEY, JSON.stringify(items));
-      document.dispatchEvent(new Event('recentlyPlayedUpdated'));
+      window.dispatchEvent(new Event('recentlyPlayedUpdated'));
     } catch (error) {
       // Error adding to recently played
     }

@@ -188,9 +188,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
             });
 
-            // Update auth store only if user changed
+            // Update auth store only if user changed or auth is not ready
             const authStore = useAuthStore.getState();
-            if (!authStore.isAuthenticated || authStore.userId !== firebaseUser.uid) {
+            if (!authStore.isAuthenticated || authStore.userId !== firebaseUser.uid || !authStore.isAuthReady) {
               useAuthStore.getState().setAuthStatus(true, firebaseUser.uid);
               useAuthStore.getState().setUserProfile(
                 userObj.name,
@@ -199,10 +199,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         } catch (firestoreError) {
-
           // Still set basic user data even if Firestore fails
           const currentUser = userRef.current;
-          if (!currentUser || currentUser.id !== firebaseUser.uid) {
+          const authStore = useAuthStore.getState();
+          if (!currentUser || currentUser.id !== firebaseUser.uid || !authStore.isAuthReady) {
             const basicUser = {
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
@@ -216,8 +216,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         const currentUser = userRef.current;
-        // Only reset if we previously had a user AND we've confirmed auth state with Firebase
-        if (currentUser !== null && authStateCheckedRef.current) {
+        const authStore = useAuthStore.getState();
+        // Reset if we had a user OR auth store is not ready (confirms guest status)
+        if ((currentUser !== null && authStateCheckedRef.current) || !authStore.isAuthReady) {
           dispatchAuth({ type: 'user', user: null });
           // Reset auth store
           useAuthStore.getState().reset();

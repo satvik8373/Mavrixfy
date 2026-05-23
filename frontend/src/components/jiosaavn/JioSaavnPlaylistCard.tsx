@@ -44,18 +44,18 @@ export const JioSaavnPlaylistCard: React.FC<JioSaavnPlaylistCardProps> = ({
         className
       )}
     >
-      <button
-        type="button"
-        className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
-        onClick={!isMobile ? handleClick : undefined}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={isMobile ? handleTap : undefined}
-        aria-label={`Open ${playlist.name}`}
-      />
       <div className="relative">
+        <button
+          type="button"
+          className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
+          onClick={!isMobile ? handleClick : undefined}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={isMobile ? handleTap : undefined}
+          aria-label={`Open ${playlist.name}`}
+        />
         {/* Playlist Image - Consistent aspect ratio */}
         <div className="relative w-full aspect-square mb-2 md:mb-3">
-          <div className="w-full h-full rounded-[4px] overflow-hidden shadow-lg relative z-[2]">
+          <div className="w-full h-full rounded-[4px] overflow-hidden shadow-lg">
             <img
               src={imageUrl}
               alt={playlist.name}

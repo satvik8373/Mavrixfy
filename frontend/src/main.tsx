@@ -121,8 +121,9 @@ window.addEventListener('error', (event) => {
 
 // Catch unhandled promise rejections
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled promise rejection:', {
-    reason: event.reason,
+  console.error('Unhandled promise rejection reason:', event.reason);
+  console.error('Unhandled promise rejection info:', {
+    reason: String(event.reason),
     promise: event.promise,
     userAgent: navigator.userAgent,
     url: window.location.href,

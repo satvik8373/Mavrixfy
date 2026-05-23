@@ -61,15 +61,15 @@ export function PlaylistCard({
         className
       )}
     >
-        <button
-          type="button"
-          className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
-          onClick={!isMobile ? handleCardClick : undefined}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={isMobile ? handleTap : undefined}
-          aria-label={`Open playlist ${playlist.name}`}
-        />
         <div className="relative">
+          <button
+            type="button"
+            className="absolute inset-0 w-full h-full cursor-pointer z-[1] opacity-0"
+            onClick={!isMobile ? handleCardClick : undefined}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={isMobile ? handleTap : undefined}
+            aria-label={`Open playlist ${playlist.name}`}
+          />
           {/* Playlist Image - Consistent aspect ratio */}
           <div className="relative w-full aspect-square mb-2 md:mb-3">
             <div className="w-full h-full rounded-[4px] overflow-hidden shadow-lg">
