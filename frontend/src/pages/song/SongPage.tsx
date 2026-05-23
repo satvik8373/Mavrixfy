@@ -1,13 +1,14 @@
 import { useEffect, useReducer } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { useMusicStore } from '../../stores/useMusicStore';
 import { useLikedSongsStore } from '../../stores/useLikedSongsStore';
 import { Button } from '../../components/ui/button';
-import { Play, Heart, ArrowLeft, Loader2 } from 'lucide-react';
+import { Play, Heart, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolveArtist } from '../../lib/resolveArtist';
-import { PageLoading } from '../../components/ui/loading';
+import { updateMetaTags } from '@/utils/metaTags';
+import { artistPath, generateBreadcrumbSchema, generateSongSEO, genrePath, SITE_URL } from '@/utils/seoHelpers';
 
 interface SongPageState {
   song: any | null;
@@ -45,7 +46,7 @@ const SongPage = () => {
     error: null,
   });
   
-  const { setCurrentSong, setIsPlaying, playAlbum } = usePlayerStore();
+  const { setCurrentSong, setIsPlaying } = usePlayerStore();
   const { searchIndianSongs } = useMusicStore();
   const { likedSongIds, toggleLikeSong } = useLikedSongsStore();
   const currentSongId = song ? song._id || (song as any).id : null;
@@ -98,6 +99,31 @@ const SongPage = () => {
     loadSong();
   }, [songId, setCurrentSong, setIsPlaying, searchIndianSongs]);
 
+  useEffect(() => {
+    if (!song) return;
+
+    const artist = resolveArtist(song);
+    const seo = generateSongSEO({ ...song, artist });
+    updateMetaTags({
+      ...seo,
+      schema: [
+        seo.schema,
+        generateBreadcrumbSchema([
+          { name: 'Home', url: SITE_URL },
+          { name: 'Songs', url: `${SITE_URL}/songs` },
+          { name: artist, url: `${SITE_URL}${artistPath(artist)}` },
+          { name: song.title, url: seo.url },
+        ]),
+      ],
+      alternates: [
+        { hrefLang: 'en', href: seo.url },
+        { hrefLang: 'hi', href: `${seo.url}?lang=hi` },
+        { hrefLang: 'gu', href: `${seo.url}?lang=gu` },
+        { hrefLang: 'x-default', href: seo.url },
+      ],
+    });
+  }, [song]);
+
   const handlePlay = () => {
     if (song) {
       setCurrentSong(song);
@@ -113,6 +139,9 @@ const SongPage = () => {
     }
   };
 
+  const artist = song ? resolveArtist(song) : '';
+  const genre = song?.genre || song?.language || 'music';
+  const releaseYear = song?.year || song?.releaseYear || (song?.createdAt ? new Date(song.createdAt).getFullYear() : null);
 
 
   if (loading) {
@@ -221,6 +250,60 @@ const SongPage = () => {
               </p>
             </div>
           )}
+
+          <section className="mt-10 rounded-lg border border-border/60 bg-card/40 p-5 text-left">
+            <nav className="mb-4 text-sm text-muted-foreground" aria-label="Breadcrumb">
+              <Link to="/home" className="hover:text-foreground">Home</Link>
+              <span className="mx-2">/</span>
+              <Link to="/songs" className="hover:text-foreground">Songs</Link>
+              <span className="mx-2">/</span>
+              <Link to={artistPath(artist)} className="hover:text-foreground">{artist}</Link>
+            </nav>
+            <h3 className="mb-3 text-lg font-semibold text-foreground">About {song.title}</h3>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {song.title} by {artist} is available to stream on Mavrixfy with fast playback,
+              playlist saves and discovery links for similar music.
+            </p>
+            <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <dt className="text-muted-foreground">Artist</dt>
+                <dd className="font-medium text-foreground">
+                  <Link to={artistPath(artist)} className="hover:underline">{artist}</Link>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Genre</dt>
+                <dd className="font-medium text-foreground">
+                  <Link to={genrePath(genre)} className="hover:underline">{genre}</Link>
+                </dd>
+              </div>
+              {song.album && (
+                <div>
+                  <dt className="text-muted-foreground">Album</dt>
+                  <dd className="font-medium text-foreground">
+                    <Link to={`/search?q=${encodeURIComponent(song.album)}`} className="hover:underline">{song.album}</Link>
+                  </dd>
+                </div>
+              )}
+              {releaseYear && (
+                <div>
+                  <dt className="text-muted-foreground">Release year</dt>
+                  <dd className="font-medium text-foreground">{releaseYear}</dd>
+                </div>
+              )}
+            </dl>
+            <div className="mt-5 flex flex-wrap gap-2 text-sm">
+              <Link to={`/search?q=${encodeURIComponent(`${song.title} ${artist}`)}`} className="rounded-full bg-muted px-3 py-1 hover:bg-muted/80">
+                Similar songs
+              </Link>
+              <Link to={`/search?q=${encodeURIComponent(`${artist} playlists`)}`} className="rounded-full bg-muted px-3 py-1 hover:bg-muted/80">
+                Related playlists
+              </Link>
+              <Link to="/trending" className="rounded-full bg-muted px-3 py-1 hover:bg-muted/80">
+                Trending music
+              </Link>
+            </div>
+          </section>
         </div>
       </div>
     </div>

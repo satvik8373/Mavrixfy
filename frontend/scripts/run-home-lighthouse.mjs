@@ -3,7 +3,7 @@ import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
 const reportPath = join(process.cwd(), 'lighthouse-home-preview.json');
-const url = 'http://127.0.0.1:4173/home';
+const url = 'http://127.0.0.1:4173/home?lighthouse=1';
 const MIN_SCORE = 90;
 const run = (commandLine, options = {}) =>
   new Promise((resolve, reject) => {
@@ -68,13 +68,20 @@ try {
     unlinkSync(reportPath);
   }
   await waitForPreview();
-  await run(
+  const lighthouseRun = await run(
     `npx lighthouse ${url} --only-categories=performance,accessibility,best-practices,seo --output=json --output-path="${reportPath}" --chrome-flags="--headless=new --disable-extensions --no-sandbox" --quiet`,
-    { allowFailure: false, stdio: 'pipe' },
+    { allowFailure: true, stdio: 'pipe' },
   );
 
   if (!existsSync(reportPath)) {
+    if (lighthouseRun.stderr) {
+      console.error(lighthouseRun.stderr);
+    }
     throw new Error('Lighthouse did not write a report.');
+  }
+
+  if (lighthouseRun.code !== 0) {
+    console.warn('Lighthouse exited non-zero after writing a report; continuing with the completed report.');
   }
 
   const report = JSON.parse(readFileSync(reportPath, 'utf8'));

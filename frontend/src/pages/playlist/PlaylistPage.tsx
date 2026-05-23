@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { usePlaylistStore } from '../../stores/usePlaylistStore';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import { useMusicStore } from '../../stores/useMusicStore';
@@ -50,6 +50,8 @@ import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { updatePlaylistCoverFromSongs } from '../../services/playlistService';
 import { recommendationItemFromPlaylist, trackRecommendationEvent } from '@/services/recommendationService';
+import { updateMetaTags } from '@/utils/metaTags';
+import { artistPath, generateBreadcrumbSchema, generatePlaylistSEO, genrePath, SITE_URL } from '@/utils/seoHelpers';
 
 const PLAYLIST_METRICS_KEY = 'playlist_metrics:v1';
 const LIKED_PLAYLISTS_KEY = 'liked_playlists:v1';
@@ -167,12 +169,11 @@ function AddSongsDialog({
   };
 
   const renderSongItem = (song: any, isIndian = false) => (
-    <div
+    <button
+      type="button"
       key={song.id || song._id}
-      className="flex items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors cursor-pointer group"
+      className="flex w-full items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors cursor-pointer group text-left"
       onClick={() => (isIndian ? handleAddIndianSong(song) : handleAddSong(song))}
-      role="button"
-      tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -195,14 +196,10 @@ function AddSongsDialog({
         <span className="font-medium truncate">{song.title}</span>
         <span className="text-xs text-muted-foreground truncate">{song.artist}</span>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="opacity-0 group-hover:opacity-100 transition-opacity"
-      >
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-md opacity-0 transition-opacity group-hover:opacity-100">
         <Plus className="h-4 w-4" />
-      </Button>
-    </div>
+      </span>
+    </button>
   );
 
   return (
@@ -281,6 +278,7 @@ const playlistUiReducer = (state: PlaylistUiState, action: PlaylistUiAction): Pl
   return { ...state, ...action };
 };
 
+// eslint-disable-next-line react-doctor/no-giant-component
 export function PlaylistPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -406,6 +404,29 @@ export function PlaylistPage() {
       recentlyPlayedService.addPlaylist(currentPlaylist);
     }
   }, [currentPlaylist, id]);
+
+  useEffect(() => {
+    if (!currentPlaylist) return;
+
+    const seo = generatePlaylistSEO(currentPlaylist);
+    updateMetaTags({
+      ...seo,
+      schema: [
+        seo.schema,
+        generateBreadcrumbSchema([
+          { name: 'Home', url: SITE_URL },
+          { name: 'Playlists', url: `${SITE_URL}/playlists` },
+          { name: currentPlaylist.name, url: seo.url },
+        ]),
+      ],
+      alternates: [
+        { hrefLang: 'en', href: seo.url },
+        { hrefLang: 'hi', href: `${seo.url}?lang=hi` },
+        { hrefLang: 'gu', href: `${seo.url}?lang=gu` },
+        { hrefLang: 'x-default', href: seo.url },
+      ],
+    });
+  }, [currentPlaylist]);
 
   const updateMetrics = (metric: 'likes' | 'shares' | 'plays') => {
     if (!id) return;
@@ -812,6 +833,11 @@ export function PlaylistPage() {
   const totalDuration = currentPlaylist.songs.reduce((acc, song) => acc + song.duration, 0);
   const formattedTotalDuration = formatTime(totalDuration);
   const totalSongs = currentPlaylist.songs.length;
+  const topArtists = Array.from(new Set(currentPlaylist.songs.flatMap(song => song.artist ? [song.artist] : []))).slice(0, 6);
+  const playlistGenres = Array.from(new Set(currentPlaylist.songs.flatMap(song => {
+    const genre = (song as any).genre || (song as any).language;
+    return genre ? [genre] : [];
+  }))).slice(0, 5);
 
   // Removed unused headerOpacity
 
@@ -1128,15 +1154,6 @@ export function PlaylistPage() {
                         isCurrentSong && 'bg-white/10',
                         !song.audioUrl && 'opacity-60'
                       )}
-                      onClick={() => handlePlaySong(song, index)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handlePlaySong(song, index);
-                        }
-                      }}
                     >
                       {/* Track number/play button - normal size */}
                       <div className="flex items-center justify-center">
@@ -1146,11 +1163,11 @@ export function PlaylistPage() {
                           </div>
                         ) : (
                           <>
-                            <span className="text-gray-400 md:group-hover:hidden flex items-center justify-center w-8">{index + 1}</span>
+                            <span className="text-gray-400 md:group-hover:hidden hidden sm:flex items-center justify-center w-8">{index + 1}</span>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="w-8 h-8 rounded-full flex items-center justify-center text-white p-0 hidden md:group-hover:flex"
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-white p-0 sm:hidden md:group-hover:flex"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handlePlaySong(song, index);
@@ -1351,6 +1368,51 @@ export function PlaylistPage() {
               </Button>
             </div>
           )}
+
+          <section className="relative z-10 mt-10 border-t border-border/60 px-1 py-8 text-sm text-muted-foreground">
+            <nav className="mb-4" aria-label="Breadcrumb">
+              <Link to="/home" className="hover:text-foreground">Home</Link>
+              <span className="mx-2">/</span>
+              <Link to="/playlists" className="hover:text-foreground">Playlists</Link>
+              <span className="mx-2">/</span>
+              <span className="text-foreground">{currentPlaylist.name}</span>
+            </nav>
+            <h2 className="mb-3 text-xl font-semibold text-foreground">About {currentPlaylist.name}</h2>
+            <p className="max-w-3xl leading-6">
+              {currentPlaylist.description || `${currentPlaylist.name} is a curated Mavrixfy playlist for discovering songs, artists and moods in one place.`}
+              {' '}It currently includes {totalSongs} songs and runs for about {formattedTotalDuration}.
+            </p>
+
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              {topArtists.length > 0 && (
+                <div>
+                  <h3 className="mb-2 font-medium text-foreground">Top artists</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {topArtists.map(artist => (
+                      <Link key={artist} to={artistPath(artist)} className="rounded-full bg-muted px-3 py-1 hover:bg-muted/80">
+                        {artist}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="mb-2 font-medium text-foreground">Related discovery</h3>
+                <div className="flex flex-wrap gap-2">
+                  {playlistGenres.map(genre => (
+                    <Link key={genre} to={genrePath(genre)} className="rounded-full bg-muted px-3 py-1 hover:bg-muted/80">
+                      {genre}
+                    </Link>
+                  ))}
+                  <Link to="/trending" className="rounded-full bg-muted px-3 py-1 hover:bg-muted/80">Trending</Link>
+                  <Link to={`/search?q=${encodeURIComponent(currentPlaylist.name)}`} className="rounded-full bg-muted px-3 py-1 hover:bg-muted/80">
+                    Similar playlists
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 

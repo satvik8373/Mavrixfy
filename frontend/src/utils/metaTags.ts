@@ -8,19 +8,44 @@ interface MetaTagsConfig {
   image?: string;
   url?: string;
   type?: 'website' | 'music.song' | 'music.playlist' | 'music.album';
+  keywords?: string;
+  schema?: Record<string, unknown> | Array<Record<string, unknown>>;
+  alternates?: Array<{ hrefLang: string; href: string }>;
 }
+
+const SITE_NAME = 'Mavrixfy';
+const DEFAULT_IMAGE = 'https://mavrixfy.site/mavrixfy.png';
+
+const cleanSchema = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(cleanSchema).filter(item => item !== undefined);
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, entry]) => entry !== undefined && entry !== null && entry !== '')
+        .map(([key, entry]) => [key, cleanSchema(entry)])
+    );
+  }
+
+  return value;
+};
 
 export const updateMetaTags = (config: MetaTagsConfig) => {
   const {
     title,
     description,
-    image = 'https://mavrixfy.site/mavrixfy.png',
+    image = DEFAULT_IMAGE,
     url = window.location.href,
-    type = 'website'
+    type = 'website',
+    keywords,
+    schema,
+    alternates = []
   } = config;
 
   // Update document title
-  document.title = `${title} | Mavrixfy`;
+  document.title = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
 
   // Helper to update or create meta tag
   const setMetaTag = (property: string, content: string, isName = false) => {
@@ -38,6 +63,9 @@ export const updateMetaTags = (config: MetaTagsConfig) => {
 
   // Update basic meta tags
   setMetaTag('description', description, true);
+  if (keywords) {
+    setMetaTag('keywords', keywords, true);
+  }
   
   // Update Open Graph tags
   setMetaTag('og:type', type);
@@ -45,7 +73,7 @@ export const updateMetaTags = (config: MetaTagsConfig) => {
   setMetaTag('og:title', title);
   setMetaTag('og:description', description);
   setMetaTag('og:image', image);
-  setMetaTag('og:site_name', 'Mavrixfy');
+  setMetaTag('og:site_name', SITE_NAME);
   
   // Update Twitter Card tags
   setMetaTag('twitter:card', 'summary_large_image', true);
@@ -62,6 +90,25 @@ export const updateMetaTags = (config: MetaTagsConfig) => {
     document.head.appendChild(canonical);
   }
   canonical.setAttribute('href', url);
+
+  document.querySelectorAll('link[data-mavrixfy-alternate="true"]').forEach(element => element.remove());
+  alternates.forEach(({ hrefLang, href }) => {
+    const link = document.createElement('link');
+    link.setAttribute('rel', 'alternate');
+    link.setAttribute('hreflang', hrefLang);
+    link.setAttribute('href', href);
+    link.setAttribute('data-mavrixfy-alternate', 'true');
+    document.head.appendChild(link);
+  });
+
+  document.querySelectorAll('script[data-mavrixfy-jsonld="true"]').forEach(element => element.remove());
+  if (schema) {
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.setAttribute('data-mavrixfy-jsonld', 'true');
+    script.textContent = JSON.stringify(cleanSchema(schema));
+    document.head.appendChild(script);
+  }
 };
 
 // Preset configurations for common pages

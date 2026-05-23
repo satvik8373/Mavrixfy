@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { useMusicStore } from '@/stores/useMusicStore';
 import SearchSuggestions from '@/components/SearchSuggestions';
 import { useAuth } from '@/contexts/AuthContext';
-import { signOut } from '@/services/hybridAuthService';
 import debounce from 'lodash/debounce';
 import { WhatsNewDialog } from './WhatsNewDialog';
 import { useOptimizedAvatar } from '@/hooks/useOptimizedAvatar';
@@ -190,19 +189,13 @@ const Header = ({ className }: HeaderProps) => {
   const searchFormRef = useRef<HTMLFormElement>(null);
   const authProcessedRef = useRef(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
-  const [isAndroid, setIsAndroid] = useState(false);
+  const [isAndroid] = useState(() => /android/.test(navigator.userAgent.toLowerCase()));
 
   // Optimized avatar loading with rate limiting
   const { avatarUrl, isLoading: avatarLoading } = useOptimizedAvatar(
     user?.picture,
     `https://ui-avatars.com/api/?background=1db954&color=fff&name=${encodeURIComponent(user?.name || 'User')}`
   );
-
-  // Detect Android device
-  useEffect(() => {
-    const userAgent = navigator.userAgent.toLowerCase();
-    setIsAndroid(/android/.test(userAgent));
-  }, []);
 
   // Extract search query from URL when navigating to search page
   useEffect(() => {
@@ -253,11 +246,11 @@ const Header = ({ className }: HeaderProps) => {
   );
 
   useEffect(() => {
-    if (!authProcessedRef.current) {
+    if (user && !authProcessedRef.current) {
       refreshUserData();
       authProcessedRef.current = true;
     }
-  }, [refreshUserData]);
+  }, [refreshUserData, user]);
 
   useEffect(() => {
     if (user?.id && !authLoading) {
@@ -312,6 +305,7 @@ const Header = ({ className }: HeaderProps) => {
       });
 
       // Then perform the actual Firebase logout in background
+      const { signOut } = await import('@/services/hybridAuthService');
       await signOut();
     } catch (error) {
       // Still reset auth store in case of error

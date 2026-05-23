@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader, Music } from 'lucide-react';
-import { usePlayerStore } from '@/stores/usePlayerStore';
-import { ContentLoading } from '@/components/ui/loading';
+import { Music } from 'lucide-react';
+import { updateMetaTags } from '@/utils/metaTags';
+import { generateAlbumSEO } from '@/utils/seoHelpers';
 
 interface Album {
   _id: string;
@@ -17,7 +16,6 @@ interface Album {
 const AlbumPage = () => {
   const { albumId } = useParams();
   const [album, setAlbum] = useState<Album | null>(null);
-  const { setCurrentSong } = usePlayerStore();
 
   useEffect(() => {
     let albumTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -48,6 +46,16 @@ const AlbumPage = () => {
       }
     };
   }, [albumId]);
+
+  useEffect(() => {
+    if (!album) return;
+
+    const seo = generateAlbumSEO({
+      ...album,
+      releaseYear: new Date().getFullYear(),
+    });
+    updateMetaTags({ ...seo, schema: seo.schema });
+  }, [album]);
 
   return (
     <main className="rounded-md overflow-hidden h-full bg-gradient-to-b from-zinc-800 to-zinc-900">

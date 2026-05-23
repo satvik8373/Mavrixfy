@@ -17,7 +17,8 @@
     "deploy": "vercel deploy --prod",
     "deploy:mobile": "npm run build:mobile && npx cap sync",
     "analyze": "vite-bundle-analyzer dist/assets",
-    "generate-ios-icon": "node scripts/generate-ios-icon.js"
+    "generate-ios-icon": "node scripts/generate-ios-icon.js",
+    "seo:sitemaps": "node scripts/generate-sitemaps.mjs"
   },
   "keywords": [
     "spotify",

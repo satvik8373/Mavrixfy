@@ -1,4 +1,4 @@
-import { RouterProvider, createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter, Navigate, useLocation, useRouteError } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
@@ -16,6 +16,13 @@ const SearchPage = lazy(() => import('./pages/search/SearchPage'));
 const LibraryPage = lazy(() => import('./pages/LibraryPage'));
 const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
 const LikedSongsImportPage = lazy(() => import('./pages/liked-songs/LikedSongsImportPage'));
+const SongsIndexPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.SongsIndexPage })));
+const PlaylistsIndexPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.PlaylistsIndexPage })));
+const ArtistPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.ArtistPage })));
+const GenrePage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.GenrePage })));
+const TrendingPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.TrendingPage })));
+const BlogIndexPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.BlogIndexPage })));
+const BlogPostPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.BlogPostPage })));
 
 // Lazy load less critical pages only
 const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
@@ -94,7 +101,10 @@ const NotFoundFallback = () => (
 );
 
 // Error page for when something goes wrong
-const ErrorFallback = ({ error }: { error?: Error }) => {
+const ErrorFallback = () => {
+	const routeError = useRouteError();
+	const error = routeError instanceof Error ? routeError : undefined;
+
 	useEffect(() => {
 		if (!isChunkLoadLikeError(error)) {
 			sessionStorage.removeItem(CHUNK_RECOVERY_KEY);
@@ -268,6 +278,34 @@ const router = createBrowserRouter(
 					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SearchPage /></Suspense></AuthGate>
 				},
 				{
+					path: '/songs',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongsIndexPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/playlists',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PlaylistsIndexPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/artist/:slug',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ArtistPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/genre/:slug',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><GenrePage /></Suspense></AuthGate>
+				},
+				{
+					path: '/trending',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TrendingPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/blog',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><BlogIndexPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/blog/:slug',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><BlogPostPage /></Suspense></AuthGate>
+				},
+				{
 					path: '/profile',
 					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ProfilePage /></Suspense></AuthGate>
 				},
@@ -278,6 +316,10 @@ const router = createBrowserRouter(
 				{
 					path: '/song/:songId',
 					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongPage /></Suspense></AuthGate>
+				},
+				{
+					path: '/album/:albumId',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><AlbumPage /></Suspense></AuthGate>
 				},
 				{
 					path: '/jiosaavn/playlist/:playlistId',

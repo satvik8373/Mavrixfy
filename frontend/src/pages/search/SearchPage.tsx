@@ -18,6 +18,8 @@ import { saveRecentSearch } from '@/utils/searchUtils';
 import { runSmartSearch, SmartSearchResult, SmartSearchSong } from '@/services/smartSearchService';
 import { trackRecommendationEvent } from '@/services/recommendationService';
 import { cn } from '@/lib/utils';
+import { updateMetaTags } from '@/utils/metaTags';
+import { generateCollectionSEO } from '@/utils/seoHelpers';
 
 const formatDuration = (seconds: number) => {
   if (!seconds) return '';
@@ -186,7 +188,7 @@ const SearchPage = () => {
     playAlbum(converted, idx >= 0 ? idx : 0);
     setIsPlaying(true);
     toast.success(`Now playing: ${song.title}`);
-  }, [playAlbum, setIsPlaying]);
+  }, [playAlbum, setIsPlaying, setUserInteracted]);
 
   const playTopResult = useCallback(() => {
     if (!smartResult?.topResult) return;
@@ -204,6 +206,24 @@ const SearchPage = () => {
   }, [navigate]);
 
   const allSimilar = smartResult ? [...(smartResult.results || []), ...(smartResult.similarSongs || [])] : [];
+
+  useEffect(() => {
+    const seo = query
+      ? generateCollectionSEO({
+        title: `Search ${query} | Mavrixfy`,
+        description: `Search results for ${query} with songs, artists, albums and playlists on Mavrixfy.`,
+        path: `/search?q=${encodeURIComponent(query)}`,
+        schemaType: 'SearchResultsPage',
+      })
+      : generateCollectionSEO({
+        title: 'Search Songs, Artists & Playlists | Mavrixfy',
+        description: 'Search Mavrixfy for songs, artists, albums, playlists and mood-based discovery.',
+        path: '/search',
+        schemaType: 'SearchResultsPage',
+      });
+
+    updateMetaTags({ ...seo, schema: seo.schema });
+  }, [query]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0e0e0e] via-[#111] to-black text-white">
