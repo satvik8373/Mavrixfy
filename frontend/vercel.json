@@ -25,15 +25,15 @@
       "destination": "https://spotify-api-drab.vercel.app/api/$1"
     },
     {
-      "source": "/sitemap\\.xml$",
+      "source": "/sitemap\\.xml",
       "destination": "/sitemap.xml"
     },
     {
-      "source": "/sitemap-.*\\.xml$",
-      "destination": "/$0"
+      "source": "/sitemap-(.*)\\.xml",
+      "destination": "/sitemap-$1.xml"
     },
     {
-      "source": "/robots\\.txt$",
+      "source": "/robots\\.txt",
       "destination": "/robots.txt"
     },
     {
