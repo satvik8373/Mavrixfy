@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { m, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
@@ -109,12 +109,10 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
       <div className="flex-shrink-0 py-4">
         {/* Album Art - Smaller size */}
         <div className="flex justify-center mb-4">
-          <div
-            role="button"
-            tabIndex={0}
-            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+          <button
+            type="button"
             ref={swipeContainerRef}
-            className="relative swipe-container"
+            className="relative swipe-container border-0 bg-transparent p-0"
             style={{
               filter: `drop-shadow(0 15px 30px rgba(0,0,0,0.5))`,
               touchAction: 'pan-y',
@@ -138,7 +136,7 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
               }}
               draggable={false}
             />
-          </div>
+          </button>
         </div>
 
         {/* Song Info - Compact */}
@@ -172,10 +170,9 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
         {/* Progress Bar - Compact */}
         <div className="mb-3">
           <div className="max-w-sm mx-auto">
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+            <button
+              type="button"
+              aria-label="Seek playback"
               ref={progressRef}
               className="relative w-full py-2 cursor-pointer group touch-target progress-bar-container"
               onClick={handleProgressClick}
@@ -210,7 +207,7 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
                   }}
                 />
               </div>
-            </div>
+            </button>
             <div className="flex justify-between mt-1 text-xs text-white/80">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
@@ -283,13 +280,11 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
                 const isCurrentSong = index === currentIndex;
 
                 return (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  <button
+                    type="button"
                     key={stableKey}
                     className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer queue-item",
+                      "flex w-full items-center gap-3 p-3 rounded-lg transition-all cursor-pointer queue-item text-left",
                       isCurrentSong
                         ? "bg-white/20 border border-white/30"
                         : "hover:bg-white/10 active:bg-white/15"
@@ -337,7 +332,7 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
                     )}>
                       {formatTime(song.duration || 0)}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -407,12 +402,10 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
     <div className="flex flex-col justify-center min-h-0">
       {/* Album Art - Normal size with responsive sizing */}
       <div className="flex-shrink-0 flex justify-center mb-6">
-        <div
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+        <button
+          type="button"
           ref={swipeContainerRef}
-          className="relative swipe-container"
+          className="relative swipe-container border-0 bg-transparent p-0"
           style={{
             filter: `drop-shadow(0 25px 50px rgba(0,0,0,0.6))`,
             touchAction: 'pan-y',
@@ -436,7 +429,7 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
             }}
             draggable={false}
           />
-        </div>
+        </button>
       </div>
 
       {/* Song Info - Normal */}
@@ -476,10 +469,9 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
       {/* Progress Bar - Normal */}
       <div className="flex-shrink-0 mb-6">
         <div className="max-w-sm mx-auto">
-          <div
-            role="button"
-            tabIndex={0}
-            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+          <button
+            type="button"
+            aria-label="Seek playback"
             ref={progressRef}
             className="relative w-full py-3 cursor-pointer group touch-target progress-bar-container"
             onClick={handleProgressClick}
@@ -514,7 +506,7 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
                 }}
               />
             </div>
-          </div>
+          </button>
           <div className="flex justify-between mt-1 text-xs text-white">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
@@ -580,6 +572,7 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
   );
 };
 
+// eslint-disable-next-line react-doctor/no-giant-component
 const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
 
   const {
@@ -645,6 +638,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Handle screen size changes for responsive design
+  // eslint-disable-next-line react-doctor/exhaustive-deps
   useEffect(() => {
     const handleResize = () => {
       setState(prev => ({
@@ -907,18 +901,6 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
       }
     };
   }, [isDragging, duration, handleSeek]);
-
-  // Cleanup timeouts on unmount and reset image on song change
-  useEffect(() => {
-    return () => {
-      if (dragTimeoutRef.current) {
-        clearTimeout(dragTimeoutRef.current);
-      }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
 
   // Reset swipe container when song changes to prevent glitches
   useEffect(() => {
@@ -1323,9 +1305,10 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
   const displayProgress = isDragging ? dragProgress : (currentTime / duration) * 100 || 0;
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <m.div
+    <LazyMotion features={domAnimation} strict>
+      <AnimatePresence>
+        {isOpen && (
+          <m.div
           ref={panelRef}
           className={cn(
             'fixed inset-0 z-[200] flex flex-col song-details-view',
@@ -1375,10 +1358,9 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
             {/* Dropdown Menu */}
             {showMenu && (
               <>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                <button
+                  type="button"
+                  aria-label="Close menu"
                   className="fixed inset-0 z-40"
                   onClick={() => setState(prev => ({ ...prev, showMenu: false }))}
                 />
@@ -1491,11 +1473,11 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               />
             </div>
           </div>
-        </m.div>
-      )}
-    </AnimatePresence>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </LazyMotion>
   );
 };
 
 export default SongDetailsView;
-

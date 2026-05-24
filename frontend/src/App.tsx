@@ -2,6 +2,8 @@ import { RouterProvider, createBrowserRouter, Navigate, useLocation, useRouteErr
 import { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
+import { startRecommendationSessionTracking } from './services/recommendationService';
+import { audioManager } from './utils/audioManager';
 
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { getLocalStorageJSON } from './utils/storageUtils';
@@ -298,6 +300,10 @@ const router = createBrowserRouter(
 					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TrendingPage /></Suspense></AuthGate>
 				},
 				{
+					path: '/trending/:slug',
+					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TrendingPage /></Suspense></AuthGate>
+				},
+				{
 					path: '/blog',
 					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><BlogIndexPage /></Suspense></AuthGate>
 				},
@@ -422,11 +428,10 @@ function App() {
 	useEffect(() => {
 		let started = false;
 		const interactionEvents = ['pointerdown', 'keydown', 'touchstart'];
-		const startTracking = async () => {
+		const startTracking = () => {
 			if (started) return;
 			started = true;
 			interactionEvents.forEach((eventName) => window.removeEventListener(eventName, startTracking));
-			const { startRecommendationSessionTracking } = await import('./services/recommendationService');
 			startRecommendationSessionTracking();
 		};
 
@@ -458,10 +463,7 @@ function App() {
 	}, []);
 
 	useEffect(() => {
-		let audioManagerPromise: Promise<typeof import('./utils/audioManager')> | null = null;
-		const resumeAudio = async () => {
-			audioManagerPromise ??= import('./utils/audioManager');
-			const { audioManager } = await audioManagerPromise;
+		const resumeAudio = () => {
 			void audioManager.resumeIfPausedUnexpectedly();
 		};
 

@@ -13,6 +13,9 @@ const sitemaps = {
     ['/songs', 'daily', '0.95'],
     ['/playlists', 'daily', '0.95'],
     ['/trending', 'hourly', '0.95'],
+    ['/trending/hindi', 'daily', '0.9'],
+    ['/trending/reels', 'daily', '0.9'],
+    ['/trending/gujarati', 'daily', '0.85'],
     ['/search', 'daily', '0.9'],
     ['/blog', 'weekly', '0.85'],
     ['/jiosaavn/categories', 'daily', '0.8'],
@@ -35,6 +38,11 @@ const sitemaps = {
   ],
   'sitemap-playlists.xml': [
     ['/playlists', 'daily', '0.95'],
+    ['/playlist/gym-workout-hits', 'weekly', '0.9'],
+    ['/playlist/late-night-drive', 'weekly', '0.9'],
+    ['/playlist/viral-instagram-songs', 'daily', '0.9'],
+    ['/playlist/best-gujarati-playlist', 'weekly', '0.85'],
+    ['/playlist/study-lofi-music', 'weekly', '0.85'],
     ['/jiosaavn/playlists', 'daily', '0.85'],
     ['/mood-playlist', 'weekly', '0.8'],
   ],
@@ -53,8 +61,9 @@ const sitemaps = {
   ],
   'sitemap-blog.xml': [
     ['/blog', 'weekly', '0.85'],
-    ['/blog/top-gym-songs-2026', 'monthly', '0.8'],
-    ['/blog/best-gujarati-songs', 'monthly', '0.8'],
+    ['/blog/best-gym-songs', 'monthly', '0.8'],
+    ['/blog/top-study-music', 'monthly', '0.8'],
+    ['/blog/best-gujarati-playlist', 'monthly', '0.8'],
     ['/blog/trending-instagram-reels-songs', 'weekly', '0.85'],
   ],
 };

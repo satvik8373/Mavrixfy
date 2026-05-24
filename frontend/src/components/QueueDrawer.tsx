@@ -1,5 +1,5 @@
 import React from 'react';
-import { m, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { X, Trash2, ListMusic, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,14 @@ const MOBILE_MIN_HEIGHT = 42;
 const MOBILE_MID_HEIGHT = 62;
 const MOBILE_MAX_HEIGHT = 88;
 
+const subscribeViewport = (callback: () => void) => {
+  window.addEventListener('resize', callback);
+  return () => window.removeEventListener('resize', callback);
+};
+
+const getIsMobileSnapshot = () =>
+  typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+
 const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
   const { queue, currentSong, currentIndex, removeFromQueue, playAlbum } = usePlayerStore(
     (state) => ({
@@ -26,27 +34,11 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
     }),
     shallow
   );
-  const [isMobile, setIsMobile] = React.useState(false);
+  const isMobile = React.useSyncExternalStore(subscribeViewport, getIsMobileSnapshot, () => false);
   const [drawerHeight, setDrawerHeight] = React.useState(MOBILE_MID_HEIGHT);
   const [isDragging, setIsDragging] = React.useState(false);
   const startYRef = React.useRef(0);
   const startHeightRef = React.useRef(MOBILE_MID_HEIGHT);
-
-  React.useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  React.useEffect(() => {
-    if (isOpen) {
-      setDrawerHeight(MOBILE_MID_HEIGHT);
-      setIsDragging(false);
-    }
-  }, [isOpen]);
 
   const getClientY = (e: React.TouchEvent | React.MouseEvent | TouchEvent | MouseEvent) => {
     if ('touches' in e && e.touches.length > 0) return e.touches[0].clientY;
@@ -134,51 +126,46 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <m.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.44 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-zinc-950 z-50"
-          />
+    <LazyMotion features={domAnimation} strict>
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <m.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.44 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={onClose}
+              className="fixed inset-0 bg-zinc-950 z-50"
+            />
 
-          <m.div
-            initial={isMobile ? { y: '100%' } : { x: '100%' }}
-            animate={isMobile ? { y: 0 } : { x: 0 }}
-            exit={isMobile ? { y: '100%' } : { x: '100%' }}
-            transition={
-              isMobile
-                ? { type: 'spring', stiffness: 320, damping: 34, mass: 0.52 }
-                : { type: 'tween', duration: 0.25, ease: 'easeOut' }
-            }
-            className={
-              isMobile
-                ? 'fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[28px] border border-white/15 bg-[linear-gradient(180deg,rgba(32,32,40,0.98)_0%,rgba(18,18,25,0.98)_100%)] shadow-[0_-18px_50px_rgba(0,0,0,0.65)] backdrop-blur-2xl'
-                : 'fixed top-0 right-0 bottom-0 w-[420px] z-50 flex flex-col border-l border-white/10 bg-[#141414] shadow-2xl'
-            }
-            style={
-              isMobile
-                ? {
-                    height: `${drawerHeight}vh`,
-                    transition: isDragging ? 'none' : 'height 200ms ease-out',
-                    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-                  }
-                : undefined
-            }
-          >
+            <m.div
+              initial={isMobile ? { y: '100%' } : { x: '100%' }}
+              animate={isMobile ? { y: 0 } : { x: 0 }}
+              exit={isMobile ? { y: '100%' } : { x: '100%' }}
+              transition={
+                isMobile
+                  ? { type: 'spring', stiffness: 320, damping: 34, mass: 0.52 }
+                  : { type: 'tween', duration: 0.25, ease: 'easeOut' }
+              }
+              className={
+                isMobile
+                  ? 'fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[28px] border border-white/15 bg-[linear-gradient(180deg,rgba(32,32,40,0.98)_0%,rgba(18,18,25,0.98)_100%)] shadow-[0_-18px_50px_rgba(0,0,0,0.65)] backdrop-blur-2xl'
+                  : 'fixed top-0 right-0 bottom-0 w-[420px] z-50 flex flex-col border-l border-white/10 bg-[#141414] shadow-2xl'
+              }
+              style={
+                isMobile
+                  ? {
+                      height: `${drawerHeight}vh`,
+                      transition: isDragging ? 'none' : 'height 200ms ease-out',
+                      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                    }
+                  : undefined
+              }
+            >
             {isMobile && (
-              <div
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                  }
-                }}
+              <button
+                type="button"
                 aria-label="Drag to resize queue"
                 className="w-full flex items-center justify-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
                 onTouchStart={handleDragStart}
@@ -187,7 +174,7 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
                 <div className="px-2 py-1 rounded-full bg-white/5 border border-white/10">
                   <GripHorizontal className="w-5 h-5 text-white/55" />
                 </div>
-              </div>
+              </button>
             )}
 
             <div className="px-4 md:px-6 py-3 flex items-center justify-between border-b border-white/10">
@@ -277,10 +264,11 @@ const QueueDrawer: React.FC<QueueDrawerProps> = ({ isOpen, onClose }) => {
                 </section>
               </div>
             </ScrollArea>
-          </m.div>
-        </>
-      )}
-    </AnimatePresence>
+            </m.div>
+          </>
+        )}
+      </AnimatePresence>
+    </LazyMotion>
   );
 };
 

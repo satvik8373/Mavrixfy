@@ -3,7 +3,7 @@ import { X, Check, HelpCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { m, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import EmbedPreview from '@/components/EmbedPreview';
 
 interface EmbedPlaylistModalProps {
@@ -115,13 +115,14 @@ const EmbedPlaylistModal = ({
           Customize and generate embed code for {playlistTitle} playlist
         </DialogDescription>
         
-        <m.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
-          className="relative"
-        >
+        <LazyMotion features={domAnimation} strict>
+          <m.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="relative"
+          >
           {/* Header */}
           <div className="flex items-center justify-between p-6 pb-4">
             <h2 className="text-2xl font-semibold text-white">Embed playlist</h2>
@@ -249,6 +250,7 @@ const EmbedPlaylistModal = ({
                   type="checkbox"
                   checked={showCode}
                   onChange={(e) => setState(prev => ({ ...prev, showCode: e.target.checked }))}
+                  aria-label="Show embed code"
                   className="sr-only"
                 />
                 <span className="text-sm text-white">Show code</span>
@@ -297,7 +299,8 @@ const EmbedPlaylistModal = ({
               </m.div>
             )}
           </AnimatePresence>
-        </m.div>
+          </m.div>
+        </LazyMotion>
       </DialogContent>
     </Dialog>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnimatePresence, m } from 'framer-motion';
+import { AnimatePresence, m, LazyMotion, domAnimation } from 'framer-motion';
 import { Bluetooth, Car, Check, Headphones, Monitor, RefreshCw, Smartphone, Speaker, Tv, Volume2 } from 'lucide-react';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { detectAudioOutputDeviceType, type AudioOutputDeviceType } from '@/lib/audioOutputDevice';
@@ -271,9 +271,10 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
   }, [activeDeviceId, rawDevices]);
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
+    <LazyMotion features={domAnimation} strict>
+      <AnimatePresence>
+        {isOpen && (
+          <>
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.55 }}
@@ -356,9 +357,10 @@ const AudioOutputPicker: React.FC<AudioOutputPickerProps> = ({ isOpen, onClose }
               })}
             </div>
           </m.div>
-        </>
-      )}
-    </AnimatePresence>
+          </>
+        )}
+      </AnimatePresence>
+    </LazyMotion>
   );
 };
 

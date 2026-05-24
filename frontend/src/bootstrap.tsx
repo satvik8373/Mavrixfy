@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { LazyMotion, domAnimation } from 'framer-motion';
 import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import { configureWebViewAuth } from './utils/webViewDetection';
@@ -12,8 +11,6 @@ configureWebViewAuth();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
-    <LazyMotion features={domAnimation} strict>
-      <App />
-    </LazyMotion>
+    <App />
   </ErrorBoundary>,
 );

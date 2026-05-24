@@ -1,4 +1,4 @@
-import { animate, m, useMotionValue, useMotionValueEvent, useTransform } from 'framer-motion';
+import { animate, m, LazyMotion, domAnimation, useMotionValue, useMotionValueEvent, useTransform } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import './ElasticSlider.css';
@@ -121,7 +121,7 @@ function Slider({ initialValue, startingValue, maxValue, isStepped, stepSize, le
     };
 
     return (
-        <>
+        <LazyMotion features={domAnimation} strict>
             <m.div
                 onHoverStart={() => animate(scale, 1.2)}
                 onHoverEnd={() => animate(scale, 1)}
@@ -194,7 +194,7 @@ function Slider({ initialValue, startingValue, maxValue, isStepped, stepSize, le
                 </m.div>
             </m.div>
             {/* <p className="value-indicator">{Math.round(value)}</p> */}
-        </>
+        </LazyMotion>
     );
 }
 

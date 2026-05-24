@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { Song } from '@/types';
+import { playSong } from '@/utils/audioManager';
 
 type MediaType = 'image' | 'gif' | 'video' | 'audio';
 type Platform = 'web' | 'app';
@@ -276,7 +277,7 @@ export function PromotionsBanner() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      void import('@/utils/audioManager').then(({ playSong }) => playSong(songToPlay));
+      void playSong(songToPlay);
     } else if (promo.actionType === 'playlist' && promo.actionUrl) {
       if (promo.actionUrl.startsWith('jio_') || !isNaN(Number(promo.actionUrl))) {
         navigate(`/jiosaavn/playlist/${promo.actionUrl}`);

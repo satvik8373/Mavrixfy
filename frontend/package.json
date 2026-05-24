@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "postbuild": "npm run seo:sitemaps",
     "build:mobile": "tsc && vite build && node scripts/add-cache-busting.js",
     "build:optimized": "node scripts/build-optimized.js",
     "vercel-build": "node -e \"console.log('Frontend already built by root Vercel buildCommand')\"",

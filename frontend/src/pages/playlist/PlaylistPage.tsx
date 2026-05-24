@@ -51,7 +51,8 @@ import { ScrollArea } from '../../components/ui/scroll-area';
 import { updatePlaylistCoverFromSongs } from '../../services/playlistService';
 import { recommendationItemFromPlaylist, trackRecommendationEvent } from '@/services/recommendationService';
 import { updateMetaTags } from '@/utils/metaTags';
-import { artistPath, generateBreadcrumbSchema, generatePlaylistSEO, genrePath, SITE_URL } from '@/utils/seoHelpers';
+import { getSeoPlaylist, seoPlaylists } from '@/data/seoContent';
+import { artistPath, generateBreadcrumbSchema, generateCollectionSEO, generatePlaylistSEO, genrePath, SITE_URL } from '@/utils/seoHelpers';
 
 const PLAYLIST_METRICS_KEY = 'playlist_metrics:v1';
 const LIKED_PLAYLISTS_KEY = 'liked_playlists:v1';
@@ -282,6 +283,7 @@ const playlistUiReducer = (state: PlaylistUiState, action: PlaylistUiAction): Pl
 export function PlaylistPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const staticSeoPlaylist = getSeoPlaylist(id);
   const { userId, isAuthenticated } = useAuthStore();
   const { currentPlaylist, forceRefreshPlaylistById, deletePlaylist, isLoading, removeSongFromPlaylist } =
     usePlaylistStore();
@@ -427,6 +429,44 @@ export function PlaylistPage() {
       ],
     });
   }, [currentPlaylist]);
+
+  useEffect(() => {
+    if (!staticSeoPlaylist || currentPlaylist) return;
+
+    const path = `/playlist/${staticSeoPlaylist.slug}`;
+    const seo = generateCollectionSEO({
+      title: `${staticSeoPlaylist.title} - Playlist | Mavrixfy`,
+      description: staticSeoPlaylist.description,
+      path,
+      keywords: staticSeoPlaylist.tags.join(', '),
+      schemaType: 'CollectionPage',
+    });
+
+    updateMetaTags({
+      ...seo,
+      type: 'music.playlist',
+      schema: [
+        {
+          ...seo.schema,
+          '@type': 'MusicPlaylist',
+          name: staticSeoPlaylist.title,
+          description: staticSeoPlaylist.description,
+          url: `${SITE_URL}${path}`,
+          genre: staticSeoPlaylist.genres,
+          keywords: staticSeoPlaylist.tags.join(', '),
+        },
+        generateBreadcrumbSchema([
+          { name: 'Home', url: SITE_URL },
+          { name: 'Playlists', url: `${SITE_URL}/playlists` },
+          { name: staticSeoPlaylist.title, url: `${SITE_URL}${path}` },
+        ]),
+      ],
+      alternates: [
+        { hrefLang: 'en', href: `${SITE_URL}${path}` },
+        { hrefLang: 'x-default', href: `${SITE_URL}${path}` },
+      ],
+    });
+  }, [currentPlaylist, staticSeoPlaylist]);
 
   const updateMetrics = (metric: 'likes' | 'shares' | 'plays') => {
     if (!id) return;
@@ -818,6 +858,104 @@ export function PlaylistPage() {
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#121212]"></div>;
+  }
+
+  if (!currentPlaylist && staticSeoPlaylist) {
+    return (
+      <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6">
+        <div className="mx-auto max-w-5xl">
+          <nav className="mb-6 text-sm text-muted-foreground" aria-label="Breadcrumb">
+            <Link to="/home" className="hover:text-foreground">Home</Link>
+            <span className="mx-2">/</span>
+            <Link to="/playlists" className="hover:text-foreground">Playlists</Link>
+            <span className="mx-2">/</span>
+            <span className="text-foreground">{staticSeoPlaylist.title}</span>
+          </nav>
+
+          <section className="mb-10">
+            <p className="mb-3 text-sm font-medium uppercase tracking-wide text-green-500">Mavrixfy playlist</p>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">{staticSeoPlaylist.title}</h1>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">{staticSeoPlaylist.description}</p>
+          </section>
+
+          <div className="grid gap-8 lg:grid-cols-[1.4fr_0.8fr]">
+            <section className="space-y-8">
+              <div>
+                <h2 className="mb-3 text-xl font-semibold">Mood</h2>
+                <p className="text-muted-foreground">{staticSeoPlaylist.mood}</p>
+              </div>
+
+              <div>
+                <h2 className="mb-3 text-xl font-semibold">Genres</h2>
+                <div className="flex flex-wrap gap-2">
+                  {staticSeoPlaylist.genres.map(genre => (
+                    <Link key={genre} to={genrePath(genre)} className="rounded-full bg-muted px-4 py-2 text-sm hover:bg-muted/80">
+                      {genre}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="mb-3 text-xl font-semibold">Artists</h2>
+                <div className="flex flex-wrap gap-2">
+                  {staticSeoPlaylist.artists.map(artist => (
+                    <Link key={artist} to={artistPath(artist)} className="rounded-full bg-muted px-4 py-2 text-sm hover:bg-muted/80">
+                      {artist}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="mb-3 text-xl font-semibold">Trending tags</h2>
+                <div className="flex flex-wrap gap-2">
+                  {staticSeoPlaylist.tags.map(tag => (
+                    <Link key={tag} to={`/search?q=${encodeURIComponent(tag)}`} className="rounded-full bg-muted px-4 py-2 text-sm hover:bg-muted/80">
+                      {tag}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <aside className="space-y-8">
+              <div>
+                <h2 className="mb-3 text-xl font-semibold">Related playlists</h2>
+                <div className="space-y-3">
+                  {staticSeoPlaylist.relatedPlaylists.map(slug => {
+                    const related = seoPlaylists.find(playlist => playlist.slug === slug);
+                    return (
+                      <Link key={slug} to={`/playlist/${slug}`} className="block rounded-lg border border-border bg-card/40 p-4 hover:bg-card/70">
+                        <span className="block font-medium">{related?.title || slug}</span>
+                        {related?.description && (
+                          <span className="mt-1 block text-sm leading-6 text-muted-foreground">{related.description}</span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <h2 className="mb-3 text-xl font-semibold">Songs and discovery</h2>
+                <div className="flex flex-wrap gap-2">
+                  <Link to={`/search?q=${encodeURIComponent(staticSeoPlaylist.searchQuery)}`} className="rounded-full bg-green-500 px-4 py-2 text-sm font-medium text-black hover:bg-green-400">
+                    Find songs
+                  </Link>
+                  <Link to="/trending" className="rounded-full bg-muted px-4 py-2 text-sm hover:bg-muted/80">
+                    Trending music
+                  </Link>
+                  <Link to="/blog" className="rounded-full bg-muted px-4 py-2 text-sm hover:bg-muted/80">
+                    Music guides
+                  </Link>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (!currentPlaylist) {

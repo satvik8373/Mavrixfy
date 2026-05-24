@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, SkipBack, SkipForward, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { m } from 'framer-motion';
+import { m, LazyMotion, domAnimation } from 'framer-motion';
 
 interface Song {
   id: string;
@@ -37,6 +37,16 @@ const EmbedPreview = ({
   const currentSong = songs[currentSongIndex];
   const duration = currentSong?.duration || 180;
 
+  const handleNext = useCallback(() => {
+    if (currentSongIndex < songs.length - 1) {
+      setCurrentSongIndex((index) => index + 1);
+      setCurrentTime(0);
+    } else {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+  }, [currentSongIndex, songs.length]);
+
   useEffect(() => {
     if (isPlaying) {
       intervalRef.current = setInterval(() => {
@@ -59,7 +69,7 @@ const EmbedPreview = ({
         clearInterval(intervalRef.current);
       }
     };
-  }, [isPlaying, duration]);
+  }, [isPlaying, duration, handleNext]);
 
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying);
@@ -68,16 +78,6 @@ const EmbedPreview = ({
   const handlePrevious = () => {
     if (currentSongIndex > 0) {
       setCurrentSongIndex((index) => index - 1);
-      setCurrentTime(0);
-    }
-  };
-
-  const handleNext = () => {
-    if (currentSongIndex < songs.length - 1) {
-      setCurrentSongIndex((index) => index + 1);
-      setCurrentTime(0);
-    } else {
-      setIsPlaying(false);
       setCurrentTime(0);
     }
   };
@@ -91,13 +91,14 @@ const EmbedPreview = ({
   const progress = (currentTime / duration) * 100;
 
   return (
-    <div
-      className="rounded-xl overflow-hidden shadow-2xl"
-      style={{
-        height: `${height}px`,
-        backgroundColor: bgColor,
-      }}
-    >
+    <LazyMotion features={domAnimation} strict>
+      <div
+        className="rounded-xl overflow-hidden shadow-2xl"
+        style={{
+          height: `${height}px`,
+          backgroundColor: bgColor,
+        }}
+      >
       <div className="h-full flex flex-col">
         {/* Header Section */}
         <div className="p-4 flex items-start gap-4">
@@ -186,13 +187,11 @@ const EmbedPreview = ({
         {/* Song List */}
         <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-hide">
           {songs.map((song, index) => (
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+            <button
+              type="button"
               key={song.id}
               className={cn(
-                'flex items-center gap-3 p-2 rounded hover:bg-white/10 transition-colors cursor-pointer group',
+                'flex w-full items-center gap-3 p-2 rounded hover:bg-white/10 transition-colors cursor-pointer group text-left',
                 index === currentSongIndex && 'bg-white/10'
               )}
               onClick={() => {
@@ -207,11 +206,12 @@ const EmbedPreview = ({
                 <p className="text-white/60 text-xs truncate">{song.artist}</p>
               </div>
               <span className="text-white/50 text-xs">{formatTime(song.duration)}</span>
-            </div>
+            </button>
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </LazyMotion>
   );
 };
 

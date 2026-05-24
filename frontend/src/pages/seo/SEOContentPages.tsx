@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Music, Search, TrendingUp } from 'lucide-react';
+import {
+  getSeoBlogPost,
+  getSeoTrendingTopic,
+  seoBlogPosts,
+  seoPlaylists,
+  seoTrendingTopics,
+} from '@/data/seoContent';
 import { runSmartSearch, SmartSearchSong } from '@/services/smartSearchService';
 import jioSaavnService, { JioSaavnPlaylist, PLAYLIST_CATEGORIES } from '@/services/jioSaavnService';
 import { updateMetaTags } from '@/utils/metaTags';
@@ -26,26 +33,6 @@ const titleFromSlug = (slug?: string) =>
 
 const popularArtists = ['Arijit Singh', 'Shreya Ghoshal', 'AP Dhillon', 'Diljit Dosanjh', 'Ed Sheeran', 'Taylor Swift'];
 const popularGenres = ['Bollywood', 'Hindi', 'Gujarati', 'Punjabi', 'Lofi', 'Workout', 'Romantic', 'Devotional'];
-const blogPosts = [
-  {
-    slug: 'top-gym-songs-2026',
-    title: 'Top Gym Songs 2026',
-    description: 'High-energy workout songs, Indian pop, hip-hop and electronic picks for gym sessions.',
-    query: 'workout gym songs 2026',
-  },
-  {
-    slug: 'best-gujarati-songs',
-    title: 'Best Gujarati Songs',
-    description: 'Gujarati songs for garba, road trips, romance and everyday listening.',
-    query: 'best gujarati songs',
-  },
-  {
-    slug: 'trending-instagram-reels-songs',
-    title: 'Trending Instagram Reels Songs',
-    description: 'Viral songs and hooks people are discovering through Reels and Shorts.',
-    query: 'instagram reels trending songs 2026',
-  },
-];
 
 function SongList({ songs }: { songs: SmartSearchSong[] }) {
   if (songs.length === 0) {
@@ -102,6 +89,13 @@ function PlaylistList({ playlists }: { playlists: JioSaavnPlaylist[] }) {
     </div>
   );
 }
+
+interface TrendingState {
+  songs: SmartSearchSong[];
+  playlists: JioSaavnPlaylist[];
+}
+
+const trendingReducer = (_state: TrendingState, nextState: TrendingState): TrendingState => nextState;
 
 function PageShell({
   title,
@@ -203,31 +197,94 @@ export function PlaylistsIndexPage() {
 
   return (
     <PageShell title="Playlists" description="Shareable playlists for moods, genres, workouts, late nights and Indian music discovery.">
+      <div className="mb-8 grid gap-4 md:grid-cols-3">
+        {seoPlaylists.slice(0, 6).map(playlist => (
+          <Link key={playlist.slug} to={`/playlist/${playlist.slug}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-5 hover:bg-white/[0.06]">
+            <h2 className="text-xl font-semibold">{playlist.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-white/55">{playlist.description}</p>
+            <p className="mt-4 text-xs font-medium uppercase tracking-wide text-green-400">{playlist.mood}</p>
+          </Link>
+        ))}
+      </div>
       <PlaylistList playlists={playlists} />
     </PageShell>
   );
 }
 
 export function TrendingPage() {
-  const [songs, setSongs] = useState<SmartSearchSong[]>([]);
-  const [playlists, setPlaylists] = useState<JioSaavnPlaylist[]>([]);
+  const { slug } = useParams<{ slug: string }>();
+  const topic = getSeoTrendingTopic(slug) || {
+    slug: 'all',
+    title: 'Trending Songs',
+    description: 'Fresh viral songs, chart playlists and short-video music discovery.',
+    keywords: 'trending songs, viral songs, Bollywood trending songs, Instagram reels songs',
+    query: 'trending songs 2026',
+    tags: ['trending songs', 'viral songs', 'playlist discovery'],
+    relatedGenres: ['Hindi', 'Bollywood', 'Punjabi', 'Gujarati'],
+  };
+  const [{ songs, playlists }, dispatchTrending] = useReducer(trendingReducer, {
+    songs: [],
+    playlists: [],
+  });
 
   useEffect(() => {
+    let cancelled = false;
+    const path = slug ? `/trending/${toSeoSlug(slug)}` : '/trending';
     const seo = generateCollectionSEO({
-      title: 'Trending Songs 2026 | Mavrixfy',
-      description: 'Listen to trending songs, viral playlist picks and current Indian music charts on Mavrixfy.',
-      path: '/trending',
-      keywords: 'trending songs 2026, viral songs, Bollywood trending songs, Instagram reels songs',
+      title: `${topic.title} | Mavrixfy`,
+      description: topic.description,
+      path,
+      keywords: topic.keywords,
     });
     updateMetaTags({ ...seo, schema: seo.schema });
-    runSmartSearch('trending songs 2026').then(result => setSongs([result.topResult, ...result.results].filter(Boolean))).catch(() => setSongs([]));
-    jioSaavnService.get2026TrendingPlaylists().then(setPlaylists).catch(() => setPlaylists([]));
-  }, []);
+
+    Promise.allSettled([
+      runSmartSearch(topic.query),
+      jioSaavnService.get2026TrendingPlaylists(),
+    ]).then(([songResult, playlistResult]) => {
+      if (cancelled) return;
+      dispatchTrending({
+        songs: songResult.status === 'fulfilled'
+          ? [songResult.value.topResult, ...songResult.value.results].filter(Boolean)
+          : [],
+        playlists: playlistResult.status === 'fulfilled' ? playlistResult.value : [],
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, topic.description, topic.keywords, topic.query, topic.title]);
 
   return (
-    <PageShell title="Trending Songs" description="Fresh viral songs, chart playlists and short-video music discovery for 2026.">
+    <PageShell title={topic.title} description={topic.description}>
       <div className="space-y-8">
+        <section>
+          <h2 className="mb-3 text-xl font-semibold">Trending tags</h2>
+          <div className="flex flex-wrap gap-2">
+            {topic.tags.map(tag => (
+              <Link key={tag} to={`/search?q=${encodeURIComponent(tag)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/15">
+                {tag}
+              </Link>
+            ))}
+          </div>
+        </section>
         <SongList songs={songs} />
+        <section>
+          <h2 className="mb-3 text-xl font-semibold">Related trending pages</h2>
+          <div className="flex flex-wrap gap-2">
+            {seoTrendingTopics.map(item => (
+              <Link key={item.slug} to={`/trending/${item.slug}`} className="rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/15">
+                {item.title}
+              </Link>
+            ))}
+            {topic.relatedGenres.map(genre => (
+              <Link key={genre} to={genrePath(genre)} className="rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/15">
+                {genre}
+              </Link>
+            ))}
+          </div>
+        </section>
         <PlaylistList playlists={playlists} />
       </div>
     </PageShell>
@@ -311,7 +368,7 @@ export function BlogIndexPage() {
   return (
     <PageShell title="Blog" description="Music discovery guides built around trending searches and playlist intent.">
       <div className="grid gap-4 md:grid-cols-3">
-        {blogPosts.map(post => (
+        {seoBlogPosts.map(post => (
           <Link key={post.slug} to={`/blog/${post.slug}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-5 hover:bg-white/[0.06]">
             <h2 className="text-xl font-semibold">{post.title}</h2>
             <p className="mt-3 text-sm leading-6 text-white/55">{post.description}</p>
@@ -324,11 +381,17 @@ export function BlogIndexPage() {
 
 export function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
-  const post = useMemo(() => blogPosts.find(item => item.slug === slug) || {
+  const post = useMemo(() => getSeoBlogPost(slug) || {
     slug: slug || 'music-discovery',
     title: titleFromSlug(slug),
     description: `Discover ${titleFromSlug(slug).toLowerCase()} on Mavrixfy.`,
     query: titleFromSlug(slug),
+    sections: [
+      {
+        heading: 'Discover more music',
+        body: 'Use Mavrixfy search and playlist links to move from a topic into songs, artists and genres.',
+      },
+    ],
   }, [slug]);
   const [songs, setSongs] = useState<SmartSearchSong[]>([]);
 
@@ -347,6 +410,12 @@ export function BlogPostPage() {
   return (
     <PageShell title={post.title} description={post.description}>
       <div className="mb-8 max-w-3xl space-y-4 text-sm leading-6 text-white/60">
+        {post.sections.map(section => (
+          <section key={section.heading}>
+            <h2 className="mb-2 text-lg font-semibold text-white">{section.heading}</h2>
+            <p>{section.body}</p>
+          </section>
+        ))}
         <p>
           Use this guide as a starting point for discovery, then open any song or playlist to save,
           share and continue exploring related artists and genres.
