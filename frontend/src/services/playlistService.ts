@@ -22,7 +22,8 @@ import { FirestorePlaylist, FirestoreSong, firestoreToSong, FirestoreUser } from
 import { createPlaylistCoverCollage, createDominantColorCover } from './playlistImageService';
 
 // Generate a random placeholder image for playlists without images
-const generatePlaceholderImage = (name: string): string => {
+const generatePlaceholderImage = (name?: string): string => {
+  const safeName = name || 'Playlist';
   const colors = [
     '#1DB954', '#1ED760', '#2D46B9', '#9B59B6',
     '#3498DB', '#1ABC9C', '#F1C40F', '#E74C3C'
@@ -30,7 +31,7 @@ const generatePlaceholderImage = (name: string): string => {
   const color = colors[Math.floor(Math.random() * colors.length)];
   
   // Generate a data URL with the first letter
-  const letter = name.charAt(0).toUpperCase();
+  const letter = safeName.charAt(0).toUpperCase();
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
       <rect width="100%" height="100%" fill="${color}" />

@@ -971,12 +971,12 @@ export function PlaylistPage() {
     );
   }
 
-  const isOwner = userId === currentPlaylist.createdBy.uid;
-  const totalDuration = currentPlaylist.songs.reduce((acc, song) => acc + song.duration, 0);
+  const isOwner = userId === currentPlaylist.createdBy?.uid;
+  const totalDuration = (currentPlaylist.songs || []).reduce((acc, song) => acc + (song.duration || 0), 0);
   const formattedTotalDuration = formatTime(totalDuration);
-  const totalSongs = currentPlaylist.songs.length;
-  const topArtists = Array.from(new Set(currentPlaylist.songs.flatMap(song => song.artist ? [song.artist] : []))).slice(0, 6);
-  const playlistGenres = Array.from(new Set(currentPlaylist.songs.flatMap(song => {
+  const totalSongs = currentPlaylist.songs?.length || 0;
+  const topArtists = Array.from(new Set((currentPlaylist.songs || []).flatMap(song => song.artist ? [song.artist] : []))).slice(0, 6);
+  const playlistGenres = Array.from(new Set((currentPlaylist.songs || []).flatMap(song => {
     const genre = (song as any).genre || (song as any).language;
     return genre ? [genre] : [];
   }))).slice(0, 5);
@@ -1111,7 +1111,7 @@ export function PlaylistPage() {
 
                 {/* Metadata without profile avatar */}
                 <div className="flex items-center gap-1 text-sm text-muted-foreground justify-center md:justify-start flex-wrap playlist-text-shadow">
-                  <span className="font-medium text-foreground">{currentPlaylist.createdBy.fullName}</span>
+                  <span className="font-medium text-foreground">{currentPlaylist.createdBy?.fullName || 'Unknown User'}</span>
                   <span className="mx-1">•</span>
                   <span>{metrics.likes} saves</span>
                   <span className="mx-1">•</span>

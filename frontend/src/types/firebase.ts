@@ -27,17 +27,44 @@ export interface FirestoreSong extends Omit<Song, '_id'> {
 
 // Conversion helpers
 export const songToFirestore = (song: Song): FirestoreSong => {
+  if (!song) {
+    return {
+      id: 'unknown',
+      title: 'Unknown Song',
+      artist: 'Unknown Artist',
+      imageUrl: '',
+      audioUrl: '',
+      albumId: null,
+      duration: 0,
+      createdAt: '',
+      updatedAt: ''
+    };
+  }
   const { _id, ...rest } = song;
   return {
-    id: _id,
+    id: _id || 'unknown',
     ...rest
-  };
+  } as FirestoreSong;
 };
 
 export const firestoreToSong = (fsong: FirestoreSong): Song => {
+  if (!fsong) {
+    return {
+      _id: 'unknown',
+      title: 'Unknown Song',
+      artist: 'Unknown Artist',
+      imageUrl: '',
+      audioUrl: '',
+      streamUrl: '',
+      albumId: null,
+      duration: 0,
+      createdAt: '',
+      updatedAt: ''
+    };
+  }
   const { id, audioUrl, streamUrl, ...rest } = fsong;
   return {
-    _id: id,
+    _id: id || 'unknown',
     audioUrl: audioUrl || streamUrl || '',
     streamUrl: streamUrl || audioUrl || '',
     ...rest
