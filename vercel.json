@@ -3,6 +3,21 @@
   "installCommand": "npm --prefix frontend install",
   "buildCommand": "npm --prefix frontend run build",
   "outputDirectory": "frontend/dist",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss:; img-src * data: blob:; style-src * 'unsafe-inline'; media-src * data: blob:; font-src * data:; frame-src *; child-src *; object-src 'none'; worker-src * blob: data:; frame-ancestors *"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss:; img-src * data: blob:; style-src * 'unsafe-inline'; media-src * data: blob:; font-src * data:; frame-src *; child-src *; object-src 'none'; worker-src * blob: data:; frame-ancestors *"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
