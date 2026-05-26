@@ -12,49 +12,78 @@ import { cleanupOfflineData } from './utils/cleanupOfflineData';
 // Only preload absolute structural components
 import MainLayout from './layout/MainLayout';
 
+const lazySafe = <T extends React.ComponentType<any>>(
+	importFn: () => Promise<any>,
+	exportName?: string
+) => {
+	return lazy(() =>
+		importFn()
+			.then((m) => {
+				if (!m) {
+					const reloadKey = 'chunk_reload_attempt';
+					if (!sessionStorage.getItem(reloadKey)) {
+						sessionStorage.setItem(reloadKey, '1');
+						window.location.reload();
+					}
+					return { default: (() => null) as unknown as T };
+				}
+				sessionStorage.removeItem('chunk_reload_attempt');
+				return { default: (exportName ? m[exportName] : (m.default || m)) as T };
+			})
+			.catch((err) => {
+				const reloadKey = 'chunk_reload_attempt';
+				if (!sessionStorage.getItem(reloadKey)) {
+					sessionStorage.setItem(reloadKey, '1');
+					window.location.reload();
+				}
+				throw err;
+			})
+	);
+};
+
 // Lazy load core pages to drastically cut initial JS payload
-const HomePage = lazy(() => import('./pages/home/HomePage'));
-const SearchPage = lazy(() => import('./pages/search/SearchPage'));
-const LibraryPage = lazy(() => import('./pages/LibraryPage'));
-const LikedSongsPage = lazy(() => import('./pages/liked-songs/LikedSongsPage'));
-const LikedSongsImportPage = lazy(() => import('./pages/liked-songs/LikedSongsImportPage'));
-const SongsIndexPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.SongsIndexPage })));
-const PlaylistsIndexPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.PlaylistsIndexPage })));
-const ArtistPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.ArtistPage })));
-const GenrePage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.GenrePage })));
-const TrendingPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.TrendingPage })));
-const BlogIndexPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.BlogIndexPage })));
-const BlogPostPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => ({ default: m.BlogPostPage })));
+const HomePage = lazySafe(() => import('./pages/home/HomePage'));
+const SearchPage = lazySafe(() => import('./pages/search/SearchPage'));
+const LibraryPage = lazySafe(() => import('./pages/LibraryPage'));
+const LikedSongsPage = lazySafe(() => import('./pages/liked-songs/LikedSongsPage'));
+const LikedSongsImportPage = lazySafe(() => import('./pages/liked-songs/LikedSongsImportPage'));
+const SongsIndexPage = lazySafe(() => import('./pages/seo/SEOContentPages'), 'SongsIndexPage');
+const PlaylistsIndexPage = lazySafe(() => import('./pages/seo/SEOContentPages'), 'PlaylistsIndexPage');
+const ArtistPage = lazySafe(() => import('./pages/seo/SEOContentPages'), 'ArtistPage');
+const GenrePage = lazySafe(() => import('./pages/seo/SEOContentPages'), 'GenrePage');
+const TrendingPage = lazySafe(() => import('./pages/seo/SEOContentPages'), 'TrendingPage');
+const BlogIndexPage = lazySafe(() => import('./pages/seo/SEOContentPages'), 'BlogIndexPage');
+const BlogPostPage = lazySafe(() => import('./pages/seo/SEOContentPages'), 'BlogPostPage');
 
 // Lazy load less critical pages only
-const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
-const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.default || m.PlaylistPage })));
-const SongPage = lazy(() => import('./pages/song/SongPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const TermsOfService = lazy(() => import('./pages/TermsOfService'));
-const About = lazy(() => import('./pages/About'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const AccountDeletion = lazy(() => import('./pages/AccountDeletion'));
+const AlbumPage = lazySafe(() => import('./pages/album/AlbumPage'));
+const PlaylistPage = lazySafe(() => import('./pages/playlist/PlaylistPage'));
+const SongPage = lazySafe(() => import('./pages/song/SongPage'));
+const ProfilePage = lazySafe(() => import('./pages/ProfilePage'));
+const PrivacyPolicy = lazySafe(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazySafe(() => import('./pages/TermsOfService'));
+const About = lazySafe(() => import('./pages/About'));
+const SettingsPage = lazySafe(() => import('./pages/SettingsPage'));
+const AccountDeletion = lazySafe(() => import('./pages/AccountDeletion'));
 
 // AI Mood Playlist page
-const MoodHistoryPage = lazy(() => import('./pages/mood-history/MoodHistoryPage'));
-const MoodPlaylistPage = lazy(() => import('./pages/MoodPlaylistPage'));
+const MoodHistoryPage = lazySafe(() => import('./pages/mood-history/MoodHistoryPage'));
+const MoodPlaylistPage = lazySafe(() => import('./pages/MoodPlaylistPage'));
 
 // JioSaavn pages
-const JioSaavnPlaylistPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistPage'));
-const JioSaavnPlaylistsPage = lazy(() => import('./pages/jiosaavn/JioSaavnPlaylistsPage'));
-const JioSaavnCategoriesPage = lazy(() => import('./pages/jiosaavn/JioSaavnCategoriesPage'));
+const JioSaavnPlaylistPage = lazySafe(() => import('./pages/jiosaavn/JioSaavnPlaylistPage'));
+const JioSaavnPlaylistsPage = lazySafe(() => import('./pages/jiosaavn/JioSaavnPlaylistsPage'));
+const JioSaavnCategoriesPage = lazySafe(() => import('./pages/jiosaavn/JioSaavnCategoriesPage'));
 
 // Embed page
-const EmbedPlaylistPage = lazy(() => import('./pages/embed/EmbedPlaylistPage'));
+const EmbedPlaylistPage = lazySafe(() => import('./pages/embed/EmbedPlaylistPage'));
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const Login = lazySafe(() => import('./pages/Login'));
+const Register = lazySafe(() => import('./pages/Register'));
+const ResetPassword = lazySafe(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazySafe(() => import('./pages/VerifyEmail'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 // Simple fallback pages for routes with import issues

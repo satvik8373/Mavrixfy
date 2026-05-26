@@ -30,7 +30,10 @@ let colorThiefPromise: Promise<ColorThiefInstance> | null = null;
 function loadColorThief(): Promise<ColorThiefInstance> {
   if (!colorThiefPromise) {
     colorThiefPromise = import('colorthief').then((module) => {
-      const ColorThief = module.default;
+      const ColorThief = module ? (module.default || module) : null;
+      if (!ColorThief) {
+        throw new Error('ColorThief module is undefined');
+      }
       return new ColorThief() as ColorThiefInstance;
     });
   }
