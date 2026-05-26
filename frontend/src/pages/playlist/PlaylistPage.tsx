@@ -651,6 +651,10 @@ export function PlaylistPage() {
       return;
     }
 
+    if (isPlayingRef.current) {
+      return;
+    }
+
     // Check if this is the currently playing song
     const playerStore = usePlayerStore.getState();
     const currentSongId = playerStore.currentSong?._id || (playerStore.currentSong as any)?.id;
@@ -664,7 +668,7 @@ export function PlaylistPage() {
     }
 
     // Set loading state
-    setIsPlaying(true);
+    isPlayingRef.current = true;
 
     try {
       // If song has no audio URL, try to find it
@@ -698,18 +702,18 @@ export function PlaylistPage() {
             usePlayerStore.getState().setIsPlaying(true);
 
             // Reset states
-            setIsPlaying(false);
+            isPlayingRef.current = false;
             return;
           } else {
             toast.dismiss();
             toast.error("Couldn't find audio for this song");
-            setIsPlaying(false);
+            isPlayingRef.current = false;
             return;
           }
         } catch (error) {
           toast.dismiss();
           toast.error("Error finding audio");
-          setIsPlaying(false);
+          isPlayingRef.current = false;
           return;
         }
       }
@@ -734,7 +738,7 @@ export function PlaylistPage() {
       toast.error("Error playing song");
     } finally {
       // Always reset states
-      setIsPlaying(false);
+      isPlayingRef.current = false;
     }
   };
 
