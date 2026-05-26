@@ -28,7 +28,7 @@ const BlogPostPage = lazy(() => import('./pages/seo/SEOContentPages').then(m => 
 
 // Lazy load less critical pages only
 const AlbumPage = lazy(() => import('./pages/album/AlbumPage'));
-const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage'));
+const PlaylistPage = lazy(() => import('./pages/playlist/PlaylistPage').then(m => ({ default: m.default || m.PlaylistPage })));
 const SongPage = lazy(() => import('./pages/song/SongPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
