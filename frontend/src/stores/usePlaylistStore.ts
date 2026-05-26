@@ -105,7 +105,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         const featuredPlaylists = await playlistService.getFeaturedPlaylists();
         set({ featuredPlaylists, isLoading: false });
       } catch {
-        set({ featuredPlaylists: [], isLoading: false });
+        set({ isLoading: false });
       }
     } catch {
       set({ isLoading: false });
@@ -123,7 +123,7 @@ export const usePlaylistStore = create<PlaylistStore>((set, get) => ({
         get().userPlaylists.forEach(p => merged.set(p._id, p));
         set({ publicPlaylists, playlists: Array.from(merged.values()), isLoading: false });
       } catch {
-        set({ publicPlaylists: [], isLoading: false });
+        set({ isLoading: false });
       }
     } catch {
       set({ isLoading: false });

@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasResolvedInitialAuth = useRef(false);
   const [isOnline, setIsOnline] = useState(
     typeof navigator === 'undefined' ? true : navigator.onLine,
   );
@@ -112,9 +113,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
 
         unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-          setLoading(true);
+          if (!hasResolvedInitialAuth.current) {
+            setLoading(true);
+          }
           await applyFirebaseUser(firebaseUser);
-          if (isMounted) setLoading(false);
+          if (isMounted) {
+            hasResolvedInitialAuth.current = true;
+            setLoading(false);
+          }
         });
       } catch (nextError) {
         if (!isMounted) return;
@@ -146,9 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshUserData = useCallback(async () => {
-    setLoading(true);
     await applyFirebaseUser(auth.currentUser);
-    setLoading(false);
   }, [applyFirebaseUser]);
 
   const contextValue = useMemo(

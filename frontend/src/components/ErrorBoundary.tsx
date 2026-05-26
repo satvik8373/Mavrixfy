@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { audioManager } from '@/utils/audioManager';
+import { APP_LOAD_RECOVERY_KEY, isRecoverableAppLoadError, performHardRefresh } from '@/utils/errorRecovery';
 
 interface Props {
   children: ReactNode;
@@ -63,6 +64,12 @@ class ErrorBoundary extends Component<Props, State> {
       }
     }
 
+    if (isRecoverableAppLoadError(error) && !sessionStorage.getItem(APP_LOAD_RECOVERY_KEY)) {
+      sessionStorage.setItem(APP_LOAD_RECOVERY_KEY, '1');
+      void performHardRefresh();
+      return;
+    }
+
     this.setState({
       error,
       errorInfo
@@ -73,6 +80,7 @@ class ErrorBoundary extends Component<Props, State> {
     try {
       // Clear error state from storage
       sessionStorage.removeItem('last_error:v1');
+      sessionStorage.removeItem(APP_LOAD_RECOVERY_KEY);
       
       // For iOS PWA, use location.href instead of reload() for better compatibility
       const isIOSPWA = ('standalone' in window.navigator) && (window.navigator as any).standalone === true;

@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
 import { startRecommendationSessionTracking } from './services/recommendationService';
 import { audioManager } from './utils/audioManager';
+import { APP_LOAD_RECOVERY_KEY, isRecoverableAppLoadError, performHardRefresh } from './utils/errorRecovery';
 
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
@@ -56,38 +57,6 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 
-const CHUNK_RECOVERY_KEY = 'mavrixfy_chunk_recovery_done';
-
-const isChunkLoadLikeError = (error?: Error) => {
-	const message = `${error?.message ?? ''}`;
-	return /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(message);
-};
-
-const performHardRefresh = async () => {
-	try {
-		if ('serviceWorker' in navigator) {
-			const registrations = await navigator.serviceWorker.getRegistrations();
-			await Promise.all(registrations.map((registration) => registration.unregister().catch(() => undefined)));
-		}
-	} catch {
-		// Ignore cleanup errors and continue with refresh.
-	}
-
-	try {
-		if ('caches' in window) {
-			const cacheKeys = await caches.keys();
-			await Promise.all(cacheKeys.map((key) => caches.delete(key).catch(() => false)));
-		}
-	} catch {
-		// Ignore cleanup errors and continue with refresh.
-	}
-
-	const separator = window.location.href.includes('?') ? '&' : '?';
-	window.location.replace(`${window.location.href}${separator}refresh=${Date.now()}`);
-};
-
-
-
 // Simple fallback pages for routes with import issues
 const NotFoundFallback = () => (
 	<div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
@@ -107,13 +76,13 @@ const ErrorFallback = () => {
 	const error = routeError instanceof Error ? routeError : undefined;
 
 	useEffect(() => {
-		if (!isChunkLoadLikeError(error)) {
-			sessionStorage.removeItem(CHUNK_RECOVERY_KEY);
+		if (!isRecoverableAppLoadError(error)) {
+			sessionStorage.removeItem(APP_LOAD_RECOVERY_KEY);
 			return;
 		}
-		if (sessionStorage.getItem(CHUNK_RECOVERY_KEY)) return;
+		if (sessionStorage.getItem(APP_LOAD_RECOVERY_KEY)) return;
 
-		sessionStorage.setItem(CHUNK_RECOVERY_KEY, '1');
+		sessionStorage.setItem(APP_LOAD_RECOVERY_KEY, '1');
 		void performHardRefresh();
 	}, [error]);
 

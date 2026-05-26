@@ -1,6 +1,5 @@
 import { Suspense, lazy, useEffect, useReducer, useRef, useCallback, memo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import MobileNav from './components/MobileNav';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSidebarStore, COLLAPSED_WIDTH, MAX_WIDTH, MIN_WIDTH } from '@/stores/useSidebarStore';
@@ -48,6 +47,7 @@ const layoutUiReducer = (state: LayoutUiState, action: LayoutUiAction): LayoutUi
   }
 };
 
+// eslint-disable-next-line react-doctor/no-giant-component
 const MainLayout = () => {
   const [{ isMobile, showQueue, isDocumentFullscreen }, dispatchLayoutUi] = useReducer(layoutUiReducer, {
     isMobile: window.innerWidth < 768,
@@ -332,20 +332,9 @@ const MainLayout = () => {
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           <div className="h-full overflow-y-auto overflow-x-hidden mobile-scroll-fix bg-transparent md:rounded-lg">
             <main id="main-content" className="min-h-full flex flex-col">
-              <LazyMotion features={domAnimation}>
-                <AnimatePresence mode="wait" initial={false}>
-                  <m.div
-                    key={pathname}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
-                    className="flex-1 w-full"
-                  >
-                    <Outlet />
-                  </m.div>
-                </AnimatePresence>
-              </LazyMotion>
+              <div className="flex-1 w-full">
+                <Outlet />
+              </div>
               {!isMobile && !hideDesktopFooter && (
                 <Suspense fallback={null}>
                   <DesktopFooter />

@@ -1277,12 +1277,13 @@ export function PlaylistPage() {
               {currentPlaylist.songs.map((song, index) => {
                 const currentSongId = currentSong?._id || (currentSong as any)?.id;
                 const songId = song._id || (song as any).id;
+                const songRowKey = `${songId || song.title || 'playlist-song'}-${index}`;
                 const isCurrentSong = currentSongId && songId && currentSongId === songId;
                 const isThisSongPlaying = isCurrentSong && playerIsPlaying;
 
                 return (
                   <div
-                    key={song._id}
+                    key={songRowKey}
                     className="mx-[-16px]"
                   >
                     <div

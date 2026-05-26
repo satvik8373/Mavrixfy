@@ -1,3 +1,6 @@
+import { registerSW } from 'virtual:pwa-register';
+import { APP_LOAD_RECOVERY_KEY, performHardRefresh } from './utils/errorRecovery';
+
 // Initialize Google Analytics and GTM
 declare global {
   interface Window {
@@ -40,6 +43,14 @@ function renderLighthouseHome() {
 
 const isLighthouseHomeAudit =
   isAutomatedAudit() && (window.location.pathname === '/' || window.location.pathname === '/home');
+
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  if (sessionStorage.getItem(APP_LOAD_RECOVERY_KEY)) return;
+
+  sessionStorage.setItem(APP_LOAD_RECOVERY_KEY, '1');
+  void performHardRefresh();
+});
 
 if (isLighthouseHomeAudit) {
   renderLighthouseHome();
@@ -203,14 +214,9 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 // Cleanup legacy custom service worker registrations.
-// Vite PWA handles registration via registerSW.js (sw.js).
-// Only unregister the old hand-rolled service-worker.js — never touch the Workbox SW.
+// Vite PWA controls the Workbox-generated sw.js registration below.
 if (!isLighthouseHomeAudit && 'serviceWorker' in navigator && !isAutomatedAudit()) {
   window.addEventListener('load', () => {
-    if (import.meta.env.PROD) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { });
-    }
-
     navigator.serviceWorker.getRegistrations()
       .then((registrations) => {
         registrations.forEach((registration) => {
@@ -229,33 +235,21 @@ if (!isLighthouseHomeAudit && 'serviceWorker' in navigator && !isAutomatedAudit(
   });
 }
 
-// Auto-apply waiting SW update and reload so all users get new changes immediately.
-if (!isLighthouseHomeAudit && 'serviceWorker' in navigator && !isAutomatedAudit()) {
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
+if (!isLighthouseHomeAudit && !isAutomatedAudit()) {
+  let applyServiceWorkerUpdate: ((reloadPage?: boolean) => Promise<void>) | undefined;
+
+  applyServiceWorkerUpdate = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      void applyServiceWorkerUpdate?.(true);
+    },
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
+      window.setInterval(() => {
+        void registration.update();
+      }, 60_000);
+    },
   });
-
-  navigator.serviceWorker.ready.then((registration) => {
-    // Poll for updates every 60 seconds while the app is open
-    setInterval(() => registration.update().catch(() => {}), 60_000);
-
-    // If a new SW is already waiting (e.g. user had the tab open), activate it now
-    if (registration.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    }
-
-    // Watch for future updates
-    registration.addEventListener('updatefound', () => {
-      const newWorker = registration.installing;
-      if (!newWorker) return;
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          // New SW installed and waiting — tell it to take over immediately
-          newWorker.postMessage({ type: 'SKIP_WAITING' });
-        }
-      });
-    });
-  }).catch(() => {});
 }
 
 // Let the inline document shell paint before loading the full SPA graph.

@@ -398,61 +398,47 @@ const HomePage = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Keep home data stable like app: load on first mount, manual refresh handles hard updates.
-
   useEffect(() => {
     if (!isAuthReady) return;
 
     let isCancelled = false;
-    let cancelGuestFetch: (() => void) | undefined;
 
     const loadHomePlaylists = async () => {
       try {
         dispatchHome({ type: 'playlists_loading', isLoading: true });
+
         if (isAuthenticated) {
-          const promises: Promise<any>[] = [];
           if (usePlaylistStore.getState().shouldRefresh()) {
-            promises.push(usePlaylistStore.getState().refreshAllData());
-          } else {
-            if (publicPlaylists.length === 0) {
-              promises.push(fetchPublicPlaylists());
-            }
-            if (featuredPlaylists.length === 0) {
-              promises.push(fetchFeaturedPlaylists());
-            }
+            await usePlaylistStore.getState().refreshAllData();
+            return;
           }
-          await Promise.all(promises);
-        } else if (publicPlaylists.length === 0) {
+
+          await Promise.all([
+            usePlaylistStore.getState().publicPlaylists.length === 0 ? fetchPublicPlaylists() : Promise.resolve(),
+            usePlaylistStore.getState().featuredPlaylists.length === 0 ? fetchFeaturedPlaylists() : Promise.resolve(),
+          ]);
+          return;
+        }
+
+        if (usePlaylistStore.getState().publicPlaylists.length === 0) {
           await fetchPublicPlaylists();
         }
       } catch {
         // The page can continue with JioSaavn rows if playlist sync fails.
       } finally {
         if (!isCancelled) {
+          dispatchHome({ type: 'home_loaded' });
           dispatchHome({ type: 'playlists_loading', isLoading: false });
         }
       }
     };
 
-    if (!hasLoadedOnce) {
-      dispatchHome({ type: 'home_loaded' });
-    }
-
-    if (isAuthenticated) {
-      void loadHomePlaylists();
-    } else if (publicPlaylists.length === 0) {
-      cancelGuestFetch = runAfterGuestIntent(() => {
-        if (!isCancelled) {
-          void loadHomePlaylists();
-        }
-      });
-    }
+    void loadHomePlaylists();
 
     return () => {
       isCancelled = true;
-      cancelGuestFetch?.();
     };
-  }, [fetchPublicPlaylists, fetchFeaturedPlaylists, hasLoadedOnce, isAuthenticated, isAuthReady, publicPlaylists.length, featuredPlaylists.length]);
+  }, [fetchPublicPlaylists, fetchFeaturedPlaylists, isAuthenticated, isAuthReady]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -643,7 +629,7 @@ const HomePage = () => {
                         </div>
                       </ScrollItem>
                     ))
-                  ) : (isInitialLoading || isPlaylistsLoading || !isAuthenticated) ? (
+                  ) : (isInitialLoading || isPlaylistsLoading) ? (
                     <ScrollCardsSkeleton count={6} itemWidth={homePlaylistCardItemWidth} />
                   ) : hasLoadedOnce ? (
                     <div className="text-zinc-500 text-sm p-4 w-full text-center animate-[fadeIn_0.3s_ease-out]">

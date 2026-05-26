@@ -3,7 +3,7 @@
  * Wrapper for ShareSheet specifically for playlists
  */
 
-import { useState } from 'react';
+import { cloneElement, isValidElement, type MouseEventHandler, useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareSheet } from './ShareSheet';
@@ -18,6 +18,10 @@ interface SharePlaylistProps {
 
 export const SharePlaylist = ({ playlist, trigger, onShare }: SharePlaylistProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const openShareSheet = () => {
+    setIsOpen(true);
+    onShare?.();
+  };
 
   // Convert Playlist to ShareCardContent
   const shareContent: ShareCardContent = {
@@ -40,13 +44,25 @@ export const SharePlaylist = ({ playlist, trigger, onShare }: SharePlaylistProps
 
   return (
     <>
-      {trigger ? (
-        <button type="button" className="appearance-none bg-transparent border-none p-0 text-left cursor-pointer" onClick={() => { setIsOpen(true); onShare?.(); }}>{trigger}</button>
+      {trigger && isValidElement<{ onClick?: MouseEventHandler }>(trigger) ? (
+        cloneElement(trigger, {
+          onClick: (event) => {
+            trigger.props.onClick?.(event);
+            if (!event.defaultPrevented) {
+              openShareSheet();
+            }
+          },
+        })
+      ) : trigger ? (
+        <button type="button" className="inline-flex appearance-none border-0 bg-transparent p-0 text-left" onClick={openShareSheet}>
+          {trigger}
+        </button>
       ) : (
         <Button
+          type="button"
           variant="ghost"
           size="icon"
-          onClick={() => { setIsOpen(true); onShare?.(); }}
+          onClick={openShareSheet}
           className="text-white/70 hover:text-white hover:bg-white/10"
         >
           <Share2 className="h-5 w-5" />
