@@ -16,27 +16,26 @@ const lazySafe = <T extends React.ComponentType<any>>(
 	importFn: () => Promise<any>,
 	exportName?: string
 ) => {
+	const createErrorModule = (error: unknown) => {
+		const normalizedError = error instanceof Error ? error : new Error(String(error));
+		const RouteLoadError = () => {
+			throw normalizedError;
+		};
+
+		return { default: RouteLoadError as unknown as T };
+	};
+
 	return lazy(() =>
 		importFn()
 			.then((m) => {
 				if (!m) {
-					const reloadKey = 'chunk_reload_attempt';
-					if (!sessionStorage.getItem(reloadKey)) {
-						sessionStorage.setItem(reloadKey, '1');
-						window.location.reload();
-					}
-					return { default: (() => null) as unknown as T };
+					return createErrorModule(new Error('Route module loaded empty.'));
 				}
 				sessionStorage.removeItem('chunk_reload_attempt');
 				return { default: (exportName ? m[exportName] : (m.default || m)) as T };
 			})
 			.catch((err) => {
-				const reloadKey = 'chunk_reload_attempt';
-				if (!sessionStorage.getItem(reloadKey)) {
-					sessionStorage.setItem(reloadKey, '1');
-					window.location.reload();
-				}
-				throw err;
+				return createErrorModule(err);
 			})
 	);
 };
