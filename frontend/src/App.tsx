@@ -207,7 +207,7 @@ const router = createBrowserRouter(
 		},
 		{
 			element: <MainLayout />,
-			errorElement: <ErrorFallback />,
+
 			children: [
 				{
 					path: '/home',
