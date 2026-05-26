@@ -171,172 +171,177 @@ const LandingRedirector = () => {
 const router = createBrowserRouter(
 	[
 		{
-			path: '/',
-			element: <LandingRedirector />
-		},
-		{
-			path: '/login',
-			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><Login /></Suspense>
-		},
-		{
-			path: '/register',
-			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><Register /></Suspense>
-		},
-		{
-			path: '/reset-password',
-			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ResetPassword /></Suspense>
-		},
-		{
-			path: '/verify-email',
-			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><VerifyEmail /></Suspense>
-		},
-		{
-			path: '/privacy',
-			element: (
-				<div className="h-screen overflow-y-auto bg-[#121212]">
-					<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
-						<PrivacyPolicy />
-					</Suspense>
-				</div>
-			)
-		},
-		{
-			path: '/terms',
-			element: (
-				<div className="h-screen overflow-y-auto bg-[#121212]">
-					<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
-						<TermsOfService />
-					</Suspense>
-				</div>
-			)
-		},
-		{
-			path: '/about',
-			element: (
-				<div className="h-screen overflow-y-auto bg-[#121212]">
-					<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
-						<About />
-					</Suspense>
-				</div>
-			)
-		},
-		{
-			path: '/account-deletion',
-			element: (
-				<div className="h-screen overflow-y-auto bg-[#121212]">
-					<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
-						<AccountDeletion />
-					</Suspense>
-				</div>
-			)
-		},
-		{
-			path: '/embed/playlist/:id',
-			element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><EmbedPlaylistPage /></Suspense>
-		},
-		{
-			element: <MainLayout />,
-
+			errorElement: <ErrorFallback />,
 			children: [
 				{
-					path: '/home',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><HomePage /></Suspense></AuthGate>
+					path: '/',
+					element: <LandingRedirector />
 				},
 				{
-					path: '/albums/:albumId',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><AlbumPage /></Suspense></AuthGate>
+					path: '/login',
+					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><Login /></Suspense>
 				},
 				{
-					path: '/library',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LibraryPage /></Suspense></AuthGate>
+					path: '/register',
+					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><Register /></Suspense>
 				},
 				{
-					path: '/liked-songs',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LikedSongsPage /></Suspense></AuthGate>
+					path: '/reset-password',
+					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ResetPassword /></Suspense>
 				},
 				{
-					path: '/liked-songs/import',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LikedSongsImportPage /></Suspense></AuthGate>
+					path: '/verify-email',
+					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><VerifyEmail /></Suspense>
 				},
 				{
-					path: '/search',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SearchPage /></Suspense></AuthGate>
+					path: '/privacy',
+					element: (
+						<div className="h-screen overflow-y-auto bg-[#121212]">
+							<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+								<PrivacyPolicy />
+							</Suspense>
+						</div>
+					)
 				},
 				{
-					path: '/songs',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongsIndexPage /></Suspense></AuthGate>
+					path: '/terms',
+					element: (
+						<div className="h-screen overflow-y-auto bg-[#121212]">
+							<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+								<TermsOfService />
+							</Suspense>
+						</div>
+					)
 				},
 				{
-					path: '/playlists',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PlaylistsIndexPage /></Suspense></AuthGate>
+					path: '/about',
+					element: (
+						<div className="h-screen overflow-y-auto bg-[#121212]">
+							<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+								<About />
+							</Suspense>
+						</div>
+					)
 				},
 				{
-					path: '/artist/:slug',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ArtistPage /></Suspense></AuthGate>
+					path: '/account-deletion',
+					element: (
+						<div className="h-screen overflow-y-auto bg-[#121212]">
+							<Suspense fallback={<div className="min-h-screen bg-[#121212]" />}>
+								<AccountDeletion />
+							</Suspense>
+						</div>
+					)
 				},
 				{
-					path: '/genre/:slug',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><GenrePage /></Suspense></AuthGate>
+					path: '/embed/playlist/:id',
+					element: <Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><EmbedPlaylistPage /></Suspense>
 				},
 				{
-					path: '/trending',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TrendingPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/trending/:slug',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TrendingPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/blog',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><BlogIndexPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/blog/:slug',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><BlogPostPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/profile',
-					element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ProfilePage /></Suspense></AuthGate>
-				},
-				{
-					path: '/playlist/:id',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PlaylistPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/song/:songId',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/album/:albumId',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><AlbumPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/jiosaavn/playlist/:playlistId',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/jiosaavn/playlists',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistsPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/jiosaavn/categories',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnCategoriesPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/settings',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SettingsPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/mood-playlist',
-					element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><MoodPlaylistPage /></Suspense></AuthGate>
-				},
-				{
-					path: '/mood-history',
-					element: <AuthGate allowGuest={false}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><MoodHistoryPage /></Suspense></AuthGate>
-				},
-				{
-					path: '*',
-					element: <NotFoundFallback />
+					element: <MainLayout />,
+
+					children: [
+						{
+							path: '/home',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><HomePage /></Suspense></AuthGate>
+						},
+						{
+							path: '/albums/:albumId',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><AlbumPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/library',
+							element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LibraryPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/liked-songs',
+							element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LikedSongsPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/liked-songs/import',
+							element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><LikedSongsImportPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/search',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SearchPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/songs',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongsIndexPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/playlists',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PlaylistsIndexPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/artist/:slug',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ArtistPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/genre/:slug',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><GenrePage /></Suspense></AuthGate>
+						},
+						{
+							path: '/trending',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TrendingPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/trending/:slug',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><TrendingPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/blog',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><BlogIndexPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/blog/:slug',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><BlogPostPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/profile',
+							element: <AuthGate><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><ProfilePage /></Suspense></AuthGate>
+						},
+						{
+							path: '/playlist/:id',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><PlaylistPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/song/:songId',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SongPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/album/:albumId',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><AlbumPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/jiosaavn/playlist/:playlistId',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/jiosaavn/playlists',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnPlaylistsPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/jiosaavn/categories',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><JioSaavnCategoriesPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/settings',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><SettingsPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/mood-playlist',
+							element: <AuthGate allowGuest={true}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><MoodPlaylistPage /></Suspense></AuthGate>
+						},
+						{
+							path: '/mood-history',
+							element: <AuthGate allowGuest={false}><Suspense fallback={<div className="min-h-screen bg-[#121212]" />}><MoodHistoryPage /></Suspense></AuthGate>
+						},
+						{
+							path: '*',
+							element: <NotFoundFallback />
+						}
+					]
 				}
 			]
 		}

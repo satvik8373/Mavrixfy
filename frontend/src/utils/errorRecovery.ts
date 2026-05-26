@@ -3,7 +3,7 @@ export const APP_LOAD_RECOVERY_KEY = 'mavrixfy_chunk_recovery_done';
 export const isRecoverableAppLoadError = (error?: Error | null) => {
 	const message = `${error?.message ?? ''}`;
 	return (
-		/ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(message) ||
+		/ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed|Cannot read properties of undefined \(reading 'default'\)|Cannot read property 'default' of undefined/i.test(message) ||
 		/\(0\s*,\s*.*\.default\)\s*is not a function/i.test(message)
 	);
 };
