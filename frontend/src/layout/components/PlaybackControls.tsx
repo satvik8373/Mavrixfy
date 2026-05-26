@@ -1,27 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import CloseIcon from "@mui/icons-material/Close";
-import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
-import DeleteIcon from "@mui/icons-material/Delete";
-import IosShareIcon from "@mui/icons-material/IosShare";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import PauseIcon from "@mui/icons-material/Pause";
-import PictureInPictureAltIcon from "@mui/icons-material/PictureInPictureAlt";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import QueueMusicIcon from "@mui/icons-material/QueueMusic";
-import RepeatIcon from "@mui/icons-material/Repeat";
-import ShuffleIcon from "@mui/icons-material/Shuffle";
-import SkipNextIcon from "@mui/icons-material/SkipNext";
-import SkipPreviousIcon from "@mui/icons-material/SkipPrevious";
-import VolumeOffIcon from "@mui/icons-material/VolumeOff";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import { renderToStaticMarkup } from "react-dom/server";
-import { type ReactElement, useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { type ReactElement, type ReactNode, type SVGProps, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import SongDetailsView from "@/components/SongDetailsView";
 import { LikeButton } from "@/components/LikeButton";
 import { ShuffleButton } from "@/components/ShuffleButton";
@@ -44,6 +24,49 @@ const numberFormatter = new Intl.NumberFormat("en-US");
 const formatNumber = (value: number) => {
 	return numberFormatter.format(Math.max(0, Math.round(value)));
 };
+
+type MaterialIconProps = SVGProps<SVGSVGElement>;
+
+const createMaterialIcon = (path: ReactNode) => {
+	const MaterialIcon = ({ className, ...props }: MaterialIconProps) => (
+		<svg
+			className={className}
+			focusable="false"
+			aria-hidden="true"
+			viewBox="0 0 24 24"
+			fill="currentColor"
+			{...props}
+		>
+			{path}
+		</svg>
+	);
+
+	return MaterialIcon;
+};
+
+const AddCircleOutlineIcon = createMaterialIcon(
+	<path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7Zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8Z" />
+);
+const CheckCircleOutlineIcon = createMaterialIcon(
+	<path d="m10 14.17-3.59-3.58L5 12l5 5 8-8-1.41-1.42L10 14.17ZM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8Z" />
+);
+const ChevronLeftIcon = createMaterialIcon(<path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12l4.58-4.59Z" />);
+const ChevronRightIcon = createMaterialIcon(<path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12l-4.58 4.59Z" />);
+const CloseIcon = createMaterialIcon(<path d="M18.3 5.71 16.89 4.3 12 9.17 7.11 4.3 5.7 5.71 10.59 10.6 5.7 15.49l1.41 1.41L12 12.01l4.89 4.89 1.41-1.41-4.89-4.89 4.89-4.89Z" />);
+const CloseFullscreenIcon = createMaterialIcon(<path d="M22 3.41 20.59 2 17 5.59V3h-2v6h6V7h-2.59L22 3.41ZM3.41 22 7 18.41V21h2v-6H3v2h2.59L2 20.59 3.41 22ZM2 3.41 5.59 7H3v2h6V3H7v2.59L3.41 2 2 3.41ZM20.59 22 22 20.59 18.41 17H21v-2h-6v6h2v-2.59L20.59 22Z" />);
+const DeleteIcon = createMaterialIcon(<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12ZM8 9h8v10H8V9Zm7.5-5-1-1h-5l-1 1H5v2h14V4h-3.5Z" />);
+const IosShareIcon = createMaterialIcon(<path d="M16 5 12 1 8 5l1.41 1.41L11 4.83V16h2V4.83l1.59 1.59L16 5Zm4 5v11H4V10h2v9h12v-9h2Z" />);
+const OpenInFullIcon = createMaterialIcon(<path d="M5 5h5V3H3v7h2V5Zm9-2v2h5v5h2V3h-7ZM5 14H3v7h7v-2H5v-5Zm14 5h-5v2h7v-7h-2v5Z" />);
+const PauseIcon = createMaterialIcon(<path d="M6 19h4V5H6v14Zm8-14v14h4V5h-4Z" />);
+const PictureInPictureAltIcon = createMaterialIcon(<path d="M19 11h-8v6h8v-6Zm4 8V4c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v15c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2Zm-2 0H3V4h18v15Z" />);
+const PlayArrowIcon = createMaterialIcon(<path d="M8 5v14l11-7L8 5Z" />);
+const QueueMusicIcon = createMaterialIcon(<path d="M15 6H3v2h12V6Zm0 4H3v2h12v-2ZM3 16h8v-2H3v2Zm14-10v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5Z" />);
+const RepeatIcon = createMaterialIcon(<path d="M7 7h11v3l4-4-4-4v3H5v6h2V7Zm10 10H6v-3l-4 4 4 4v-3h13v-6h-2v4Z" />);
+const ShuffleIcon = createMaterialIcon(<path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41ZM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5Zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13Z" />);
+const SkipNextIcon = createMaterialIcon(<path d="m6 18 8.5-6L6 6v12ZM16 6v12h2V6h-2Z" />);
+const SkipPreviousIcon = createMaterialIcon(<path d="M6 6h2v12H6V6Zm3.5 6 8.5 6V6l-8.5 6Z" />);
+const VolumeOffIcon = createMaterialIcon(<path d="M16.5 12c0-1.77-1-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63ZM19 12c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.62 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71ZM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73L16.25 17.52c-.67.52-1.43.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3ZM12 4 9.91 6.09 12 8.18V4Z" />);
+const VolumeUpIcon = createMaterialIcon(<path d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3c0-1.77-1-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02ZM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77Z" />);
 
 const getSeededRange = (seedText: string, min: number, max: number) => {
 	if (!seedText) return min;
@@ -263,6 +286,7 @@ const mixRgb = (from: [number, number, number], to: [number, number, number], t:
 
 const rgbToCss = ([r, g, b]: [number, number, number]) => `rgb(${r} ${g} ${b})`;
 
+// eslint-disable-next-line react-doctor/no-giant-component
 export const PlaybackControls = () => {
 	const { togglePlay, playNext, playPrevious, playAlbum, removeFromQueue, seekTo, toggleRepeat, setVolume } = usePlayerStore();
 	const { isPlaying, currentSong } = usePlayerSync();

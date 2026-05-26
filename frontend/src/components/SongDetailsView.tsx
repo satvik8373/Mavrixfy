@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { type ReactNode, type SVGProps, useEffect, useState, useRef, useCallback } from 'react';
 import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 
 import { usePlayerStore } from '@/stores/usePlayerStore';
@@ -6,15 +6,6 @@ import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { ShareSong } from './ShareSong';
 import { ShuffleButton } from './ShuffleButton';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import PauseIcon from '@mui/icons-material/Pause';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import QueueMusicIcon from '@mui/icons-material/QueueMusic';
-import RepeatIcon from '@mui/icons-material/Repeat';
-import IosShareIcon from '@mui/icons-material/IosShare';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import { LikeButton } from './LikeButton';
 import { PingPongScroll } from './PingPongScroll';
 import { cn } from '@/lib/utils';
@@ -32,6 +23,35 @@ const formatTime = (seconds: number) => {
   const remainingSeconds = Math.floor(seconds % 60);
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
+
+type MaterialIconProps = SVGProps<SVGSVGElement>;
+
+const createMaterialIcon = (path: ReactNode) => {
+  const MaterialIcon = ({ className, ...props }: MaterialIconProps) => (
+    <svg
+      className={className}
+      focusable="false"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      {...props}
+    >
+      {path}
+    </svg>
+  );
+
+  return MaterialIcon;
+};
+
+const KeyboardArrowDownIcon = createMaterialIcon(<path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41Z" />);
+const MoreHorizIcon = createMaterialIcon(<path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2Zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2Zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2Z" />);
+const PauseIcon = createMaterialIcon(<path d="M6 19h4V5H6v14Zm8-14v14h4V5h-4Z" />);
+const PlayArrowIcon = createMaterialIcon(<path d="M8 5v14l11-7L8 5Z" />);
+const QueueMusicIcon = createMaterialIcon(<path d="M15 6H3v2h12V6Zm0 4H3v2h12v-2ZM3 16h8v-2H3v2Zm14-10v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5Z" />);
+const RepeatIcon = createMaterialIcon(<path d="M7 7h11v3l4-4-4-4v3H5v6h2V7Zm10 10H6v-3l-4 4 4 4v-3h13v-6h-2v4Z" />);
+const IosShareIcon = createMaterialIcon(<path d="M16 5 12 1 8 5l1.41 1.41L11 4.83V16h2V4.83l1.59 1.59L16 5Zm4 5v11H4V10h2v9h12v-9h2Z" />);
+const SkipNextIcon = createMaterialIcon(<path d="m6 18 8.5-6L6 6v12ZM16 6v12h2V6h-2Z" />);
+const SkipPreviousIcon = createMaterialIcon(<path d="M6 6h2v12H6V6Zm3.5 6 8.5 6V6l-8.5 6Z" />);
 
 
 interface CompactQueueViewProps {
