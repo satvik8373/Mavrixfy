@@ -1651,3 +1651,6 @@ export function PlaylistPage() {
     </div>
   );
 }
+
+export default PlaylistPage;
+
