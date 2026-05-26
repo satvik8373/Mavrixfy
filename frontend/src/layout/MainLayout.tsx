@@ -1,10 +1,12 @@
 import { Suspense, lazy, useEffect, useReducer, useRef, useCallback, memo } from 'react';
+import type { ErrorInfo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import MobileNav from './components/MobileNav';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSidebarStore, COLLAPSED_WIDTH, MAX_WIDTH, MIN_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const LeftSidebar = lazy(() => import('./components/LeftSidebar'));
 const PlaybackControls = lazy(() => import('./components/PlaybackControls'));
@@ -14,6 +16,49 @@ const DesktopFooter = lazy(() => import('@/components/DesktopFooter'));
 
 // Memoized components to prevent unnecessary re-renders
 const MemoizedMobileNav = memo(MobileNav);
+
+const RouteErrorFallback = (error: Error, errorInfo: ErrorInfo) => (
+  <div className="flex min-h-[420px] w-full items-center justify-center p-6">
+    <div className="w-full max-w-3xl rounded-lg border border-red-500/30 bg-red-950/20 p-5 text-left text-red-100">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-300">Route render error</p>
+      <h1 className="mt-2 text-2xl font-semibold text-white">This page failed to render</h1>
+      <p className="mt-2 text-sm text-red-100/80">
+        The app caught an error while loading this route. This panel is shown so production does not fail silently.
+      </p>
+
+      <details className="mt-4 rounded-md bg-black/30 p-3" open>
+        <summary className="cursor-pointer text-sm font-medium text-red-200">Error details</summary>
+        <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-red-100">
+          {error.message}
+          {'\n\n'}
+          {error.stack}
+          {'\n\nComponent stack:\n'}
+          {errorInfo.componentStack}
+        </pre>
+      </details>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          type="button"
+          className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90"
+          onClick={() => window.location.reload()}
+        >
+          Reload
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+          onClick={() => {
+            sessionStorage.removeItem('chunk_reload_attempt');
+            window.location.reload();
+          }}
+        >
+          Clear Route Retry
+        </button>
+      </div>
+    </div>
+  </div>
+);
 
 interface LayoutUiState {
   isMobile: boolean;
@@ -333,7 +378,9 @@ const MainLayout = () => {
           <div className="h-full overflow-y-auto overflow-x-hidden mobile-scroll-fix bg-transparent md:rounded-lg">
             <main id="main-content" className="min-h-full flex flex-col">
               <div className="flex-1 w-full">
-                <Outlet />
+                <ErrorBoundary key={pathname} fallback={RouteErrorFallback}>
+                  <Outlet />
+                </ErrorBoundary>
               </div>
               {!isMobile && !hideDesktopFooter && (
                 <Suspense fallback={null}>
