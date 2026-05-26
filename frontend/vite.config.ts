@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
 		plugins: [
 			react(),
 			VitePWA({
-				registerType: 'autoUpdate',
+				registerType: 'prompt',
 				injectRegister: false,
 				includeAssets: ['mavrixfy.png', 'apple-touch-icon.png', 'mavrixfy-icons/*.png'],
 				workbox: {

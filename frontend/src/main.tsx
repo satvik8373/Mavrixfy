@@ -241,7 +241,7 @@ if (!isLighthouseHomeAudit && !isAutomatedAudit()) {
   applyServiceWorkerUpdate = registerSW({
     immediate: true,
     onNeedRefresh() {
-      void applyServiceWorkerUpdate?.(true);
+      window.dispatchEvent(new CustomEvent('mavrixfy:pwa-update-ready'));
     },
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;

@@ -16,6 +16,7 @@ const lazySafe = <T extends React.ComponentType<any>>(
 	importFn: () => Promise<any>,
 	exportName?: string
 ) => {
+	const routeLabel = exportName || importFn.toString().match(/import\(['"](.+?)['"]\)/)?.[1] || 'route module';
 	const createErrorModule = (error: unknown) => {
 		const normalizedError = error instanceof Error ? error : new Error(String(error));
 		const RouteLoadError = () => {
@@ -29,10 +30,19 @@ const lazySafe = <T extends React.ComponentType<any>>(
 		importFn()
 			.then((m) => {
 				if (!m) {
-					return createErrorModule(new Error('Route module loaded empty.'));
+					return createErrorModule(new Error(`${routeLabel} loaded empty.`));
 				}
 				sessionStorage.removeItem('chunk_reload_attempt');
-				return { default: (exportName ? m[exportName] : (m.default || m)) as T };
+				const component = exportName ? m[exportName] : m.default;
+				if (!component) {
+					const availableExports = Object.keys(m).join(', ') || 'none';
+					const expectedExport = exportName || 'default';
+					return createErrorModule(
+						new Error(`${routeLabel} is missing export "${expectedExport}". Available exports: ${availableExports}.`)
+					);
+				}
+
+				return { default: component as T };
 			})
 			.catch((err) => {
 				return createErrorModule(err);
