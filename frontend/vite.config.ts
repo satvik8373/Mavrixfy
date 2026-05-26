@@ -160,7 +160,7 @@ export default defineConfig(({ mode }) => {
 		build: {
 			outDir: "dist",
 			assetsDir: "assets",
-			sourcemap: false,
+			sourcemap: true,
 			minify: 'esbuild',
 			cssCodeSplit: true,
 			target: 'es2020',

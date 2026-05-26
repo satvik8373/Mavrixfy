@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Shuffle } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
 import { cn } from '@/lib/utils';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { Button } from './ui/button';
@@ -19,6 +19,8 @@ export const ShuffleButton: React.FC<ShuffleButtonProps> = ({
 }) => {
   const { shuffleMode, toggleShuffle, smartShuffle } = usePlayerStore();
   const [isPressed, setIsPressed] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   const isShuffled = shuffleMode !== 'off';
 
@@ -42,57 +44,48 @@ export const ShuffleButton: React.FC<ShuffleButtonProps> = ({
 
   const handleShuffleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // Enhanced touch feedback
-    setIsPressed(true);
-    setTimeout(() => setIsPressed(false), 150);
-    
+
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+
     toggleShuffle();
   };
 
-  const handleLongPress = (e: React.MouseEvent) => {
+  const handleLongPress = (e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    
-    // Long press for smart shuffle
-    setIsPressed(true);
-    setTimeout(() => setIsPressed(false), 200);
-    
+    longPressTriggeredRef.current = true;
     smartShuffle();
   };
 
-  // Touch handlers for better mobile experience
-  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setIsPressed(true);
-    
-    // Set up long press detection
-    const timer = setTimeout(() => {
-      handleLongPress(e as any);
-    }, 500);
-    touchTimerRef.current = timer;
+
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      handleLongPress(e);
+    }, 550);
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setIsPressed(false);
-    
-    if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
-      // If it was a short press, handle normal click
-      handleShuffleToggle(e as any);
-    }
+    clearLongPressTimer();
   };
 
-  const handleTouchCancel = () => {
+  const handlePointerCancel = () => {
     setIsPressed(false);
-    if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
-    }
+    clearLongPressTimer();
   };
 
   const getModeColor = () => {
@@ -108,11 +101,15 @@ export const ShuffleButton: React.FC<ShuffleButtonProps> = ({
 
   return (
     <Button
+      type="button"
       size="icon"
       variant={variant}
+      aria-label={shuffleMode === 'off' ? 'Turn shuffle on' : shuffleMode === 'normal' ? 'Turn smart shuffle on' : 'Turn shuffle off'}
+      aria-pressed={isShuffled}
+      title={shuffleMode === 'smart' ? 'Smart shuffle on' : isShuffled ? 'Shuffle on' : 'Shuffle off'}
       className={cn(
         config.button,
-        'rounded-full flex items-center justify-center transition-all duration-200 touch-target',
+        'rounded-full flex items-center justify-center transition-all duration-200 touch-target select-none',
         isShuffled ? 'text-current' : 'text-muted-foreground hover:text-foreground',
         isPressed && 'scale-95',
         className
@@ -121,12 +118,13 @@ export const ShuffleButton: React.FC<ShuffleButtonProps> = ({
         color: isShuffled ? getModeColor() : undefined,
       }}
       onClick={handleShuffleToggle}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
-      onContextMenu={(e) => e.preventDefault()} // Prevent context menu on long press
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerCancel}
+      onPointerCancel={handlePointerCancel}
+      onContextMenu={(e) => e.preventDefault()}
     >
-      <Shuffle className={config.icon} />
+      <ShuffleIcon className={config.icon} />
     </Button>
   );
 };

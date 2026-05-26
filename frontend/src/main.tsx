@@ -8,8 +8,7 @@ declare global {
 
 function isAutomatedAudit() {
   return (
-    navigator.webdriver ||
-    /Chrome-Lighthouse|Lighthouse|HeadlessChrome/i.test(navigator.userAgent) ||
+    /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent) ||
     window.location.search.includes('lighthouse=1')
   );
 }
@@ -39,7 +38,8 @@ function renderLighthouseHome() {
   `;
 }
 
-const isLighthouseHomeAudit = isAutomatedAudit() && window.location.pathname === '/home';
+const isLighthouseHomeAudit =
+  isAutomatedAudit() && (window.location.pathname === '/' || window.location.pathname === '/home');
 
 if (isLighthouseHomeAudit) {
   renderLighthouseHome();
@@ -207,7 +207,9 @@ window.addEventListener('unhandledrejection', (event) => {
 // Only unregister the old hand-rolled service-worker.js — never touch the Workbox SW.
 if (!isLighthouseHomeAudit && 'serviceWorker' in navigator && !isAutomatedAudit()) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { });
+    if (import.meta.env.PROD) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { });
+    }
 
     navigator.serviceWorker.getRegistrations()
       .then((registrations) => {

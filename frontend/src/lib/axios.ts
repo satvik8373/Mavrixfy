@@ -55,20 +55,43 @@ axiosInstance.interceptors.response.use(
 	(response) => {
 		return response;
 	},
-	(error) => {
-		// Log errors only when not 404 to reduce console noise
-		if (error.response?.status !== 404) {
-			// API request failed
-		} else {
-			// For 404 errors, use mock data without logging
-		}
-		
-		// Handle 401 unauthorized
+	async (error) => {
+		// Handle 401 unauthorized - but ONLY redirect if truly not authenticated
 		if (error.response?.status === 401) {
-			// Clear auth token
+			// Check if Firebase still has a current user before redirecting
+			try {
+				const { auth } = await import('./firebase');
+				if (auth.currentUser) {
+					// User is still Firebase-authenticated; don't redirect.
+					// The token may just need a refresh — clear the cached header.
+					setAuthToken(null);
+					return Promise.reject(error);
+				}
+			} catch {
+				// firebase import failed — fall through to redirect check
+			}
+
+			// Also check localStorage cached auth before redirecting
+			try {
+				const raw = localStorage.getItem('auth-store');
+				if (raw) {
+					const parsed = JSON.parse(raw);
+					const state = parsed?.state || parsed;
+					if (state?.isAuthenticated && state?.userId) {
+						// Cached auth exists — don't redirect, just clear the stale token header
+						setAuthToken(null);
+						return Promise.reject(error);
+					}
+				}
+			} catch {
+				// ignore localStorage read errors
+			}
+
+			// No Firebase user and no cached auth — genuinely unauthenticated
 			setAuthToken(null);
-			// Redirect to login if needed
-			window.location.href = '/login';
+			if (!window.location.pathname.startsWith('/login')) {
+				window.location.href = '/login';
+			}
 		}
 		return Promise.reject(error);
 	}

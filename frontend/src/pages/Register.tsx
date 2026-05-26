@@ -467,8 +467,14 @@ const Register = () => {
   // Redirect if already authenticated
   useEffect(() => {
     const authStoreRaw = localStorage.getItem('auth-store');
-    const hasLocalAuth = authStoreRaw &&
-      JSON.parse(authStoreRaw).isAuthenticated;
+    let hasLocalAuth = false;
+    if (authStoreRaw) {
+      try {
+        const parsed = JSON.parse(authStoreRaw);
+        const state = parsed?.state || parsed;
+        hasLocalAuth = !!state?.isAuthenticated;
+      } catch {}
+    }
 
     if ((isAuthenticated || hasLocalAuth) && !authLoading) {
       navigate('/home', { replace: true });

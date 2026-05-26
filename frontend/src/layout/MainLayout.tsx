@@ -1,8 +1,9 @@
 import { Suspense, lazy, useEffect, useReducer, useRef, useCallback, memo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import MobileNav from './components/MobileNav';
 import { usePlayerStore } from '@/stores/usePlayerStore';
-import { useSidebarStore, COLLAPSED_WIDTH } from '@/stores/useSidebarStore';
+import { useSidebarStore, COLLAPSED_WIDTH, MAX_WIDTH, MIN_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 
@@ -68,9 +69,16 @@ const MainLayout = () => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const previousDocumentTitleRef = useRef(document.title);
   const playbackTitleActiveRef = useRef(false);
-  const COLLAPSE_THRESHOLD = 120;
+  const COLLAPSE_THRESHOLD = 140;
+  const MIN_MAIN_CONTENT_WIDTH = 360;
 
   useBackgroundRefresh();
+
+  const restoreBrowserTitle = useCallback(() => {
+    if (playbackTitleActiveRef.current) {
+      document.title = previousDocumentTitleRef.current || 'Mavrixfy';
+    }
+  }, []);
 
   // Show current playing track in browser title while playback is active.
   useEffect(() => {
@@ -101,12 +109,8 @@ const MainLayout = () => {
   }, [isPlaying, currentSong, pathname]);
 
   useEffect(() => {
-    return () => {
-      if (playbackTitleActiveRef.current) {
-        document.title = previousDocumentTitleRef.current || 'Mavrixfy';
-      }
-    };
-  }, []);
+    return restoreBrowserTitle;
+  }, [restoreBrowserTitle]);
 
   // Expose current-song palette globally so all sections can inherit the same live theme.
   useEffect(() => {
@@ -201,61 +205,82 @@ const MainLayout = () => {
     pathname === '/mood-playlist'
   );
 
+  const getMaxSidebarWidth = useCallback(() => {
+    const queueWidth = showQueue && !isDocumentFullscreen ? 280 : 0;
+    const layoutGaps = 32;
+    return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, window.innerWidth - queueWidth - MIN_MAIN_CONTENT_WIDTH - layoutGaps));
+  }, [isDocumentFullscreen, showQueue]);
+
+  const resizeSidebar = useCallback((nextWidth: number) => {
+    const maxSidebarWidth = getMaxSidebarWidth();
+
+    if (nextWidth < COLLAPSE_THRESHOLD) {
+      setCollapsed(true);
+      return;
+    }
+
+    setCollapsed(false);
+    setWidth(Math.max(MIN_WIDTH, Math.min(maxSidebarWidth, nextWidth)));
+  }, [getMaxSidebarWidth, setCollapsed, setWidth]);
+
   // Handle resize functionality
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
     isResizing.current = true;
     Object.assign(document.body.style, {
-      cursor: 'grabbing',
+      cursor: 'col-resize',
       userSelect: 'none'
     });
 
-    const startX = e.clientX;
+    const startX = event.clientX;
     const startWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handlePointerMove = (event: PointerEvent) => {
       if (!isResizing.current) return;
-
-      const deltaX = e.clientX - startX;
-      const newWidth = startWidth + deltaX;
-
-      // If dragging left past threshold, collapse
-      if (newWidth < COLLAPSE_THRESHOLD && !isCollapsed) {
-        setCollapsed(true);
-      }
-      // If dragging right from collapsed state, expand
-      else if (isCollapsed && newWidth > COLLAPSED_WIDTH + 30) {
-        setCollapsed(false);
-        // Restore previous width or use a reasonable default
-        const expandedWidth = Math.max(COLLAPSE_THRESHOLD, Math.min(newWidth, 400));
-        setWidth(expandedWidth);
-      }
-      // Normal resize when expanded
-      else if (!isCollapsed && newWidth >= COLLAPSE_THRESHOLD) {
-        setWidth(newWidth);
-      }
+      resizeSidebar(startWidth + event.clientX - startX);
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
       isResizing.current = false;
       Object.assign(document.body.style, {
         cursor: '',
         userSelect: ''
       });
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  }, [setWidth, isCollapsed, width, setCollapsed]);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp, { once: true });
+    window.addEventListener('pointercancel', handlePointerUp, { once: true });
+  }, [isCollapsed, resizeSidebar, width]);
+
+  const handleResizeKeyDown = useCallback((event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleCollapse();
+      return;
+    }
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      resizeSidebar((isCollapsed ? COLLAPSED_WIDTH : width) - 24);
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      resizeSidebar((isCollapsed ? MIN_WIDTH : width) + 24);
+    }
+  }, [isCollapsed, resizeSidebar, toggleCollapse, width]);
 
   const handleCloseQueuePanel = useCallback(() => {
     dispatchLayoutUi({ type: 'queue', value: false });
   }, []);
 
-  const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : width;
+  const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : Math.min(width, getMaxSidebarWidth());
 
   return (
     <div className="bg-transparent text-foreground flex flex-col overflow-hidden max-w-full relative"
@@ -272,7 +297,7 @@ const MainLayout = () => {
 
       {/* Main content area */}
       <div
-        className="flex-1 flex overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-transparent main-content-layout"
+        className="flex-1 flex min-w-0 overflow-hidden md:pl-2 md:gap-2 relative z-0 bg-transparent main-content-layout"
         data-route-header={isHeaderRoute}
         data-route-nav={isNavRoute}
         data-active-song={hasActiveSong}
@@ -290,24 +315,37 @@ const MainLayout = () => {
               </Suspense>
             </div>
             {/* Resize handle */}
-            <div
-              role="button"
+            <button
+              type="button"
               aria-label={isCollapsed ? 'Expand sidebar' : 'Resize sidebar'}
               tabIndex={0}
-              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
-              onMouseDown={handleMouseDown}
-              className="absolute right-0 top-0 bottom-0 w-2 cursor-grab active:cursor-grabbing z-10 flex items-center justify-center group/resize"
+              onKeyDown={handleResizeKeyDown}
+              onPointerDown={handleResizePointerDown}
+              className="absolute -right-1 top-0 bottom-0 w-3 cursor-col-resize z-10 flex items-center justify-center group/resize border-0 bg-transparent p-0 touch-none"
             >
               <div className="w-0.5 h-16 bg-white/0 group-hover/resize:bg-white/40 rounded-full transition-colors" />
-            </div>
+            </button>
           </div>
         )}
 
         {/* Main content */}
-        <div className="flex-1 h-full overflow-hidden">
+        <div className="flex-1 min-w-0 h-full overflow-hidden">
           <div className="h-full overflow-y-auto overflow-x-hidden mobile-scroll-fix bg-transparent md:rounded-lg">
-            <main id="main-content" className="min-h-full">
-              <Outlet />
+            <main id="main-content" className="min-h-full flex flex-col">
+              <LazyMotion features={domAnimation}>
+                <AnimatePresence mode="wait" initial={false}>
+                  <m.div
+                    key={pathname}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    className="flex-1 w-full"
+                  >
+                    <Outlet />
+                  </m.div>
+                </AnimatePresence>
+              </LazyMotion>
               {!isMobile && !hideDesktopFooter && (
                 <Suspense fallback={null}>
                   <DesktopFooter />

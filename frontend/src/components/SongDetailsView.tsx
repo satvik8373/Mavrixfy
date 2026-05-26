@@ -6,16 +6,15 @@ import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAlbumColors } from '@/hooks/useAlbumColors';
 import { ShareSong } from './ShareSong';
 import { ShuffleButton } from './ShuffleButton';
-import {
-  ChevronDown,
-  MoreHorizontal,
-  SkipBack,
-  Play,
-  Pause,
-  SkipForward,
-  ListMusic,
-  Repeat
-} from 'lucide-react';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import PauseIcon from '@mui/icons-material/Pause';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import QueueMusicIcon from '@mui/icons-material/QueueMusic';
+import RepeatIcon from '@mui/icons-material/Repeat';
+import IosShareIcon from '@mui/icons-material/IosShare';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
+import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import { LikeButton } from './LikeButton';
 import { PingPongScroll } from './PingPongScroll';
 import { cn } from '@/lib/utils';
@@ -227,7 +226,7 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
               onClick={playPrevious}
               className="p-1.5 text-white active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
             >
-              <SkipBack className="h-5 w-5" fill="white" />
+              <SkipPreviousIcon className="h-5 w-5" />
             </button>
 
             <button type="button"
@@ -242,9 +241,9 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
               className="rounded-full flex items-center justify-center active:scale-95 transition-all shadow-lg flex-shrink-0 touch-target bg-white hover:bg-gray-100 w-10 h-10"
             >
               {isPlaying ? (
-                <Pause className="h-5 w-5 text-black" fill="black" />
+                <PauseIcon className="h-5 w-5 text-black" />
               ) : (
-                <Play className="h-5 w-5 text-black ml-0.5" fill="black" />
+                <PlayArrowIcon className="h-5 w-5 text-black ml-0.5" />
               )}
             </button>
 
@@ -252,7 +251,7 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
               onClick={playNext}
               className="p-1.5 text-white active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10"
             >
-              <SkipForward className="h-5 w-5" fill="white" />
+              <SkipNextIcon className="h-5 w-5" />
             </button>
 
             <button type="button"
@@ -262,7 +261,7 @@ const CompactQueueView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
                 isRepeating ? "text-white bg-white/20" : "text-white/70"
               )}
             >
-              <Repeat className="h-4 w-4" />
+              <RepeatIcon className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -526,7 +525,7 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
             onClick={playPrevious}
             className="p-2 text-white active:scale-95 transition-all flex-shrink-0 touch-target control-button rounded-full"
           >
-            <SkipBack className="h-6 w-6" fill="white" />
+            <SkipPreviousIcon className="h-6 w-6" />
           </button>
 
           <button type="button"
@@ -544,9 +543,9 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
             )}
           >
             {isPlaying ? (
-              <Pause className="h-6 w-6 text-black" fill="black" />
+              <PauseIcon className="h-6 w-6 text-black" />
             ) : (
-              <Play className="h-6 w-6 text-black ml-0.5" fill="black" />
+              <PlayArrowIcon className="h-6 w-6 text-black ml-0.5" />
             )}
           </button>
 
@@ -554,7 +553,7 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
             onClick={playNext}
             className="p-2 text-white active:scale-90 transition-all flex-shrink-0 touch-target control-button rounded-full hover:bg-white/10"
           >
-            <SkipForward className="h-6 w-6" fill="white" />
+            <SkipNextIcon className="h-6 w-6" />
           </button>
 
           <button type="button"
@@ -564,7 +563,7 @@ const NormalPlayerView = ({  playerState: { isLiked, isPlaying, isRepeating, isD
               isRepeating ? "text-white bg-white/20" : "text-white/70"
             )}
           >
-            <Repeat className="h-5 w-5" />
+            <RepeatIcon className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -1343,7 +1342,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               onClick={onClose}
               className="p-2 -ml-2 text-white/90 hover:text-white active:scale-95 transition-transform touch-target"
             >
-              <ChevronDown className="h-6 w-6" />
+              <KeyboardArrowDownIcon className="h-6 w-6" />
             </button>
             <span className="text-xs font-semibold text-white/70 uppercase tracking-widest">
               Now Playing
@@ -1352,7 +1351,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
               onClick={() => setState(prev => ({ ...prev, showMenu: !prev.showMenu }))}
               className="p-2 -mr-2 text-white/90 hover:text-white active:scale-95 transition-transform touch-target"
             >
-              <MoreHorizontal className="h-5 w-5" />
+              <MoreHorizIcon className="h-5 w-5" />
             </button>
 
             {/* Dropdown Menu */}
@@ -1367,16 +1366,14 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 <div className="absolute top-14 right-4 w-56 bg-[#282828] rounded-lg shadow-2xl z-50 overflow-hidden">
                   <div className="py-2">
                     <button type="button" className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3 touch-target">
-                      <ListMusic className="h-5 w-5" />
+                      <QueueMusicIcon className="h-5 w-5" />
                       Add to queue
                     </button>
                     <ShareSong
                       song={currentSong}
                       trigger={
                         <button type="button" className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3 touch-target">
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                          </svg>
+                          <IosShareIcon className="h-5 w-5" />
                           Share
                         </button>
                       }
@@ -1456,7 +1453,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                   showQueue ? "text-white" : "text-white/70 hover:text-white"
                 )}
               >
-                <ListMusic className="h-5 w-5" />
+                <QueueMusicIcon className="h-5 w-5" />
                 <span className="text-xs font-medium">Queue</span>
               </button>
 
@@ -1464,9 +1461,7 @@ const SongDetailsView = ({ isOpen, onClose }: SongDetailsViewProps) => {
                 song={currentSong}
                 trigger={
                   <button type="button" className="flex flex-col items-center gap-1 text-white/70 hover:text-white active:scale-95 transition-all touch-target">
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
+                    <IosShareIcon className="h-5 w-5" />
                     <span className="text-xs font-medium">Share</span>
                   </button>
                 }

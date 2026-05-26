@@ -6,7 +6,6 @@ import { startRecommendationSessionTracking } from './services/recommendationSer
 import { audioManager } from './utils/audioManager';
 
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
-import { getLocalStorageJSON } from './utils/storageUtils';
 import { cleanupOfflineData } from './utils/cleanupOfflineData';
 
 // Only preload absolute structural components
@@ -146,37 +145,23 @@ const ErrorFallback = () => {
 	);
 };
 
-// Auth gate that redirects to login if not authenticated - optimized for instant loading
-// Guest mode: allows access without authentication
 const AuthGate = ({ children, allowGuest = false }: { children: React.ReactNode; allowGuest?: boolean }) => {
 	const { isAuthenticated, loading } = useAuth();
 	const location = useLocation();
 
-	// Quick check for cached auth to avoid unnecessary loading states
-	const hasCachedAuth = getLocalStorageJSON('auth-store', { isAuthenticated: false }).isAuthenticated;
-
-	// If guest mode is allowed, always show content
 	if (allowGuest) {
 		return <>{children}</>;
 	}
 
-	// If we have cached auth, show content immediately for better UX (optimistic rendering)
-	if (hasCachedAuth) {
-		return <>{children}</>;
+	if (loading) {
+		return <div className="min-h-screen bg-[#121212]" />;
 	}
 
-	// If not authenticated, redirect to login immediately - no loading state
-	if (!isAuthenticated && !loading) {
+	if (!isAuthenticated) {
 		return <Navigate to="/login" state={{ from: location.pathname }} replace />;
 	}
 
-	// Show content immediately if authenticated
-	if (isAuthenticated) {
-		return <>{children}</>;
-	}
-
-	// Minimal loading state - no animation
-	return <div className="min-h-screen bg-[#121212]" />;
+	return <>{children}</>;
 };
 
 const LandingRedirector = () => {
@@ -408,21 +393,44 @@ function AppContent() {
 
 function App() {
 	useEffect(() => {
-		if (import.meta.env.DEV || window.location.search.includes('debug_cls=true')) {
-			try {
-				new PerformanceObserver((list) => {
-					for (const entry of list.getEntries()) {
-						if (!entry.hadRecentInput) {
-							console.warn('[CLS DETECTED]', entry.value, entry.sources);
-							const badge = document.createElement('div');
-							badge.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(255,0,0,0.9);color:white;padding:8px;z-index:999999;font-size:12px;font-family:monospace;border-radius:4px;max-width:300px;word-break:break-all;pointer-events:none;';
-							badge.innerHTML = `CLS: ${entry.value.toFixed(4)}<br/>Node: ${entry.sources[0]?.node?.nodeName || 'unknown'}.${entry.sources[0]?.node?.className || ''}`;
-							document.body.appendChild(badge);
-						}
-					}
-				}).observe({ type: 'layout-shift', buffered: true });
-			} catch (e) {}
+		if (!window.location.search.includes('debug_cls=true')) {
+			return;
 		}
+
+		let observer: PerformanceObserver | null = null;
+
+		try {
+			observer = new PerformanceObserver((list) => {
+				for (const entry of list.getEntries()) {
+					const layoutShiftEntry = entry as PerformanceEntry & {
+						hadRecentInput?: boolean;
+						value?: number;
+						sources?: Array<{ node?: Element }>;
+					};
+					const shiftValue = layoutShiftEntry.value ?? 0;
+
+					if (layoutShiftEntry.hadRecentInput || shiftValue < 0.01) {
+						continue;
+					}
+
+					const sourceNode = layoutShiftEntry.sources?.[0]?.node;
+					const sourceClassName = sourceNode instanceof HTMLElement ? sourceNode.className : '';
+					console.warn('[CLS DETECTED]', shiftValue, layoutShiftEntry.sources);
+
+					const badge = document.createElement('div');
+					badge.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(255,0,0,0.9);color:white;padding:8px;z-index:999999;font-size:12px;font-family:monospace;border-radius:4px;max-width:300px;word-break:break-all;pointer-events:none;';
+					badge.innerHTML = `CLS: ${shiftValue.toFixed(4)}<br/>Node: ${sourceNode?.nodeName || 'unknown'}.${sourceClassName}`;
+					document.body.appendChild(badge);
+				}
+			});
+			observer.observe({ type: 'layout-shift', buffered: true });
+		} catch (_error) {
+			observer = null;
+		}
+
+		return () => {
+			observer?.disconnect();
+		};
 	}, []);
 
 	useEffect(() => {

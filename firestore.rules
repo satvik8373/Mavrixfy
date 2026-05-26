@@ -58,6 +58,14 @@ service cloud.firestore {
     match /users/{userId}/likedSongs/{songId} {
       allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
+    match /users/{userId}/likedSongs:v1/{songId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // User's push notifications tokens subcollection
+    match /users/{userId}/pushTokens/{tokenId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
     
     // Promotions - public read, admin write
     match /promotions/{promotionId} {

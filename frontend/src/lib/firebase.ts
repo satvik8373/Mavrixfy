@@ -20,21 +20,17 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 let authReadyPromise: Promise<User | null> | null = null;
 
-// Initialize persistence for auth - do this asynchronously
-const initializeAuth = async () => {
-  try {
-    await setPersistence(auth, browserLocalPersistence);
-  } catch (error) {
-    // Error setting persistence
-  }
-};
-
-// Call initialize function
-initializeAuth().catch(error => {
-  // Failed to initialize auth persistence
+// Ensure auth session persists across page refreshes
+setPersistence(auth, browserLocalPersistence).catch(() => {
+  // Persistence setting failed - auth will still work but may not persist
 });
 
 export const db = getFirestore(app);
+
+if (typeof window !== 'undefined') {
+  (window as any)._firebase_db = db;
+  (window as any)._firebase_auth = auth;
+}
 
 // Initialize Firebase Storage with CORS configuration
 export const storage = getStorage(app);

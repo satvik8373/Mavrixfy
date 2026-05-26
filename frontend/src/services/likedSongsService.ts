@@ -17,9 +17,18 @@ import {
 import { db } from "@/lib/firebase";
 import { Song } from "@/types";
 
-// IMPORTANT: This service ONLY works with user-specific liked songs
-// Path: users/{userId}/likedSongs/{songId}
+// IMPORTANT: This service ONLY works with user-specific liked songs.
+// Canonical path: users/{userId}/likedSongs/{songId}
 // NEVER save to the main 'songs' collection - that's for other app features
+const LIKED_SONGS_COLLECTION = 'likedSongs';
+const LEGACY_LIKED_SONGS_COLLECTION = 'likedSongs:v1';
+const LIKED_SONGS_COLLECTIONS = [LIKED_SONGS_COLLECTION, LEGACY_LIKED_SONGS_COLLECTION] as const;
+
+const likedSongsCollection = (userId: string, collectionName = LIKED_SONGS_COLLECTION) =>
+  collection(db, 'users', userId, collectionName);
+
+const likedSongDocument = (userId: string, songId: string, collectionName = LIKED_SONGS_COLLECTION) =>
+  doc(db, 'users', userId, collectionName, songId);
 
 export interface LikedSong {
   id: string;
@@ -189,27 +198,31 @@ export const isSongAlreadyLiked = async (title: string, artist: string): Promise
   }
   
   try {
-    const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
-    
-    const duplicateQuery = query(
-      likedSongsRef,
-      where('normalizedTitle', '==', normalizedTitle),
-      where('normalizedArtist', '==', normalizedArtist),
-      limit(1)
-    );
-
     let exists = false;
-    try {
-      const snapshot = await getDocs(duplicateQuery);
-      exists = !snapshot.empty;
-    } catch {
-      const snapshot = await getDocs(likedSongsRef);
-      exists = snapshot.docs.some(doc => {
-        const data = doc.data();
-        const existingTitle = data.normalizedTitle || normalizeForDedupe(data.title);
-        const existingArtist = data.normalizedArtist || normalizeForDedupe(data.artist);
-        return existingTitle === normalizedTitle && existingArtist === normalizedArtist;
-      });
+
+    for (const collectionName of LIKED_SONGS_COLLECTIONS) {
+      const likedSongsRef = likedSongsCollection(userId, collectionName);
+      const duplicateQuery = query(
+        likedSongsRef,
+        where('normalizedTitle', '==', normalizedTitle),
+        where('normalizedArtist', '==', normalizedArtist),
+        limit(1)
+      );
+
+      try {
+        const snapshot = await getDocs(duplicateQuery);
+        exists = !snapshot.empty;
+      } catch {
+        const snapshot = await getDocs(likedSongsRef);
+        exists = snapshot.docs.some(doc => {
+          const data = doc.data();
+          const existingTitle = data.normalizedTitle || normalizeForDedupe(data.title);
+          const existingArtist = data.normalizedArtist || normalizeForDedupe(data.artist);
+          return existingTitle === normalizedTitle && existingArtist === normalizedArtist;
+        });
+      }
+
+      if (exists) break;
     }
     
     // Cache the result
@@ -257,7 +270,7 @@ export const addLikedSong = async (
           }
 
           const documentId = String(song._id || getDedupeKey(song.title, song.artist)).replace(/\//g, '_');
-          const likedSongRef = doc(db, 'users', userId, 'likedSongs:v1', documentId);
+          const likedSongRef = likedSongDocument(userId, documentId);
           
           // Determine the likedAt timestamp
           let likedAtTimestamp;
@@ -340,19 +353,20 @@ export const addMultipleLikedSongs = async (
   const errorSongs: BulkLikedSongIssue[] = [];
 
   try {
-    const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
-    const existingSnapshot = await getDocs(likedSongsRef);
     const existingKeys = new Set<string>();
     const existingIds = new Set<string>();
 
-    existingSnapshot.forEach((docSnap) => {
-      existingIds.add(docSnap.id);
-      const data = docSnap.data();
-      const existingKey = data.dedupeKey || getDedupeKey(data.normalizedTitle || data.title, data.normalizedArtist || data.artist);
-      if (existingKey !== '|') {
-        existingKeys.add(existingKey);
-      }
-    });
+    for (const collectionName of LIKED_SONGS_COLLECTIONS) {
+      const existingSnapshot = await getDocs(likedSongsCollection(userId, collectionName));
+      existingSnapshot.forEach((docSnap) => {
+        existingIds.add(docSnap.id);
+        const data = docSnap.data();
+        const existingKey = data.dedupeKey || getDedupeKey(data.normalizedTitle || data.title, data.normalizedArtist || data.artist);
+        if (existingKey !== '|') {
+          existingKeys.add(existingKey);
+        }
+      });
+    }
 
     const normalizedInput = new Map<string, Song>();
     const seenInputIds = new Set<string>();
@@ -419,7 +433,7 @@ export const addMultipleLikedSongs = async (
         }
 
         try {
-          const likedSongRef = doc(db, 'users', userId, 'likedSongs:v1', song._id);
+          const likedSongRef = likedSongDocument(userId, song._id);
           const likedAtIso = toIsoDateString(song.likedAt) ?? toIsoDateString(song.createdAt);
           const likedAtValue = likedAtIso ? new Date(likedAtIso) : serverTimestamp();
           const likedSongData: LikedSong = {
@@ -527,35 +541,35 @@ export const removeLikedSong = async (songId: string): Promise<void> => {
   }
   
   try {
-    // First, check if the document exists with the given ID
-    const likedSongRef = doc(db, 'users', userId, 'likedSongs:v1', songId);
-    
-    // Check if document exists before attempting deletion
-    const docSnap = await getDoc(likedSongRef);
-    if (!docSnap.exists()) {
-      // Try to find the document by searching all liked songs
-      const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
-      const snapshot = await getDocs(likedSongsRef);
-      
-      let foundDocId = null;
+    let deleted = false;
+
+    for (const collectionName of LIKED_SONGS_COLLECTIONS) {
+      const likedSongRef = likedSongDocument(userId, songId, collectionName);
+      const docSnap = await getDoc(likedSongRef);
+
+      if (docSnap.exists()) {
+        await deleteDoc(likedSongRef);
+        deleted = true;
+        continue;
+      }
+
+      const snapshot = await getDocs(likedSongsCollection(userId, collectionName));
+      let foundDocId: string | null = null;
       snapshot.forEach(doc => {
         const data = doc.data();
-        
-        // Check if this document matches our song by ID or by title/artist
         if (doc.id === songId || data.id === songId) {
           foundDocId = doc.id;
         }
       });
-      
-      if (foundDocId && foundDocId !== songId) {
-        const correctRef = doc(db, 'users', userId, 'likedSongs:v1', foundDocId);
-        await deleteDoc(correctRef);
-      } else {
-        throw new Error(`Song not found in Firestore with ID: ${songId}`);
+
+      if (foundDocId) {
+        await deleteDoc(likedSongDocument(userId, foundDocId, collectionName));
+        deleted = true;
       }
-    } else {
-      // Document exists, delete it normally
-      await deleteDoc(likedSongRef);
+    }
+
+    if (!deleted) {
+      throw new Error(`Song not found in Firestore with ID: ${songId}`);
     }
     
     // Dispatch event to notify other components
@@ -577,56 +591,67 @@ export const loadLikedSongs = async (): Promise<Song[]> => {
   }
 
   try {
-    const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
-    
-    let snapshot;
-    try {
-      // Try to order by likedAt first
-      const q = query(likedSongsRef, orderBy('likedAt', 'desc'));
-      snapshot = await getDocs(q);
-    } catch (orderError) {
-      // If ordering fails, get all docs without ordering
-      snapshot = await getDocs(likedSongsRef);
-    }
-    
     const songs: Song[] = [];
-    
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data() as LikedSong;
-      
-      // CRITICAL: Always use the Firestore document ID as the primary ID
-      // This ensures that when we delete, we use the correct document ID
-      const songId = docSnap.id; // Use Firestore document ID
-      
-      if (!songId) {
-        return; // Skip songs without valid IDs
+    const seenSongKeys = new Set<string>();
+
+    for (const collectionName of LIKED_SONGS_COLLECTIONS) {
+      const likedSongsRef = likedSongsCollection(userId, collectionName);
+      let snapshot;
+      try {
+        // Try to order by likedAt first
+        const q = query(likedSongsRef, orderBy('likedAt', 'desc'));
+        snapshot = await getDocs(q);
+      } catch (orderError) {
+        // If ordering fails, get all docs without ordering
+        snapshot = await getDocs(likedSongsRef);
       }
 
-      const albumName = normalizeText(data.albumName);
-      const safeAlbumName = albumName && !OBJECT_ID_PATTERN.test(albumName) ? albumName : '';
-      const likedAtIso = toIsoDateString(data.likedAt);
-      const nowIso = new Date().toISOString();
-      const createdAtIso = likedAtIso ?? nowIso;
-      
-      songs.push({
-        _id: songId, // Use Firestore document ID as _id
-        title: data.title,
-        artist: data.artist,
-        album: safeAlbumName || null,
-        imageUrl: data.imageUrl,
-        audioUrl: data.audioUrl || (data as any).streamUrl || '',
-        streamUrl: (data as any).streamUrl || data.audioUrl || '',
-        duration: data.duration || 0,
-        albumId: safeAlbumName || null,
-        createdAt: createdAtIso,
-        updatedAt: toIsoDateString((data as { updatedAt?: unknown }).updatedAt) ?? createdAtIso,
-        // Preserve source information for UI indicators
-        source: data.source || 'mavrixfy',
-        spotifyId: data.spotifyId,
-        likedAt: likedAtIso ?? createdAtIso,
-        // Store the original data.id as a separate field for reference
-        originalId: data.id
-      } as Song & { source?: string; spotifyId?: string; likedAt?: any; originalId?: string });
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data() as LikedSong;
+        const songId = docSnap.id;
+
+        if (!songId) {
+          return;
+        }
+
+        const dedupeKey = data.dedupeKey || getDedupeKey(data.title, data.artist) || songId;
+        if (seenSongKeys.has(dedupeKey) || seenSongKeys.has(songId) || (data.id && seenSongKeys.has(data.id))) {
+          return;
+        }
+        seenSongKeys.add(dedupeKey);
+        seenSongKeys.add(songId);
+        if (data.id) seenSongKeys.add(data.id);
+
+        const albumName = normalizeText(data.albumName);
+        const safeAlbumName = albumName && !OBJECT_ID_PATTERN.test(albumName) ? albumName : '';
+        const likedAtIso = toIsoDateString(data.likedAt);
+        const nowIso = new Date().toISOString();
+        const createdAtIso = likedAtIso ?? nowIso;
+
+        songs.push({
+          _id: songId,
+          title: data.title,
+          artist: data.artist,
+          album: safeAlbumName || null,
+          imageUrl: data.imageUrl,
+          audioUrl: data.audioUrl || (data as any).streamUrl || '',
+          streamUrl: (data as any).streamUrl || data.audioUrl || '',
+          duration: data.duration || 0,
+          albumId: safeAlbumName || null,
+          createdAt: createdAtIso,
+          updatedAt: toIsoDateString((data as { updatedAt?: unknown }).updatedAt) ?? createdAtIso,
+          source: data.source || 'mavrixfy',
+          spotifyId: data.spotifyId,
+          likedAt: likedAtIso ?? createdAtIso,
+          originalId: data.id
+        } as Song & { source?: string; spotifyId?: string; likedAt?: any; originalId?: string });
+      });
+    }
+
+    songs.sort((a, b) => {
+      const aTime = toIsoDateString((a as Song & { likedAt?: unknown }).likedAt) ?? a.createdAt;
+      const bTime = toIsoDateString((b as Song & { likedAt?: unknown }).likedAt) ?? b.createdAt;
+      return new Date(bTime || 0).getTime() - new Date(aTime || 0).getTime();
     });
     
     return songs;
@@ -647,10 +672,14 @@ export const isSongLiked = async (songId: string): Promise<boolean> => {
   }
   
   try {
-    const likedSongRef = doc(db, 'users', userId, 'likedSongs:v1', songId);
-    const songDoc = await getDoc(likedSongRef);
-    
-    return songDoc.exists();
+    for (const collectionName of LIKED_SONGS_COLLECTIONS) {
+      const songDoc = await getDoc(likedSongDocument(userId, songId, collectionName));
+      if (songDoc.exists()) {
+        return true;
+      }
+    }
+
+    return false;
     
   } catch (error) {
     return false;
@@ -687,15 +716,21 @@ export const getLikedSongsCount = async (): Promise<number> => {
   }
 
   try {
-    const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
-    const snapshot = await getCountFromServer(likedSongsRef);
-    return snapshot.data().count;
+    const snapshots = await Promise.all(
+      LIKED_SONGS_COLLECTIONS.map((collectionName) =>
+        getCountFromServer(likedSongsCollection(userId, collectionName))
+      )
+    );
+    return snapshots.reduce((total, snapshot) => total + snapshot.data().count, 0);
     
   } catch (error) {
     try {
-      const likedSongsRef = collection(db, 'users', userId, 'likedSongs:v1');
-      const snapshot = await getDocs(likedSongsRef);
-      return snapshot.size;
+      const snapshots = await Promise.all(
+        LIKED_SONGS_COLLECTIONS.map((collectionName) =>
+          getDocs(likedSongsCollection(userId, collectionName))
+        )
+      );
+      return snapshots.reduce((total, snapshot) => total + snapshot.size, 0);
     } catch {
       return 0;
     }

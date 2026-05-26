@@ -1,8 +1,27 @@
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import { ChevronLeft, ChevronRight, ListMusic, Maximize2, Minimize2, Pause, PictureInPicture2, Play, Repeat, SkipBack, SkipForward, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import CloseIcon from "@mui/icons-material/Close";
+import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
+import DeleteIcon from "@mui/icons-material/Delete";
+import IosShareIcon from "@mui/icons-material/IosShare";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import PauseIcon from "@mui/icons-material/Pause";
+import PictureInPictureAltIcon from "@mui/icons-material/PictureInPictureAlt";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import QueueMusicIcon from "@mui/icons-material/QueueMusic";
+import RepeatIcon from "@mui/icons-material/Repeat";
+import ShuffleIcon from "@mui/icons-material/Shuffle";
+import SkipNextIcon from "@mui/icons-material/SkipNext";
+import SkipPreviousIcon from "@mui/icons-material/SkipPrevious";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import { renderToStaticMarkup } from "react-dom/server";
+import { type ReactElement, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import SongDetailsView from "@/components/SongDetailsView";
 import { LikeButton } from "@/components/LikeButton";
 import { ShuffleButton } from "@/components/ShuffleButton";
@@ -41,90 +60,100 @@ interface DocumentPictureInPictureApi {
 	window?: Window | null;
 }
 
-const MINI_PREV_ICON = `
-	<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<polygon points="19 20 9 12 19 4 19 20"></polygon>
-		<line x1="5" y1="19" x2="5" y2="5"></line>
-	</svg>
-`;
+interface FullscreenUiState {
+	isPlayerOpen: boolean;
+	isQueueOpen: boolean;
+	scrollY: number;
+	hasDetailsUnlocked: boolean;
+}
 
-const MINI_PLAY_ICON = `
-	<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-		<polygon points="7 4 20 12 7 20 7 4"></polygon>
-	</svg>
-`;
+type FullscreenUiAction =
+	| { type: "player_open"; value: boolean }
+	| { type: "queue_open"; value: boolean }
+	| { type: "toggle_queue" }
+	| { type: "scroll"; value: number }
+	| { type: "reset_details" }
+	| { type: "reset" };
 
-const MINI_PAUSE_ICON = `
-	<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<line x1="9" y1="5" x2="9" y2="19"></line>
-		<line x1="15" y1="5" x2="15" y2="19"></line>
-	</svg>
-`;
+const initialFullscreenUiState: FullscreenUiState = {
+	isPlayerOpen: false,
+	isQueueOpen: false,
+	scrollY: 0,
+	hasDetailsUnlocked: false,
+};
 
-const MINI_NEXT_ICON = `
-	<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<polygon points="5 4 15 12 5 20 5 4"></polygon>
-		<line x1="19" y1="5" x2="19" y2="19"></line>
-	</svg>
-`;
+const fullscreenUiReducer = (state: FullscreenUiState, action: FullscreenUiAction): FullscreenUiState => {
+	switch (action.type) {
+		case "player_open":
+			if (!action.value) return initialFullscreenUiState;
+			return { ...state, isPlayerOpen: true, isQueueOpen: false };
+		case "queue_open":
+			return { ...state, isQueueOpen: state.isPlayerOpen && action.value };
+		case "toggle_queue":
+			return { ...state, isQueueOpen: state.isPlayerOpen ? !state.isQueueOpen : false };
+		case "scroll":
+			return {
+				...state,
+				scrollY: action.value,
+				hasDetailsUnlocked: state.hasDetailsUnlocked || action.value > 18,
+			};
+		case "reset_details":
+			return { ...state, hasDetailsUnlocked: false };
+		case "reset":
+			return initialFullscreenUiState;
+		default:
+			return state;
+	}
+};
 
-const MINI_SHUFFLE_ICON = `
-	<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<polyline points="16 3 21 3 21 8"></polyline>
-		<line x1="4" y1="20" x2="21" y2="3"></line>
-		<polyline points="21 16 21 21 16 21"></polyline>
-		<line x1="15" y1="15" x2="21" y2="21"></line>
-		<line x1="4" y1="4" x2="9" y2="9"></line>
-	</svg>
-`;
+interface PlaybackUiState {
+	isTransitioning: boolean;
+	showSongDetails: boolean;
+	showQueue: boolean;
+	isMiniPlayerOpen: boolean;
+}
 
-const MINI_QUEUE_ICON = `
-	<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<line x1="4" y1="6" x2="20" y2="6"></line>
-		<line x1="4" y1="12" x2="14" y2="12"></line>
-		<line x1="4" y1="18" x2="10" y2="18"></line>
-		<circle cx="18" cy="17.5" r="2.5"></circle>
-	</svg>
-`;
+type PlaybackUiAction =
+	| { type: "transitioning"; value: boolean }
+	| { type: "song_details"; value: boolean }
+	| { type: "queue"; value: boolean }
+	| { type: "mini_player"; value: boolean };
 
-const MINI_SHARE_ICON = `
-	<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<path d="M12 16V4"></path>
-		<path d="M8 8l4-4 4 4"></path>
-		<path d="M4 14v5h16v-5"></path>
-	</svg>
-`;
+const initialPlaybackUiState: PlaybackUiState = {
+	isTransitioning: false,
+	showSongDetails: false,
+	showQueue: false,
+	isMiniPlayerOpen: false,
+};
 
-const MINI_VOLUME_ICON = `
-	<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<polygon points="11 5 6 9 3 9 3 15 6 15 11 19 11 5"></polygon>
-		<path d="M15.5 8.5a4.7 4.7 0 0 1 0 7"></path>
-		<path d="M18.3 6.2a8 8 0 0 1 0 11.6"></path>
-	</svg>
-`;
+const playbackUiReducer = (state: PlaybackUiState, action: PlaybackUiAction): PlaybackUiState => {
+	switch (action.type) {
+		case "transitioning":
+			return { ...state, isTransitioning: action.value };
+		case "song_details":
+			return { ...state, showSongDetails: action.value };
+		case "queue":
+			return { ...state, showQueue: action.value };
+		case "mini_player":
+			return { ...state, isMiniPlayerOpen: action.value };
+		default:
+			return state;
+	}
+};
 
-const MINI_VOLUME_MUTE_ICON = `
-	<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<polygon points="11 5 6 9 3 9 3 15 6 15 11 19 11 5"></polygon>
-		<line x1="16" y1="9" x2="21" y2="14"></line>
-		<line x1="21" y1="9" x2="16" y2="14"></line>
-	</svg>
-`;
+const miniIcon = (icon: ReactElement) => renderToStaticMarkup(icon);
 
-const MINI_PLUS_ICON = `
-	<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<circle cx="12" cy="12" r="9"></circle>
-		<line x1="12" y1="8" x2="12" y2="16"></line>
-		<line x1="8" y1="12" x2="16" y2="12"></line>
-	</svg>
-`;
-
-const MINI_CHECK_ICON = `
-	<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<circle cx="12" cy="12" r="9"></circle>
-		<polyline points="8.5 12.5 11 15 15.5 9.8"></polyline>
-	</svg>
-`;
+const MINI_PREV_ICON = miniIcon(<SkipPreviousIcon className="mini-material-icon" aria-hidden="true" />);
+const MINI_PLAY_ICON = miniIcon(<PlayArrowIcon className="mini-material-icon" aria-hidden="true" />);
+const MINI_PAUSE_ICON = miniIcon(<PauseIcon className="mini-material-icon" aria-hidden="true" />);
+const MINI_NEXT_ICON = miniIcon(<SkipNextIcon className="mini-material-icon" aria-hidden="true" />);
+const MINI_SHUFFLE_ICON = miniIcon(<ShuffleIcon className="mini-material-icon mini-material-icon--sm" aria-hidden="true" />);
+const MINI_QUEUE_ICON = miniIcon(<QueueMusicIcon className="mini-material-icon mini-material-icon--sm" aria-hidden="true" />);
+const MINI_SHARE_ICON = miniIcon(<IosShareIcon className="mini-material-icon mini-material-icon--sm" aria-hidden="true" />);
+const MINI_VOLUME_ICON = miniIcon(<VolumeUpIcon className="mini-material-icon mini-material-icon--sm" aria-hidden="true" />);
+const MINI_VOLUME_MUTE_ICON = miniIcon(<VolumeOffIcon className="mini-material-icon mini-material-icon--sm" aria-hidden="true" />);
+const MINI_PLUS_ICON = miniIcon(<AddCircleOutlineIcon className="mini-material-icon" aria-hidden="true" />);
+const MINI_CHECK_ICON = miniIcon(<CheckCircleOutlineIcon className="mini-material-icon" aria-hidden="true" />);
 
 const getDocumentPictureInPictureApi = (): DocumentPictureInPictureApi | null => {
 	if (typeof window === "undefined") return null;
@@ -246,23 +275,35 @@ export const PlaybackControls = () => {
 	const volume = usePlayerStore(state => state.volume);
 	const isRepeating = usePlayerStore(state => state.isRepeating);
 
-	const [isTransitioning, setIsTransitioning] = useState(false);
-	const [showSongDetails, setShowSongDetails] = useState(false);
+	const [playbackUi, dispatchPlaybackUi] = useReducer(playbackUiReducer, initialPlaybackUiState);
 	const [isLiked, setIsLiked] = useState(false);
-	const [showQueue, setShowQueue] = useState(false);
-	const [isMiniPlayerOpen, setIsMiniPlayerOpen] = useState(false);
-	const [isFullscreenPlayerOpen, setIsFullscreenPlayerOpen] = useState(false);
-	const [isFullscreenQueueOpen, setIsFullscreenQueueOpen] = useState(false);
-	const [fullscreenScrollY, setFullscreenScrollY] = useState(0);
-	const [, setHasFullscreenDetailsUnlocked] = useState(false);
-	const [fullscreenArtworkLuminance, setFullscreenArtworkLuminance] = useState(0.45);
-	const [fullscreenSecondaryRgb, setFullscreenSecondaryRgb] = useState<[number, number, number]>([16, 16, 22]);
+	const [fullscreenUi, dispatchFullscreenUi] = useReducer(fullscreenUiReducer, initialFullscreenUiState);
+	const [fullscreenArtworkTheme, setFullscreenArtworkTheme] = useState<{
+		luminance: number;
+		secondaryRgb: [number, number, number];
+	}>({
+		luminance: 0.45,
+		secondaryRgb: [16, 16, 22],
+	});
 	const playerRef = useRef<HTMLDivElement>(null);
 	const miniPlayerWindowRef = useRef<Window | null>(null);
 	const fullscreenScrollContainerRef = useRef<HTMLDivElement | null>(null);
 	const fullscreenRelatedSliderRef = useRef<HTMLDivElement | null>(null);
 	const lastFullscreenScrollYRef = useRef(0);
 	const fullscreenUpcomingSongs = queue.slice(currentIndex + 1);
+	const {
+		isTransitioning,
+		showSongDetails,
+		showQueue,
+		isMiniPlayerOpen,
+	} = playbackUi;
+	const {
+		isPlayerOpen: isFullscreenPlayerOpen,
+		isQueueOpen: isFullscreenQueueOpen,
+		scrollY: fullscreenScrollY,
+	} = fullscreenUi;
+	const fullscreenArtworkLuminance = fullscreenArtworkTheme.luminance;
+	const fullscreenSecondaryRgb = fullscreenArtworkTheme.secondaryRgb;
 	const fullscreenRelatedSongs = queue
 		.reduce<{ song: any; index: number }[]>((acc, song, index) => {
 			if (!song) return acc;
@@ -334,6 +375,10 @@ export const PlaybackControls = () => {
 		seekTo(Math.max(0, Math.min(newTime, isNaN(duration) ? 0 : duration)));
 	};
 
+	const applyFullscreenArtworkTheme = useCallback((luminance: number, secondaryRgb: [number, number, number]) => {
+		setFullscreenArtworkTheme({ luminance, secondaryRgb });
+	}, []);
+
 	// Get liked state from the liked songs store if possible
 	useEffect(() => {
 		if (!currentSong) return;
@@ -349,8 +394,7 @@ export const PlaybackControls = () => {
 		let isCancelled = false;
 		const fallbackLuminance = getPrimaryThemeLuminance();
 		const fallbackSecondary = getPlayerSecondaryRgb();
-		setFullscreenArtworkLuminance(fallbackLuminance);
-		setFullscreenSecondaryRgb(fallbackSecondary);
+		applyFullscreenArtworkTheme(fallbackLuminance, fallbackSecondary);
 
 		if (!currentSong?.imageUrl || typeof window === "undefined") {
 			return () => {
@@ -373,7 +417,7 @@ export const PlaybackControls = () => {
 				canvas.height = sampleSize;
 				const context = canvas.getContext("2d", { willReadFrequently: true });
 				if (!context) {
-					setFullscreenArtworkLuminance(fallbackLuminance);
+					applyFullscreenArtworkTheme(fallbackLuminance, fallbackSecondary);
 					return;
 				}
 
@@ -403,27 +447,24 @@ export const PlaybackControls = () => {
 				}
 
 				if (!samples) {
-					setFullscreenArtworkLuminance(fallbackLuminance);
+					applyFullscreenArtworkTheme(fallbackLuminance, fallbackSecondary);
 					return;
 				}
 
-				setFullscreenArtworkLuminance(clampUnit(luminanceSum / samples));
 				const sampledRgb: [number, number, number] = [
 					Math.round(redSum / samples),
 					Math.round(greenSum / samples),
 					Math.round(blueSum / samples),
 				];
-				setFullscreenSecondaryRgb(sampledRgb);
+				applyFullscreenArtworkTheme(clampUnit(luminanceSum / samples), sampledRgb);
 			} catch {
-				setFullscreenArtworkLuminance(fallbackLuminance);
-				setFullscreenSecondaryRgb(fallbackSecondary);
+				applyFullscreenArtworkTheme(fallbackLuminance, fallbackSecondary);
 			}
 		};
 
 		image.onerror = () => {
 			if (!isCancelled) {
-				setFullscreenArtworkLuminance(fallbackLuminance);
-				setFullscreenSecondaryRgb(fallbackSecondary);
+				applyFullscreenArtworkTheme(fallbackLuminance, fallbackSecondary);
 			}
 		};
 
@@ -432,7 +473,7 @@ export const PlaybackControls = () => {
 		return () => {
 			isCancelled = true;
 		};
-	}, [currentSong?.imageUrl]);
+	}, [currentSong?.imageUrl, applyFullscreenArtworkTheme]);
 
 	// Listen for like updates from other components
 	useEffect(() => {
@@ -472,11 +513,11 @@ export const PlaybackControls = () => {
 	// Smooth song changes and handle navigation
 	useEffect(() => {
 		if (currentSong) {
-			setIsTransitioning(true);
+			dispatchPlaybackUi({ type: "transitioning", value: true });
 			// Use requestAnimationFrame instead of setTimeout to avoid performance violations
 			const animationId = requestAnimationFrame(() => {
 				requestAnimationFrame(() => {
-					setIsTransitioning(false);
+					dispatchPlaybackUi({ type: "transitioning", value: false });
 				});
 			});
 			return () => cancelAnimationFrame(animationId);
@@ -508,39 +549,34 @@ export const PlaybackControls = () => {
 			miniPlayerWindow.close();
 		}
 		miniPlayerWindowRef.current = null;
-		setIsMiniPlayerOpen(false);
+		dispatchPlaybackUi({ type: "mini_player", value: false });
 	}, []);
 
 	const toggleFullscreenPlayer = useCallback(async () => {
 		try {
 			if (getActiveFullscreenElement()) {
 				await exitElementFullscreen();
-				setIsFullscreenPlayerOpen(false);
-				setIsFullscreenQueueOpen(false);
+				dispatchFullscreenUi({ type: "reset" });
 				return;
 			}
 
-			setIsFullscreenQueueOpen(false);
+			dispatchFullscreenUi({ type: "queue_open", value: false });
 			await requestElementFullscreen(document.documentElement);
-			setIsFullscreenPlayerOpen(true);
+			dispatchFullscreenUi({ type: "player_open", value: true });
 		} catch (_error) {
-			setIsFullscreenPlayerOpen(false);
-			setIsFullscreenQueueOpen(false);
+			dispatchFullscreenUi({ type: "reset" });
 			toast.error("Fullscreen was blocked by the browser.");
 		}
 	}, []);
 
 	const toggleFullscreenQueue = useCallback(() => {
 		if (!isFullscreenPlayerOpen) return;
-		setIsFullscreenQueueOpen(prev => !prev);
+		dispatchFullscreenUi({ type: "toggle_queue" });
 	}, [isFullscreenPlayerOpen]);
 
 	const handleFullscreenScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
 		const nextScrollTop = event.currentTarget.scrollTop || 0;
-		setFullscreenScrollY(nextScrollTop);
-		if (nextScrollTop > 18) {
-			setHasFullscreenDetailsUnlocked(true);
-		}
+		dispatchFullscreenUi({ type: "scroll", value: nextScrollTop });
 		lastFullscreenScrollYRef.current = nextScrollTop;
 	}, []);
 
@@ -566,7 +602,6 @@ export const PlaybackControls = () => {
 	const updateMiniPlayerContent = useCallback(() => {
 		const miniPlayerWindow = miniPlayerWindowRef.current;
 		if (!miniPlayerWindow || miniPlayerWindow.closed) {
-			setIsMiniPlayerOpen(false);
 			return;
 		}
 
@@ -618,6 +653,7 @@ export const PlaybackControls = () => {
 		currentSong?.imageUrl,
 		currentTime,
 		duration,
+		volume,
 		isPlaying,
 		isLiked,
 		shuffleMode
@@ -745,6 +781,19 @@ export const PlaybackControls = () => {
 			}
 			.icon-btn.active {
 				color: #1ed760;
+			}
+			.mini-material-icon {
+				width: 18px;
+				height: 18px;
+				font-size: 18px;
+				fill: currentColor;
+				display: block;
+				flex-shrink: 0;
+			}
+			.mini-material-icon--sm {
+				width: 16px;
+				height: 16px;
+				font-size: 16px;
 			}
 			.progress-wrap {
 				margin-top: var(--space-2);
@@ -1025,13 +1074,13 @@ export const PlaybackControls = () => {
 			});
 
 			miniPlayerWindowRef.current = miniWindow;
-			setIsMiniPlayerOpen(true);
+			dispatchPlaybackUi({ type: "mini_player", value: true });
 			createMiniPlayerDocument(miniWindow);
 			updateMiniPlayerContent();
 
 			miniWindow.addEventListener("pagehide", () => {
 				miniPlayerWindowRef.current = null;
-				setIsMiniPlayerOpen(false);
+				dispatchPlaybackUi({ type: "mini_player", value: false });
 			}, { once: true });
 		} catch (error) {
 			const domError = error as DOMException | null;
@@ -1050,32 +1099,27 @@ export const PlaybackControls = () => {
 	useEffect(() => {
 		if (currentSong) return;
 		closeMiniPlayer();
-	}, [currentSong?._id, closeMiniPlayer]);
+	}, [currentSong, closeMiniPlayer]);
 
 	useEffect(() => {
 		if (currentSong) return;
-		setIsFullscreenPlayerOpen(false);
-		setIsFullscreenQueueOpen(false);
-		setFullscreenScrollY(0);
-		setHasFullscreenDetailsUnlocked(false);
+		dispatchFullscreenUi({ type: "reset" });
 		lastFullscreenScrollYRef.current = 0;
 		if (getActiveFullscreenElement()) {
 			void exitElementFullscreen().catch(() => { });
 		}
-	}, [currentSong?._id]);
+	}, [currentSong]);
 
 	useEffect(() => {
 		if (!isFullscreenPlayerOpen) {
-			setIsFullscreenQueueOpen(false);
-			setFullscreenScrollY(0);
-			setHasFullscreenDetailsUnlocked(false);
+			dispatchFullscreenUi({ type: "reset" });
 			lastFullscreenScrollYRef.current = 0;
 		}
 	}, [isFullscreenPlayerOpen]);
 
 	useEffect(() => {
 		if (!isFullscreenPlayerOpen) return;
-		setHasFullscreenDetailsUnlocked(false);
+		dispatchFullscreenUi({ type: "reset_details" });
 		const frame = window.requestAnimationFrame(() => {
 			if (!fullscreenScrollContainerRef.current) return;
 			fullscreenScrollContainerRef.current.scrollTop = 0;
@@ -1087,7 +1131,7 @@ export const PlaybackControls = () => {
 
 	useEffect(() => {
 		const syncFullscreenState = () => {
-			setIsFullscreenPlayerOpen(Boolean(getActiveFullscreenElement()));
+			dispatchFullscreenUi({ type: "player_open", value: Boolean(getActiveFullscreenElement()) });
 		};
 
 		document.addEventListener("fullscreenchange", syncFullscreenState);
@@ -1104,7 +1148,7 @@ export const PlaybackControls = () => {
 
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (event.key === "Escape") {
-				setIsFullscreenPlayerOpen(false);
+				dispatchFullscreenUi({ type: "reset" });
 			}
 		};
 
@@ -1153,8 +1197,8 @@ export const PlaybackControls = () => {
 
 	return (
 		<>
-			<SongDetailsView isOpen={showSongDetails} onClose={() => setShowSongDetails(false)} />
-			<QueueDrawer isOpen={showQueue} onClose={() => setShowQueue(false)} />
+			<SongDetailsView isOpen={showSongDetails} onClose={() => dispatchPlaybackUi({ type: "song_details", value: false })} />
+			<QueueDrawer isOpen={showQueue} onClose={() => dispatchPlaybackUi({ type: "queue", value: false })} />
 
 			{isFullscreenPlayerOpen && (
 				<div className="fixed inset-0 bottom-[90px] z-[110] hidden sm:block">
@@ -1197,6 +1241,7 @@ export const PlaybackControls = () => {
 								</div>
 								<div className="flex items-center gap-2">
 									<Button
+										type="button"
 										size="icon"
 										variant="ghost"
 										className={cn(
@@ -1211,9 +1256,10 @@ export const PlaybackControls = () => {
 										onClick={toggleFullscreenQueue}
 										title="Queue"
 									>
-										<ListMusic className="h-4 w-4" />
+										<QueueMusicIcon className="h-4 w-4" />
 									</Button>
 									<Button
+										type="button"
 										size="icon"
 										variant="ghost"
 										className={cn(
@@ -1225,7 +1271,7 @@ export const PlaybackControls = () => {
 										onClick={toggleFullscreenPlayer}
 										title="Exit Fullscreen"
 									>
-										<Minimize2 className="h-4 w-4" />
+										<CloseFullscreenIcon className="h-4 w-4" />
 									</Button>
 								</div>
 							</div>
@@ -1285,10 +1331,10 @@ export const PlaybackControls = () => {
 													size="icon"
 													variant="ghost"
 													className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-													onClick={() => setIsFullscreenQueueOpen(false)}
+													onClick={() => dispatchFullscreenUi({ type: "queue_open", value: false })}
 													title="Close Queue"
 												>
-													<X className="h-4 w-4" />
+													<CloseIcon className="h-4 w-4" />
 												</Button>
 											</div>
 
@@ -1321,18 +1367,11 @@ export const PlaybackControls = () => {
 														const songDuration = Number((song as any).duration);
 
 														return (
-															<div
+															<button
+																type="button"
 																key={`${song._id || (song as any).id || song.title}-${queueIndex}`}
-																className="group flex items-center gap-3 rounded-lg hover:bg-white/[0.1] transition-all duration-200 px-2 py-1.5 cursor-pointer"
-																role="button"
-																tabIndex={0}
+																className="group flex w-full items-center gap-3 rounded-lg hover:bg-white/[0.1] transition-all duration-200 px-2 py-1.5 cursor-pointer text-left bg-transparent border-0"
 																onClick={() => playSongFromFullscreenQueue(queueIndex)}
-																onKeyDown={(event) => {
-																	if (event.key === "Enter" || event.key === " ") {
-																		event.preventDefault();
-																		playSongFromFullscreenQueue(queueIndex);
-																	}
-																}}
 															>
 																<div className="w-5 text-center text-[11px] text-white/45 tabular-nums">{idx + 1}</div>
 																<img
@@ -1349,6 +1388,7 @@ export const PlaybackControls = () => {
 																		{Number.isFinite(songDuration) && songDuration > 0 ? formatTime(songDuration) : "--:--"}
 																	</span>
 																	<Button
+																		type="button"
 																		size="icon"
 																		variant="ghost"
 																		className="h-7 w-7 text-white/45 hover:text-red-300 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1358,10 +1398,10 @@ export const PlaybackControls = () => {
 																		}}
 																		title="Remove From Queue"
 																	>
-																		<Trash2 className="h-3.5 w-3.5" />
+																		<DeleteIcon className="h-3.5 w-3.5" />
 																	</Button>
 																</div>
-															</div>
+															</button>
 														);
 													})
 												)}
@@ -1386,40 +1426,35 @@ export const PlaybackControls = () => {
 									) : (
 										<div className="relative">
 											<Button
+												type="button"
 												size="icon"
 												variant="ghost"
 												className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full border border-white/15 bg-black/40 text-white/90 hover:bg-black/60"
 												onClick={() => scrollFullscreenRelated("left")}
 												title="Scroll Left"
 											>
-												<ChevronLeft className="h-4 w-4" />
+												<ChevronLeftIcon className="h-4 w-4" />
 											</Button>
 											<Button
+												type="button"
 												size="icon"
 												variant="ghost"
 												className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full border border-white/15 bg-black/40 text-white/90 hover:bg-black/60"
 												onClick={() => scrollFullscreenRelated("right")}
 												title="Scroll Right"
 											>
-												<ChevronRight className="h-4 w-4" />
+												<ChevronRightIcon className="h-4 w-4" />
 											</Button>
 											<div
 												ref={fullscreenRelatedSliderRef}
 												className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden px-12 md:px-14"
 											>
 												{fullscreenRelatedSongs.map(({ song, index: queueIndex }) => (
-													<div
+													<button
+														type="button"
 														key={`${song._id || (song as any).id || song.title}-related-slider-${queueIndex}`}
-														className="group snap-start shrink-0 w-[clamp(190px,22vw,300px)] cursor-pointer"
-														role="button"
-														tabIndex={0}
+														className="group snap-start shrink-0 w-[clamp(190px,22vw,300px)] cursor-pointer text-left bg-transparent border-0 p-0"
 														onClick={() => playSongFromFullscreenQueue(queueIndex)}
-														onKeyDown={(event) => {
-															if (event.key === "Enter" || event.key === " ") {
-																event.preventDefault();
-																playSongFromFullscreenQueue(queueIndex);
-															}
-														}}
 													>
 														<div
 															className="h-[clamp(116px,13vw,170px)] rounded-xl overflow-hidden border border-white/15 bg-white/8 shadow-[0_8px_24px_rgba(0,0,0,0.24)]"
@@ -1433,7 +1468,7 @@ export const PlaybackControls = () => {
 														</div>
 														<p className="text-[1.1rem] leading-tight font-semibold text-white mt-2.5 line-clamp-2">{song.title}</p>
 														<p className="text-sm leading-tight text-white/70 truncate mt-1">{song.artist}</p>
-													</div>
+													</button>
 												))}
 											</div>
 										</div>
@@ -1497,7 +1532,7 @@ export const PlaybackControls = () => {
 										<h3 className="text-3xl leading-none font-semibold text-white/90">Next in queue</h3>
 										<button
 											type="button"
-											onClick={() => setIsFullscreenQueueOpen(true)}
+											onClick={() => dispatchFullscreenUi({ type: "queue_open", value: true })}
 											className="text-sm leading-tight font-semibold text-white/65 hover:text-white transition-colors"
 										>
 											Open queue
@@ -1505,17 +1540,10 @@ export const PlaybackControls = () => {
 									</div>
 
 									{nextQueueSong ? (
-										<div
-											className="flex items-center gap-3 rounded-xl hover:bg-white/[0.09] transition-colors cursor-pointer p-2"
-											role="button"
-											tabIndex={0}
+										<button
+											type="button"
+											className="flex w-full items-center gap-3 rounded-xl hover:bg-white/[0.09] transition-colors cursor-pointer p-2 text-left bg-transparent border-0"
 											onClick={() => playSongFromFullscreenQueue(currentIndex + 1)}
-											onKeyDown={(event) => {
-												if (event.key === "Enter" || event.key === " ") {
-													event.preventDefault();
-													playSongFromFullscreenQueue(currentIndex + 1);
-												}
-											}}
 										>
 											<img
 												src={nextQueueSong.imageUrl}
@@ -1526,7 +1554,7 @@ export const PlaybackControls = () => {
 												<p className="text-xl leading-tight font-semibold text-white truncate">{nextQueueSong.title}</p>
 												<p className="text-base leading-tight text-white/70 truncate">{nextQueueSong.artist}</p>
 											</div>
-										</div>
+										</button>
 									) : (
 										<p className="text-base leading-tight text-white/70">Queue is empty right now.</p>
 									)}
@@ -1587,44 +1615,53 @@ export const PlaybackControls = () => {
 							<ShuffleButton size="sm" />
 
 							<Button
+								type="button"
 								size="icon"
 								variant="ghost"
 								className="hover:text-white text-white/70 h-8 w-8 hover:scale-105 transition-all"
 								onClick={playPrevious}
 								disabled={!currentSong}
+								aria-label="Previous track"
 							>
-								<SkipBack className="h-4 w-4 fill-current" />
+								<SkipPreviousIcon className="h-4 w-4" />
 							</Button>
 
 							<Button
+								type="button"
 								size="icon"
-								className="bg-white hover:bg-white hover:scale-110 text-black rounded-full h-8 w-8 flex items-center justify-center transition-all"
+								className="bg-white hover:bg-white hover:scale-110 active:scale-95 text-black rounded-full h-8 w-8 flex items-center justify-center transition-all shadow-sm"
 								onClick={togglePlay}
 								disabled={!currentSong}
+								aria-label={isPlaying ? "Pause" : "Play"}
 							>
 								{isPlaying ?
-									<Pause className="h-4 w-4 fill-current" /> :
-									<Play className="h-4 w-4 ml-[1px] fill-current" />
+									<PauseIcon className="h-4 w-4" /> :
+									<PlayArrowIcon className="h-4 w-4 ml-[1px]" />
 								}
 							</Button>
 
 							<Button
+								type="button"
 								size="icon"
 								variant="ghost"
 								className="hover:text-white text-white/70 h-8 w-8 hover:scale-105 transition-all"
 								onClick={playNext}
 								disabled={!currentSong}
+								aria-label="Next track"
 							>
-								<SkipForward className="h-4 w-4 fill-current" />
+								<SkipNextIcon className="h-4 w-4" />
 							</Button>
 
 							<Button
+								type="button"
 								size="icon"
 								variant="ghost"
 								className={cn('hover:text-white h-8 w-8 hover:scale-105 transition-all', isRepeating ? 'text-[#1ed760]' : 'text-white/70')}
 								onClick={toggleRepeat}
+								aria-label={isRepeating ? "Turn repeat off" : "Turn repeat on"}
+								aria-pressed={isRepeating}
 							>
-								<Repeat className="h-4 w-4" />
+								<RepeatIcon className="h-4 w-4" />
 							</Button>
 						</div>
 
@@ -1632,26 +1669,19 @@ export const PlaybackControls = () => {
 							<div className="text-[11px] text-white/70 w-[40px] text-right font-normal tabular-nums">{formatTime(currentTime)}</div>
 							<div className="w-full relative group">
 								<div
-									className="relative w-full cursor-pointer py-1"
-									role="slider"
-									aria-label="Seek time"
-									aria-valuenow={currentTime}
-									aria-valuemax={duration}
-									tabIndex={0}
-									onKeyDown={(e) => {
-										if (e.key === 'ArrowRight') {
-											seekToPosition(Math.min(duration, currentTime + 5));
-										} else if (e.key === 'ArrowLeft') {
-											seekToPosition(Math.max(0, currentTime - 5));
-										}
-									}}
-									onClick={(e) => {
-										const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-										const offsetX = e.clientX - rect.left;
-										const pct = Math.max(0, Math.min(1, offsetX / rect.width));
-										seekToPosition(pct * (isNaN(duration) ? 0 : duration));
-									}}
+									className="relative w-full py-1"
 								>
+									<input
+										type="range"
+										min={0}
+										max={Number.isFinite(duration) ? duration : 0}
+										step={0.1}
+										value={Number.isFinite(currentTime) ? currentTime : 0}
+										aria-label="Seek time"
+										disabled={!duration}
+										className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
+										onChange={(event) => seekToPosition(Number(event.currentTarget.value))}
+									/>
 									<div className="h-1 w-full rounded-full overflow-hidden bg-white/30 group-hover:bg-white/40 transition-colors">
 										<div
 											className="h-full bg-white rounded-full relative"
@@ -1669,6 +1699,7 @@ export const PlaybackControls = () => {
 					{/* volume controls */}
 					<div className="flex items-center gap-3 min-w-[220px] w-[30%] justify-end">
 						<Button
+							type="button"
 							size="icon"
 							variant="ghost"
 							className={cn(
@@ -1677,19 +1708,19 @@ export const PlaybackControls = () => {
 							)}
 							onClick={() => {
 								if (isFullscreenPlayerOpen) {
-									setIsFullscreenQueueOpen(prev => !prev);
+									dispatchFullscreenUi({ type: "toggle_queue" });
 									return;
 								}
 								window.dispatchEvent(new Event('toggleQueue'));
 								// Also keep the mobile drawer for mobile devices
 								if (window.innerWidth < 768) {
-									setShowQueue(true);
+									dispatchPlaybackUi({ type: "queue", value: true });
 								}
 							}}
 							data-queue-button
 							title={isFullscreenPlayerOpen ? "Toggle Fullscreen Queue" : "Toggle Queue"}
 						>
-							<ListMusic className="h-4 w-4" />
+							<QueueMusicIcon className="h-4 w-4" />
 						</Button>
 
 						<div className="flex items-center gap-2 ml-1">
@@ -1707,6 +1738,7 @@ export const PlaybackControls = () => {
 						</div>
 
 						<Button
+							type="button"
 							size="icon"
 							variant="ghost"
 							className={cn(
@@ -1716,10 +1748,11 @@ export const PlaybackControls = () => {
 							onClick={toggleMiniPlayer}
 							title={isMiniPlayerOpen ? "Close Miniplayer" : "Open Miniplayer"}
 						>
-							<PictureInPicture2 className="h-4 w-4" />
+							<PictureInPictureAltIcon className="h-4 w-4" />
 						</Button>
 
 						<Button
+							type="button"
 							size="icon"
 							variant="ghost"
 							className={cn(
@@ -1730,9 +1763,9 @@ export const PlaybackControls = () => {
 							title={isFullscreenPlayerOpen ? "Exit Fullscreen" : "Open Fullscreen"}
 						>
 							{isFullscreenPlayerOpen ? (
-								<Minimize2 className="h-4 w-4" />
+								<CloseFullscreenIcon className="h-4 w-4" />
 							) : (
-								<Maximize2 className="h-4 w-4" />
+								<OpenInFullIcon className="h-4 w-4" />
 							)}
 						</Button>
 					</div>

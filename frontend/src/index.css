@@ -230,6 +230,18 @@
   .dropdown *,
   .toast,
   .toast *,
+  /* Spinners and loaders */
+  .animate-spin,
+  .animate-spin *,
+  .spinner-smooth,
+  .spinner-smooth *,
+  .loader-spin,
+  .loader-spin *,
+  /* Skeleton loaders */
+  .skeleton-pulse,
+  .skeleton-shimmer,
+  .loading-smooth,
+  .state-transition,
   /* Landing page animations */
   .animate-\[slideUp_1s_ease-out\],
   .animate-\[fadeInUp_1\.2s_ease-out\],
@@ -255,13 +267,7 @@
   }
 
   /* Override all animations for instant loading */
-  .animate-spin,
-  .animate-pulse,
-  .animate-fade-in,
-  .skeleton-pulse,
-  .skeleton-shimmer,
-  .loading-smooth,
-  .state-transition {
+  .animate-fade-in {
     animation: none !important;
     transition: none !important;
   }
@@ -541,20 +547,20 @@
 
 /* Override Tailwind's fast animations with smooth ones */
 .animate-spin {
-  animation: smooth-spin 1s linear infinite;
+  animation: smooth-spin 1s linear infinite !important;
 }
 
 .animate-pulse {
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
 }
 
 .animate-fade-in {
-  animation: splash-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: splash-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* Prevent flickering during state changes */
 .loading-smooth {
-  transition: opacity 0.2s ease-in-out;
+  transition: opacity 0.2s ease-in-out !important;
 }
 
 /* Smooth spinner styles */
@@ -562,7 +568,7 @@
   border: 2px solid rgba(29, 185, 84, 0.2);
   border-top: 2px solid #1DB954;
   border-radius: 50%;
-  animation: smooth-spin 1s linear infinite;
+  animation: smooth-spin 1s linear infinite !important;
 }
 
 /* Prevent layout shifts during loading */

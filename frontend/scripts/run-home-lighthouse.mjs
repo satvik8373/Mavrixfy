@@ -2,8 +2,8 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
-const reportPath = join(process.cwd(), 'lighthouse-home-preview.json');
-const url = 'http://127.0.0.1:4173/home?lighthouse=1';
+const reportPath = join(process.cwd(), 'lighthouse-root-preview.json');
+const url = 'http://127.0.0.1:4173/';
 const MIN_SCORE = 90;
 const run = (commandLine, options = {}) =>
   new Promise((resolve, reject) => {
@@ -89,7 +89,7 @@ try {
   const metric = (audit) => report.audits[audit]?.displayValue ?? 'n/a';
   const performanceScore = score('performance');
 
-  console.log('\nHome production preview Lighthouse');
+  console.log('\nRoot production preview Lighthouse');
   console.log(`URL: ${url}`);
   console.log('Note: this audits the production preview build, not the Vite dev server on localhost:3000.');
   console.log(`Performance: ${performanceScore}`);

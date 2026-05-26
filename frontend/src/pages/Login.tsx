@@ -485,28 +485,6 @@ const Login = () => {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const isLogin = pathname === '/login';
 
-  // Check cached auth
-  const hasCachedAuth = (() => {
-    if ((locationState as any)?.fromLogout) return false;
-    try {
-      const raw = localStorage.getItem('auth-store');
-      if (!raw) return false;
-      const parsed = JSON.parse(raw);
-      const state = parsed?.state || parsed;
-      return Boolean(state?.isAuthenticated && state?.userId);
-    } catch {
-      return false;
-    }
-  })();
-
-  // Handle cached auth redirect
-  useEffect(() => {
-    if (hasCachedAuth) {
-      const redirectTo = (locationState as any)?.from || '/home';
-      navigate(redirectTo, { replace: true });
-    }
-  }, [hasCachedAuth, navigate, locationState]);
-
   // Handle standard auth redirect
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -515,7 +493,7 @@ const Login = () => {
     }
   }, [isAuthenticated, authLoading, navigate, locationState]);
 
-  if (hasCachedAuth) {
+  if (authLoading) {
     return <div className="min-h-screen bg-zinc-950" />;
   }
 

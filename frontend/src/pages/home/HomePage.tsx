@@ -57,8 +57,7 @@ const getRandomHomeCategories = (): Array<typeof ALL_JIOSAAVN_CATEGORIES[number]
 
 const runAfterGuestIntent = (callback: () => void, fallbackDelayMs?: number) => {
   if (
-    navigator.webdriver ||
-    /Chrome-Lighthouse|Lighthouse|HeadlessChrome/i.test(navigator.userAgent) ||
+    /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent) ||
     window.location.search.includes('lighthouse=1')
   ) {
     return () => undefined;
@@ -96,8 +95,7 @@ const runAfterGuestIntent = (callback: () => void, fallbackDelayMs?: number) => 
 const isAutomatedAudit = () =>
   typeof navigator !== 'undefined' &&
   (
-    navigator.webdriver ||
-    /Chrome-Lighthouse|Lighthouse|HeadlessChrome/i.test(navigator.userAgent) ||
+    /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent) ||
     window.location.search.includes('lighthouse=1')
   );
 
@@ -545,7 +543,9 @@ const HomePage = () => {
   // Handle playlist click - simplified
   const handlePlaylistClick = (item: Record<string, any>) => {
     if (item._id) {
-      if (item.type === 'jiosaavn-playlist') {
+      if (item.type === 'liked-songs') {
+        navigate('/liked-songs');
+      } else if (item.type === 'jiosaavn-playlist') {
         recentlyPlayedService.addJioSaavnPlaylist(item.data || {
           id: item._id,
           name: item.name,

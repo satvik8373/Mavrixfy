@@ -8,8 +8,7 @@ const loadLikedSongsFirestoreService = () => import('@/services/likedSongsServic
 const isAutomatedAudit = () =>
   typeof navigator !== 'undefined' &&
   (
-    navigator.webdriver ||
-    /Chrome-Lighthouse|Lighthouse|HeadlessChrome/i.test(navigator.userAgent) ||
+    /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent) ||
     window.location.search.includes('lighthouse=1')
   );
 
@@ -53,7 +52,7 @@ interface LikedSongsStore {
   isSaving: boolean;
 
   // Actions
-  loadLikedSongs: () => Promise<void>;
+  loadLikedSongs: (force?: boolean) => Promise<void>;
   addLikedSong: (song: Song) => Promise<void>;
   removeLikedSong: (songId: string) => Promise<void>;
   toggleLikeSong: (song: Song) => Promise<void>;
@@ -67,9 +66,9 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
       isLoading: false,
       isSaving: false,
 
-      loadLikedSongs: async () => {
+      loadLikedSongs: async (force = false) => {
         // Skip if already loading
-        if (get().isLoading) return;
+        if (get().isLoading && !force) return;
 
         set({ isLoading: true });
         let hasChanged = false; // Move this outside the try block
@@ -156,8 +155,8 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
 
           // Ensure song has _id and likedAt for internal consistency
           const now = new Date().toISOString();
-          const songToSave = { 
-            ...song, 
+          const songToSave = {
+            ...song,
             _id: songId,
             likedAt: song.likedAt || now, // Use existing likedAt or set current time
             createdAt: song.createdAt || now,
@@ -167,7 +166,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           // Optimistically update local state immediately for better UX
           const updatedSongs = [songToSave, ...get().likedSongs];
           const updatedSongIds = new Set(get().likedSongIds);
-          
+
           // Add both canonical and alternative IDs for global UI consistency
           updatedSongIds.add(songId);
           // Store originalId if it exists for backward compatibility
@@ -354,6 +353,18 @@ try {
     }));
   }
 } catch { }
+
+// Subscribe to auth store changes to reload liked songs when authentication state changes
+let lastUserId: string | null = useAuthStore.getState().userId;
+let lastIsAuthenticated: boolean = useAuthStore.getState().isAuthenticated;
+
+useAuthStore.subscribe((state) => {
+  if (state.userId !== lastUserId || state.isAuthenticated !== lastIsAuthenticated) {
+    lastUserId = state.userId;
+    lastIsAuthenticated = state.isAuthenticated;
+    useLikedSongsStore.getState().loadLikedSongs(true).catch(() => { });
+  }
+});
 
 // Initialize the store by loading liked songs
 // This must be done outside of any component to ensure it's only called once

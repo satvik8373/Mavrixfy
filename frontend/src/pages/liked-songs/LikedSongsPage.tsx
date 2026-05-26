@@ -24,7 +24,9 @@ import { Input } from '@/components/ui/input';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { usePlayerSync } from '@/hooks/usePlayerSync';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLikedSongsStore } from '@/stores/useLikedSongsStore';
+import { Spinner } from '@/components/ui/loading';
 import { Song } from '@/types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -126,10 +128,6 @@ const SongRow = React.memo(
 
     return (
       <div
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
-        onClick={handlePlayClick}
         className={cn(
           'group relative rounded-md cursor-pointer items-center',
           isMobile
@@ -137,9 +135,15 @@ const SongRow = React.memo(
             : 'grid grid-cols-[16px_4fr_3fr_2fr_40px_1fr_48px] gap-4 p-2 px-4 hover:bg-white/5 transition-colors',
         )}
       >
+        <button
+          type="button"
+          aria-label={`Play ${song.title}`}
+          onClick={handlePlayClick}
+          className="absolute inset-0 z-10 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+        />
         {/* Desktop: index / play */}
         {!isMobile && (
-          <div className="flex items-center justify-center text-sm text-muted-foreground group-hover:text-foreground">
+          <div className="relative z-20 flex items-center justify-center text-sm text-muted-foreground group-hover:text-foreground">
             {playing ? (
               <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={handleToggleClick}>
                 <Pause className="h-4 w-4 fill-current" />
@@ -177,7 +181,7 @@ const SongRow = React.memo(
 
         {/* Mobile: like + menu */}
         {isMobile && (
-          <div className="flex-shrink-0 flex items-center gap-1">
+          <div className="relative z-20 flex-shrink-0 flex items-center gap-1">
             <LikeButton isLiked onToggle={handleUnlikeClick} iconSize={20} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -203,7 +207,7 @@ const SongRow = React.memo(
         {!isMobile && <div className="text-muted-foreground text-sm">{dateLabel(song)}</div>}
         {/* Desktop: like */}
         {!isMobile && (
-          <div className="flex items-center justify-center">
+          <div className="relative z-20 flex items-center justify-center">
             <LikeButton isLiked onToggle={handleUnlikeClick} iconSize={18} />
           </div>
         )}
@@ -211,7 +215,7 @@ const SongRow = React.memo(
         {!isMobile && <div className="text-muted-foreground text-sm text-right">{formatTime(song.duration || 0)}</div>}
         {/* Desktop: menu */}
         {!isMobile && (
-          <div className="flex justify-end">
+          <div className="relative z-20 flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
@@ -398,8 +402,10 @@ const LikedSongsPage = () => {
 
   const { togglePlay, playAlbum, setIsPlaying, setUserInteracted } = usePlayerStore();
   const { currentSong, isPlaying } = usePlayerSync();
-  const { isAuthenticated } = useAuthStore();
-  const { likedSongs, loadLikedSongs, removeLikedSong } = useLikedSongsStore();
+  const { isAuthenticated: storeAuth } = useAuthStore();
+  const { isAuthenticated: contextAuth } = useAuth();
+  const isAuthenticated = storeAuth || contextAuth;
+  const { likedSongs, loadLikedSongs, removeLikedSong, isLoading } = useLikedSongsStore();
 
   // ── resize ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -410,8 +416,9 @@ const LikedSongsPage = () => {
 
   // ── load ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (isAuthenticated) loadLikedSongs().catch(() => {});
-  }, [isAuthenticated]);
+    // Force a fresh load from Firestore whenever auth is confirmed
+    if (isAuthenticated) loadLikedSongs(true).catch(() => { });
+  }, [isAuthenticated, loadLikedSongs]);
 
   // ── sort / filter ────────────────────────────────────────────────────────
   const visible = useMemo(() => {
@@ -554,9 +561,13 @@ const LikedSongsPage = () => {
         </div>
       )}
 
-      {/* ── Song list ───────────────────────────────────────────────────── */}
       <div className={cn(isMobile ? 'pb-36' : 'px-8 pb-8')}>
-        {likedSongs.length > 0 ? (
+        {isLoading && likedSongs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Spinner size="lg" className="text-purple-500" />
+            <p className="text-muted-foreground text-sm">Loading your liked songs…</p>
+          </div>
+        ) : likedSongs.length > 0 ? (
           <>
             {/* Desktop column headers */}
             {!isMobile && (

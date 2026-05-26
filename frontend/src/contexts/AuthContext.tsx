@@ -1,37 +1,8 @@
-import React, { createContext, useContext, useEffect, useReducer, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { getLocalStorageJSON } from '@/utils/storageUtils';
-
-const loadAuthRuntime = async () => {
-  const [authSdk, firestoreSdk, firebase] = await Promise.all([
-    import('firebase/auth'),
-    import('firebase/firestore'),
-    import('@/lib/firebase'),
-  ]);
-
-  return {
-    auth: firebase.auth,
-    db: firebase.db,
-    doc: firestoreSdk.doc,
-    getDoc: firestoreSdk.getDoc,
-    getIdToken: authSdk.getIdToken,
-    onAuthStateChanged: authSdk.onAuthStateChanged,
-  };
-};
-
-const isGuestFirstRoute = () => {
-  if (typeof window === 'undefined') return false;
-  return /^\/(?:home|search|settings|mood-playlist|albums\/|playlist\/|song\/|jiosaavn\/)/.test(window.location.pathname);
-};
-
-const isAutomatedAudit = () => {
-  if (typeof navigator === 'undefined') return false;
-  return (
-    navigator.webdriver ||
-    /Chrome-Lighthouse|Lighthouse|HeadlessChrome/i.test(navigator.userAgent) ||
-    window.location.search.includes('lighthouse=1')
-  );
-};
 
 interface User {
   id: string;
@@ -54,316 +25,147 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   isAuthenticated: false,
-  refreshUserData: async () => { },
-  isOnline: true
+  refreshUserData: async () => {},
+  isOnline: true,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-interface AuthState {
-  user: User | null;
-  loading: boolean;
-  error: Error | null;
-  isOnline: boolean;
-}
+const buildBasicUser = (firebaseUser: FirebaseUser): User => ({
+  id: firebaseUser.uid,
+  email: firebaseUser.email || '',
+  name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+  picture: firebaseUser.photoURL || '',
+});
 
-type AuthAction =
-  | { type: 'loading'; value: boolean }
-  | { type: 'user'; user: User | null; loading?: boolean }
-  | { type: 'error'; error: Error; user?: User | null }
-  | { type: 'online'; value: boolean };
+const loadUserProfile = async (firebaseUser: FirebaseUser): Promise<User> => {
+  const basicUser = buildBasicUser(firebaseUser);
 
-const authReducer = (state: AuthState, action: AuthAction): AuthState => {
-  switch (action.type) {
-    case 'loading':
-      return { ...state, loading: action.value };
-    case 'user':
-      return { ...state, user: action.user, loading: action.loading ?? state.loading };
-    case 'error':
-      return { ...state, error: action.error, user: action.user ?? state.user };
-    case 'online':
-      return { ...state, isOnline: action.value };
-    default:
-      return state;
+  try {
+    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+    const profile = userDoc.data();
+
+    return {
+      ...basicUser,
+      name: profile?.fullName || basicUser.name,
+      picture: profile?.imageUrl || basicUser.picture,
+    };
+  } catch {
+    return basicUser;
   }
 };
 
+const syncAuthStore = (nextUser: User | null) => {
+  if (!nextUser) {
+    useAuthStore.getState().reset();
+    return;
+  }
+
+  useAuthStore.getState().setAuthStatus(true, nextUser.id);
+  useAuthStore.getState().setUserProfile(nextUser.name, nextUser.picture);
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Check for cached auth immediately to avoid loading state
-  const cachedAuthStore = (() => {
-    try {
-      const parsed = getLocalStorageJSON('auth-store', null);
-      if (!parsed) return null;
-      return (parsed as any)?.state || parsed;
-    } catch {
-      return null;
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator === 'undefined' ? true : navigator.onLine,
+  );
+
+  const applyFirebaseUser = useCallback(async (firebaseUser: FirebaseUser | null) => {
+    if (!firebaseUser) {
+      setUser(null);
+      setError(null);
+      syncAuthStore(null);
+      return;
     }
-  })();
-  const isAuditGuestRoute = isGuestFirstRoute() && isAutomatedAudit();
-  const cachedIsAuthenticated = !isAuditGuestRoute && !!cachedAuthStore?.isAuthenticated;
 
-  const [authState, dispatchAuth] = useReducer(authReducer, undefined, () => {
-    const cachedUser = cachedIsAuthenticated && cachedAuthStore?.userId
-      ? {
-          id: cachedAuthStore.userId,
-          email: '',
-          name: cachedAuthStore.user?.fullName || 'User',
-          picture: cachedAuthStore.user?.imageUrl || '',
-        }
-      : null;
+    try {
+      const nextUser = await loadUserProfile(firebaseUser);
+      setUser(nextUser);
+      setError(null);
+      syncAuthStore(nextUser);
 
-    return {
-      user: cachedUser,
-      loading: !cachedIsAuthenticated,
-      error: null,
-      isOnline: true,
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        void import('@/services/webPushService')
+          .then(({ registerWebPush }) => registerWebPush(firebaseUser.uid))
+          .catch(() => {});
+      }
+    } catch (nextError) {
+      const fallbackUser = buildBasicUser(firebaseUser);
+      setUser(fallbackUser);
+      setError(nextError instanceof Error ? nextError : new Error('Failed to load user profile'));
+      syncAuthStore(fallbackUser);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    let unsubscribe: (() => void) | undefined;
+
+    const startAuth = async () => {
+      setLoading(true);
+
+      try {
+        await auth.authStateReady();
+        if (!isMounted) return;
+
+        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          setLoading(true);
+          await applyFirebaseUser(firebaseUser);
+          if (isMounted) setLoading(false);
+        });
+      } catch (nextError) {
+        if (!isMounted) return;
+        setError(nextError instanceof Error ? nextError : new Error('Failed to initialise authentication'));
+        setUser(null);
+        syncAuthStore(null);
+        setLoading(false);
+      }
     };
-  });
-  const { user, loading, error, isOnline } = authState;
-  const loadingRef = useRef(false);
-  const initialLoadCompletedRef = useRef(false);
-  const authStateCheckedRef = useRef(false);
-  const tokenRefreshIntervalRef = useRef<number | null>(null);
 
-  // Use ref to track current user to avoid dependency issues
-  const userRef = useRef(user);
-  const authStateCheckedOnceRef = useRef(false);
-
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
-
-  // Load user data from Firebase - NO dependencies to prevent loops
-  const loadUser = useCallback(async (forceRefresh = false) => {
-    // Prevent concurrent auth calls unless forced
-    if (loadingRef.current && !forceRefresh) return;
-
-    // Only run once unless forced
-    if (authStateCheckedOnceRef.current && !forceRefresh) return;
-
-    let authRuntime: Awaited<ReturnType<typeof loadAuthRuntime>> | null = null;
-
-    try {
-      loadingRef.current = true;
-      // Never show loading state if we already have a user (prevents flickering)
-      const currentUser = userRef.current;
-      if (!currentUser && !authStateCheckedRef.current && !initialLoadCompletedRef.current) {
-        dispatchAuth({ type: 'loading', value: true });
-      }
-
-      authRuntime = await loadAuthRuntime();
-      const firebaseUser = authRuntime.auth.currentUser;
-
-      if (firebaseUser) {
-        try {
-          // Get user's ID token - don't force refresh to avoid network errors
-          await authRuntime.getIdToken(firebaseUser);
-
-          // Get additional user data from Firestore with timeout
-          const firestorePromise = authRuntime.getDoc(authRuntime.doc(authRuntime.db, "users", firebaseUser.uid));
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Firestore timeout')), 5000)
-          );
-
-          const userDoc = await Promise.race([firestorePromise, timeoutPromise]) as any;
-          const userData = userDoc?.data?.();
-
-          // Only update state if user info has changed or forced refresh
-          const currentUser = userRef.current;
-          if (forceRefresh || !currentUser || currentUser.id !== firebaseUser.uid) {
-            const userObj = {
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              name: userData?.fullName || firebaseUser.displayName || 'User',
-              picture: userData?.imageUrl || firebaseUser.photoURL || ''
-            };
-
-            dispatchAuth({ type: 'user', user: userObj });
-
-            // Register web push notifications (silent — only if permission already granted)
-            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-              void import('@/services/webPushService')
-                .then(({ registerWebPush }) => registerWebPush(firebaseUser.uid))
-                .catch(() => {});
-            }
-
-            // Listen for foreground messages
-            void import('@/services/webPushService').then(({ onForegroundMessage }) => {
-              onForegroundMessage(() => {
-                // handled inside onForegroundMessage itself
-              });
-            });
-
-            // Update auth store only if user changed or auth is not ready
-            const authStore = useAuthStore.getState();
-            if (!authStore.isAuthenticated || authStore.userId !== firebaseUser.uid || !authStore.isAuthReady) {
-              useAuthStore.getState().setAuthStatus(true, firebaseUser.uid);
-              useAuthStore.getState().setUserProfile(
-                userObj.name,
-                userObj.picture
-              );
-            }
-          }
-        } catch (firestoreError) {
-          // Still set basic user data even if Firestore fails
-          const currentUser = userRef.current;
-          const authStore = useAuthStore.getState();
-          if (!currentUser || currentUser.id !== firebaseUser.uid || !authStore.isAuthReady) {
-            const basicUser = {
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              name: firebaseUser.displayName || 'User',
-              picture: firebaseUser.photoURL || ''
-            };
-
-            dispatchAuth({ type: 'user', user: basicUser });
-            useAuthStore.getState().setAuthStatus(true, firebaseUser.uid);
-          }
-        }
-      } else {
-        const currentUser = userRef.current;
-        const authStore = useAuthStore.getState();
-        // Reset if we had a user OR auth store is not ready (confirms guest status)
-        if ((currentUser !== null && authStateCheckedRef.current) || !authStore.isAuthReady) {
-          dispatchAuth({ type: 'user', user: null });
-          // Reset auth store
-          useAuthStore.getState().reset();
-        }
-      }
-    } catch (err) {
-      const nextError = err instanceof Error ? err : new Error('Failed to load user');
-
-      // CRITICAL FIX: Don't log out if we have a firebase user but just failed to load data
-      const firebaseUser = authRuntime?.auth.currentUser;
-      if (firebaseUser) {
-        // Ensure we have at least basic user data
-        if (!userRef.current) {
-          dispatchAuth({
-            type: 'error',
-            error: nextError,
-            user: {
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              name: firebaseUser.displayName || 'User',
-              picture: firebaseUser.photoURL || ''
-            }
-          });
-        } else {
-          dispatchAuth({ type: 'error', error: nextError });
-        }
-      } else {
-        // Only clear user if we truly have no firebase user
-        dispatchAuth({ type: 'error', error: nextError, user: null });
-        // Reset auth store
-        useAuthStore.getState().reset();
-      }
-    } finally {
-      dispatchAuth({ type: 'loading', value: false });
-      loadingRef.current = false;
-      authStateCheckedRef.current = true;
-      initialLoadCompletedRef.current = true;
-      authStateCheckedOnceRef.current = true; // Mark as checked
-    }
-  }, []); // EMPTY dependencies - prevents recreation and loops
-
-  // Set up periodic token refresh (every 55 minutes - token expires after 60)
-  useEffect(() => {
-    // Clear any existing interval
-    if (tokenRefreshIntervalRef.current) {
-      window.clearInterval(tokenRefreshIntervalRef.current);
-      tokenRefreshIntervalRef.current = null;
-    }
-
-    // Set up token refresh if user is authenticated
-    if (user) {
-      void loadAuthRuntime().then(({ auth }) => {
-        if (!auth.currentUser) return;
-        // Refresh token every 55 minutes (Firebase tokens expire after 60 min)
-        tokenRefreshIntervalRef.current = window.setInterval(() => {
-          loadUser(true);
-        }, 55 * 60 * 1000);
-      });
-    }
+    void startAuth();
 
     return () => {
-      if (tokenRefreshIntervalRef.current) {
-        window.clearInterval(tokenRefreshIntervalRef.current);
-      }
+      isMounted = false;
+      unsubscribe?.();
     };
-  }, [user, loadUser]);
+  }, [applyFirebaseUser]);
 
-  // Set up auth state listener
   useEffect(() => {
-    // Network status listeners
-    const updateOnline = () => dispatchAuth({ type: 'online', value: typeof navigator !== 'undefined' ? navigator.onLine : true });
+    const updateOnline = () => setIsOnline(typeof navigator === 'undefined' ? true : navigator.onLine);
 
-    updateOnline();
     window.addEventListener('online', updateOnline);
     window.addEventListener('offline', updateOnline);
 
-    // Initial load call - REMOVED to prevent race condition. 
-    // onAuthStateChanged will trigger loadUser when ready.
-    // loadUser(); 
-
-    let isCancelled = false;
-    let unsubscribe: (() => void) | undefined;
-    const intentEvents = ['pointerdown', 'keydown', 'touchstart'];
-
-    const startAuthListener = async () => {
-      intentEvents.forEach((eventName) => window.removeEventListener(eventName, startAuthListener));
-      const { auth, onAuthStateChanged } = await loadAuthRuntime();
-      if (isCancelled) return;
-      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        // If we have a user, ensure our local state matches
-        if (firebaseUser) {
-          await loadUser();
-        } else {
-          // Explicitly clear state on logout detection
-          dispatchAuth({ type: 'user', user: null, loading: false });
-          useAuthStore.getState().reset();
-        }
-      });
-    };
-
-    if (isAuditGuestRoute) {
-      dispatchAuth({ type: 'loading', value: false });
-    } else if (!cachedIsAuthenticated && isGuestFirstRoute()) {
-      intentEvents.forEach((eventName) => {
-        window.addEventListener(eventName, startAuthListener, { once: true, passive: true });
-      });
-    } else {
-      void startAuthListener();
-    }
-
-    // Cleanup
     return () => {
       window.removeEventListener('online', updateOnline);
       window.removeEventListener('offline', updateOnline);
-      isCancelled = true;
-      intentEvents.forEach((eventName) => window.removeEventListener(eventName, startAuthListener));
-      unsubscribe?.();
     };
-  }, [cachedIsAuthenticated, isAuditGuestRoute, loadUser]);
+  }, []);
 
-
-
-  // Public method to manually refresh user data
   const refreshUserData = useCallback(async () => {
-    await loadUser(true);
-  }, [loadUser]);
+    setLoading(true);
+    await applyFirebaseUser(auth.currentUser);
+    setLoading(false);
+  }, [applyFirebaseUser]);
 
-  const contextValue = useMemo(() => ({
-    user,
-    loading,
-    error,
-    isAuthenticated: !!user,
-    refreshUserData,
-    isOnline
-  }), [user, loading, error, refreshUserData, isOnline]);
+  const contextValue = useMemo(
+    () => ({
+      user,
+      loading,
+      error,
+      isAuthenticated: !!user,
+      refreshUserData,
+      isOnline,
+    }),
+    [user, loading, error, refreshUserData, isOnline],
+  );
 
   return (
     <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
-}; 
+};

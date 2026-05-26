@@ -20,11 +20,6 @@ const IS_IOS = typeof navigator !== 'undefined' &&
   /iPad|iPhone|iPod/.test(navigator.userAgent) &&
   !(window as any).MSStream;
 
-const IS_IOS_PWA = IS_IOS &&
-  (typeof (navigator as any).standalone === 'boolean'
-    ? (navigator as any).standalone === true
-    : window.matchMedia('(display-mode: standalone)').matches);
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 const getSongKey = (song: Song | null | undefined): string =>
@@ -65,9 +60,6 @@ class AudioManager {
   private failedSongKeys = new Set<string>();
   private mediaSessionRegistered = false;
   private boundTimeUpdate: (() => void) | null = null;
-  // Preloaded next-track Howl — eliminates gap between songs
-  private preloadedSound: Howl | null = null;
-  private preloadedSongKey: string | null = null;
 
   constructor() {
     Howler.autoUnlock = true;
@@ -277,54 +269,6 @@ class AudioManager {
     }
   }
 
-  // ── Preload next track ────────────────────────────────────────────────────
-  // Called ~3s after a song starts. Silently loads the next track's audio so
-  // it's buffered and ready — eliminates the gap between songs.
-  // Only preloads on non-iOS (iOS PWA allows only one active audio element).
-  private schedulePreload() {
-    if (IS_IOS_PWA) return; // iOS PWA: one audio element only
-
-    window.setTimeout(() => {
-      const store = usePlayerStore.getState();
-      const { queue, currentIndex, shuffleMode } = store;
-      if (!queue.length) return;
-
-      const nextIndex = shuffleMode !== 'off'
-        ? -1 // skip preload in shuffle — next song is unpredictable
-        : currentIndex >= queue.length - 1 ? 0 : currentIndex + 1;
-
-      if (nextIndex < 0) return;
-      const nextSong = queue[nextIndex];
-      if (!nextSong || !isValidAudioUrl(nextSong.audioUrl)) return;
-
-      const key = getSongKey(nextSong);
-      if (key === this.preloadedSongKey) return; // already preloaded
-
-      // Dispose previous preload
-      this.disposePreload();
-
-      const url = normalizeAudioUrl(nextSong.audioUrl);
-      this.preloadedSound = new Howl({
-        src: [url],
-        html5: true,
-        preload: true,
-        volume: 0,       // silent — just buffering
-        autoplay: false,
-      });
-      this.preloadedSongKey = key;
-    }, 3000);
-  }
-
-  private disposePreload() {
-    if (!this.preloadedSound) return;
-    try {
-      this.preloadedSound.off();
-      this.preloadedSound.unload();
-    } catch { /* ignore */ }
-    this.preloadedSound = null;
-    this.preloadedSongKey = null;
-  }
-
   // ── Output device ─────────────────────────────────────────────────────────
   private async applyPreferredOutputDevice() {
     const preferredOutputId = usePlayerStore.getState().audioOutputDevice;
@@ -402,8 +346,6 @@ class AudioManager {
         void this.applyPreferredOutputDevice();
         trackSongPlayStarted(song, this.getCurrentTime(), howl.duration() || song.duration || 0);
         this.syncPositionState();
-        // Preload next track in background after song starts
-        this.schedulePreload();
       },
 
       onpause: () => {
@@ -501,17 +443,7 @@ class AudioManager {
     this.currentSong = song;
     this.updateMediaMetadata(song);
 
-    // Use preloaded Howl if available — eliminates buffering gap
-    if (this.preloadedSound && this.preloadedSongKey === nextSongKey) {
-      this.currentSound = this.preloadedSound;
-      this.preloadedSound = null;
-      this.preloadedSongKey = null;
-      // Restore volume (was 0 during preload)
-      this.currentSound.volume(this.volume);
-    } else {
-      this.disposePreload();
-      this.currentSound = this.buildHowl(song);
-    }
+    this.currentSound = this.buildHowl(song);
 
     this.syncDebugHandles();
 
@@ -545,7 +477,6 @@ class AudioManager {
   }
 
   stopSong() {
-    this.disposePreload();
     this.disposeCurrentSound();
     this.currentSong = null;
     this.syncDebugHandles();
