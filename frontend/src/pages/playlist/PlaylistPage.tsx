@@ -347,7 +347,7 @@ export function PlaylistPage() {
 
   // Check if the current playlist is playing
   const isCurrentPlaylistPlaying = playerIsPlaying &&
-    currentPlaylist?.songs.some(song => song._id === currentSong?._id);
+    currentPlaylist?.songs?.some(song => song._id === currentSong?._id);
 
   // Determine if we've scrolled enough to hide other buttons
   // Removed scroll-based UI changes for toolbar; keep state for potential future use
