@@ -77,11 +77,14 @@ function isLowQualityTrack(name, artist, album) {
   const combined = `${name || ''} ${artist || ''} ${album || ''}`.toLowerCase();
 
   const banned = ['remix', 'lofi', 'lo-fi', 'ringtone', 'mashup', 'instrumental',
-    '8d', 'slowed', 'reverb', 'karaoke', 'cover', 'unplugged', 'bgm',
+    '8d', 'slowed', 'reverb', 'sped up', 'speed up', 'nightcore', 'karaoke',
+    'cover', 'unplugged', 'bgm', 'dj mix', 'dj remix', 'edit', 'extended mix', 'club mix',
     'jukebox', 'medley', 'tribute', 'version 2', 'reprise'];
 
   const compilationBanned = ['valentines', 'valentine', 'session', 'hits', 't20',
-    'best of', 'rewind', 'top 50', 'top 100', 'collection', 'party mix', 'lovescapes', 'love capes', 'unwind', 'evergreen', 'retro', 'classic', 'non stop', 'megamix'];
+    'best of', 'rewind', 'top 50', 'top 100', 'collection', 'party mix',
+    'lovescapes', 'love capes', 'unwind', 'evergreen', 'retro', 'classic',
+    'non stop', 'megamix', 'bhajan', 'aarti', 'mantra', 'kids', 'nursery'];
 
   return banned.some(kw => combined.includes(kw)) ||
     compilationBanned.some(kw => (album || '').toLowerCase().includes(kw)) ||
@@ -317,5 +320,7 @@ export {
   generatePlaylistName,
   querySongsByGenre,
   getTrendingPlaylist,
-  rankSongs
+  rankSongs,
+  formatSong,
+  isLowQualityTrack
 };

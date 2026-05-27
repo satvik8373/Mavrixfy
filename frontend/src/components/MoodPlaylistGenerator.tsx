@@ -23,7 +23,10 @@ import {
   Snowflake,
   Zap,
   Heart,
-  Headphones
+  Headphones,
+  History,
+  Wand2,
+  Radio
 } from 'lucide-react';
 
 interface MoodPlaylistGeneratorProps {
@@ -37,6 +40,14 @@ const MoodPlaylistGeneratorMobile = React.lazy(() => import('./MoodPlaylistGener
 
 type ViewState = 'input' | 'loading' | 'display';
 const MIN_LOADING_DURATION_MS = 10000;
+const QUICK_MOODS = [
+  { label: 'Happy', text: 'I want a playlist that sounds happy, upbeat, and full of positive energy.', icon: Smile },
+  { label: 'Sad', text: 'I need a sad, melancholic, and emotional playlist for deep reflection.', icon: Frown },
+  { label: 'Calm', text: 'Looking for a very calm, peaceful, and relaxing playlist to unwind.', icon: Snowflake },
+  { label: 'Energy', text: 'Create an extremely energetic and motivating playlist for an intense workout.', icon: Zap },
+  { label: 'Romance', text: 'I want a romantic, slow, and intimate playlist perfect for a date night.', icon: Heart },
+  { label: 'Focus', text: 'I need a quiet, focused, deep-work playlist with minimal distractions to concentrate.', icon: Headphones }
+];
 
 interface MoodGeneratorState {
   moodText: string;
@@ -94,124 +105,120 @@ const MoodPlaylistGeneratorDesktop = ({
   onQuickMood,
 }: MoodPlaylistGeneratorDesktopProps) => {
   return (
-    <div className="relative w-full max-w-3xl mx-auto px-4 sm:px-6">
-      {/* History Button — fixed at top-right of viewport */}
+    <div className="relative w-full max-w-4xl mx-auto px-4 sm:px-6 py-6">
       <div className="fixed top-4 right-4 z-50">
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('navigate-mood-history'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/15 text-white/70 text-xs font-semibold backdrop-blur-md hover:bg-purple-500/25 hover:text-white hover:border-purple-500/30 transition-all duration-200 shadow-lg"
+          className="inline-flex h-9 items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 text-xs font-semibold text-white/75 shadow-lg backdrop-blur-xl transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
+          aria-label="View mood history"
         >
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>View History</span>
+          <History className="h-4 w-4" />
+          <span>History</span>
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-y-2">
-        {/* Title Section */}
-        <div className="flex flex-col items-center shrink-0 pt-9 sm:pt-10">
-          <img
-            src="https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg"
-            alt="AI Mood"
-            className="w-12 h-12 sm:w-14 sm:h-14 mb-1 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse shrink-0"
-          />
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-white tracking-tight leading-none mb-0.5 text-center drop-shadow-lg shrink-0">
-            AI Mood Generator
-          </h2>
-          <p className="text-[10px] sm:text-xs text-white/50 font-medium tracking-wide uppercase text-center">
-            Describe your vibe. We'll curate the music.
-          </p>
-        </div>
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5 rounded-[28px] border border-white/10 bg-[#101014]/80 p-5 shadow-2xl backdrop-blur-2xl sm:p-6">
+          <div className="flex items-start justify-between gap-5">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300 shadow-[0_0_32px_rgba(16,185,129,0.14)]">
+                <Wand2 className="h-7 w-7" />
+              </div>
+              <div className="min-w-0">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                  <Radio className="h-3.5 w-3.5 text-emerald-300" />
+                  Gemini grounded
+                </div>
+                <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                  AI Mood Generator
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-white/55">
+                  Describe the exact vibe, language, artist taste, or moment. Gemini finds real songs and Mavrixfy resolves playable tracks.
+                </p>
+              </div>
+            </div>
+            {creditLabel && (
+              <div className="hidden shrink-0 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-right sm:block">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">Credits</div>
+                <div className="mt-0.5 text-xs font-semibold text-white/75">{creditLabel}</div>
+              </div>
+            )}
+          </div>
 
-        {/* iOS-style Glassmorphism Input Container */}
-        <div
-          className={cn(
-            "backdrop-blur-3xl rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 shadow-2xl shrink-0 transition-all",
-            isRateLimitReached
-              ? "bg-white/5 border border-white/10"
-              : "bg-white/10 border border-white/20 focus-within:bg-white/[0.15] focus-within:border-white/30"
-          )}
-        >
-          <Textarea
-            value={moodText}
-            onChange={(e) => onMoodChange(e.target.value)}
-            placeholder="How are you feeling right now?"
-            disabled={isRateLimitReached}
-            className="min-h-[60px] sm:min-h-[75px] max-h-[80px] sm:max-h-[95px] resize-none border-0 !ring-0 !ring-offset-0 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 focus-visible:border-transparent text-sm sm:text-base p-0 bg-transparent text-white placeholder:text-white/40 leading-relaxed custom-scrollbar"
-            aria-label="Mood description"
-          />
-          {isRateLimitReached && (
-            <div className="mt-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-center">
-              <p className="text-sm sm:text-base font-semibold text-white/85">
+          <div
+            className={cn(
+              "rounded-2xl border p-4 transition-colors",
+              isRateLimitReached
+                ? "border-white/10 bg-white/[0.03]"
+                : "border-white/10 bg-black/30 focus-within:border-emerald-300/35 focus-within:bg-black/40"
+            )}
+          >
+            <Textarea
+              value={moodText}
+              onChange={(e) => onMoodChange(e.target.value)}
+              placeholder="Example: Trending Hindi and Punjabi songs for a confident late-night romantic party mood, no remixes."
+              disabled={isRateLimitReached}
+              className="min-h-[112px] resize-none border-0 bg-transparent p-0 text-base leading-7 text-white placeholder:text-white/35 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              aria-label="Mood description"
+            />
+            {isRateLimitReached && (
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-white/85">
                 {rateLimitMessage}
-              </p>
-            </div>
-          )}
+              </div>
+            )}
 
-          <div className="flex items-center justify-between mt-2 sm:mt-2.5 pt-2 sm:pt-2.5 border-t border-white/10">
-            <div className="flex min-w-0 items-center gap-2 pr-2">
-              <span className={cn(
-                'shrink-0 text-xs sm:text-sm font-medium',
-                charCount === 0 && 'text-white/40',
-                charCount > 0 && charCount < MIN_LENGTH && 'text-yellow-400',
-                charCount >= MIN_LENGTH && charCount <= MAX_LENGTH && 'text-green-400',
-                charCount > MAX_LENGTH && 'text-red-400'
-              )}>
-                {charCount}/{MAX_LENGTH}
-              </span>
-              {creditLabel && (
-                <span className="min-w-0 truncate text-[10px] sm:text-xs text-white/55">
-                  {creditLabel}
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className={cn(
+                  'rounded-full px-2.5 py-1 text-xs font-semibold',
+                  charCount === 0 && 'bg-white/[0.04] text-white/35',
+                  charCount > 0 && charCount < MIN_LENGTH && 'bg-yellow-400/10 text-yellow-300',
+                  charCount >= MIN_LENGTH && charCount <= MAX_LENGTH && 'bg-emerald-400/10 text-emerald-300',
+                  charCount > MAX_LENGTH && 'bg-red-400/10 text-red-300'
+                )}>
+                  {charCount}/{MAX_LENGTH}
                 </span>
-              )}
-            </div>
+                {creditLabel && (
+                  <span className="min-w-0 truncate text-xs text-white/45 sm:hidden">
+                    {creditLabel}
+                  </span>
+                )}
+              </div>
 
-            <Button
-              type="submit"
-              disabled={!isValid || isRateLimitReached}
-              className="rounded-full px-6 sm:px-8 h-10 sm:h-11 text-sm sm:text-base font-semibold bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 shadow-lg transition-transform active:scale-95"
-            >
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Generate
-            </Button>
+              <Button
+                type="submit"
+                disabled={!isValid || isRateLimitReached}
+                className="h-11 rounded-full bg-emerald-400 px-6 text-sm font-bold text-black shadow-lg shadow-emerald-500/15 transition-transform hover:bg-emerald-300 active:scale-95 disabled:opacity-45"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Generate
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Quick Emotion Buttons (Separate Container) */}
-        <div className="bg-white/10 backdrop-blur-3xl rounded-2xl sm:rounded-3xl border border-white/20 p-2.5 sm:p-3 shadow-2xl shrink-0">
-          <div className="flex items-center justify-center gap-2 mb-1.5">
-            <div className="h-px bg-white/10 flex-1 rounded-full shrink-0"></div>
-            <p className="text-[10px] sm:text-xs font-semibold text-white/40 uppercase tracking-widest shrink-0">Quick Moods</p>
-            <div className="h-px bg-white/10 flex-1 rounded-full shrink-0"></div>
+        <div className="rounded-3xl border border-white/10 bg-[#101014]/70 p-4 shadow-xl backdrop-blur-2xl">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Quick moods</p>
+            <span className="text-xs text-white/35">Tap to fill the prompt</span>
           </div>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 shrink-0">
-            {[
-              { label: 'Happy', text: 'I want a playlist that sounds happy, upbeat, and full of positive energy.', icon: Smile },
-              { label: 'Sad', text: 'I need a sad, melancholic, and emotional playlist for deep reflection.', icon: Frown },
-              { label: 'Calm', text: 'Looking for a very calm, peaceful, and relaxing playlist to unwind.', icon: Snowflake },
-              { label: 'Energetic', text: 'Create an extremely energetic and motivating playlist for an intense workout.', icon: Zap },
-              { label: 'Romantic', text: 'I want a romantic, slow, and intimate playlist perfect for a date night.', icon: Heart },
-              { label: 'Focus', text: 'I need a quiet, focused, deep-work playlist with minimal distractions to concentrate.', icon: Headphones }
-            ].map(({ label, text, icon: Icon }) => (
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
+            {QUICK_MOODS.map(({ label, text, icon: Icon }) => (
               <button
                 key={label}
                 type="button"
                 onClick={() => onQuickMood(text)}
                 disabled={isRateLimitReached}
                 className={cn(
-                  "group flex flex-col items-center justify-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 px-1 rounded-xl sm:rounded-2xl border transition-all duration-300",
-                  "hover:scale-[1.02] active:scale-95",
-                  "bg-white/5 border-white/5",
-                  "hover:bg-white/10 hover:border-white/10 shadow-sm",
-                  isRateLimitReached && "opacity-45 cursor-not-allowed hover:scale-100 active:scale-100 hover:bg-white/5 hover:border-white/5"
+                  "group flex h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:border-emerald-300/30 hover:bg-emerald-300/10 hover:text-white active:scale-[0.98]",
+                  isRateLimitReached && "cursor-not-allowed opacity-45 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/70 active:scale-100"
                 )}
               >
-                <div className="p-1.5 sm:p-2 rounded-full bg-white/5 text-white/60 group-hover:text-white transition-colors">
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110" />
+                <div className="rounded-full bg-white/[0.06] p-2 text-white/55 transition-colors group-hover:text-emerald-300">
+                  <Icon className="h-5 w-5" />
                 </div>
-                <span className="text-[10px] sm:text-xs font-medium text-white/60 group-hover:text-white transition-colors line-clamp-1">{label}</span>
+                <span className="text-xs font-semibold">{label}</span>
               </button>
             ))}
           </div>
@@ -571,11 +578,10 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('navigate-mood-history'))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/15 text-white/70 text-xs font-semibold backdrop-blur-md hover:bg-purple-500/25 hover:text-white transition-all shadow-lg"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 text-xs font-semibold text-white/75 shadow-lg backdrop-blur-xl transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
+              aria-label="View mood history"
             >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <History className="h-4 w-4" />
               <span>History</span>
             </button>
           </div>
@@ -616,11 +622,10 @@ export const MoodPlaylistGenerator: React.FC<MoodPlaylistGeneratorProps> = ({
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('navigate-mood-history'))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/8 border border-white/15 text-white/70 text-xs font-semibold backdrop-blur-md hover:bg-purple-500/25 hover:text-white transition-all shadow-lg"
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 text-xs font-semibold text-white/75 shadow-lg backdrop-blur-xl transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
+            aria-label="View mood history"
           >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <History className="h-4 w-4" />
             <span>History</span>
           </button>
         </div>

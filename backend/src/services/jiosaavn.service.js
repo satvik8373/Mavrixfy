@@ -4,6 +4,7 @@ import { getHighestQualityAudioUrl, getHighestQualityDownload } from '../lib/jio
 const JIOSAAVN_API_BASE_URL = process.env.JIOSAAVN_API_BASE_URL || 'https://mavrixfy-song-api.vercel.app/api';
 const FALLBACK_API_BASE_URL = 'https://saavn.me';
 const BACKUP_API_BASE_URL = 'https://jiosaavn-api-privatecvc2.vercel.app';
+const SEARCH_TIMEOUT_MS = Number(process.env.JIOSAAVN_SEARCH_TIMEOUT_MS || 3500);
 
 /**
  * Search for songs, albums, artists on JioSaavn
@@ -19,7 +20,7 @@ export const searchSongs = async (query, limit = 20) => {
       console.log(`Trying JioSaavn API: ${apiUrl}/search/songs?query=${query}`);
       const response = await axios.get(`${apiUrl}/search/songs`, {
         params: { query, page: 1, limit },
-        timeout: 8000
+        timeout: SEARCH_TIMEOUT_MS
       });
       if (response.data && response.data.success !== false) {
         const results = response.data.data?.results || response.data.results || [];

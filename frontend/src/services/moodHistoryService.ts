@@ -34,8 +34,9 @@ const HISTORY_TIMEOUT_MS = 20000;
 const isTransientNetworkError = (error: any): boolean => {
     if (!error) return false;
     if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') return true;
+    if ([502, 503, 504].includes(error.response?.status)) return true;
     const message = String(error.message || '').toLowerCase();
-    return message.includes('network error') || message.includes('timeout');
+    return message.includes('network error') || message.includes('timeout') || message.includes('gateway');
 };
 
 export const fetchMoodHistory = async (page: number = 1, limit: number = 10): Promise<MoodHistoryResponse> => {

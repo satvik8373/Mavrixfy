@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Play, Heart, Share2, Music, Sparkles } from 'lucide-react';
+import { Play, Heart, Share2, Music, Sparkles, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Song } from '@/types';
 
 interface MoodPlaylist {
     _id: string;
     name: string;
-    emotion: 'sadness' | 'joy' | 'anger' | 'love' | 'fear' | 'surprise';
+    emotion: string;
     songs: Song[];
     songCount: number;
     generatedAt: string;
@@ -31,6 +31,7 @@ const emotionThemes = {
     fear: { badge: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
     surprise: { badge: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
 };
+type EmotionThemeKey = keyof typeof emotionThemes;
 
 const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -49,8 +50,9 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
     const stripRef = useRef<HTMLDivElement>(null);
     const actionBarRef = useRef<HTMLDivElement>(null);
     const [actionBarHeight, setActionBarHeight] = useState(140);
-    const emotion = playlist.emotion && emotionThemes[playlist.emotion] ? playlist.emotion : 'joy';
-    const theme = emotionThemes[emotion];
+    const emotion = playlist.emotion || 'mood';
+    const themeKey = emotionThemes[emotion as EmotionThemeKey] ? emotion as EmotionThemeKey : 'joy';
+    const theme = emotionThemes[themeKey];
     const stripSongs = playlist.songs.slice(0, 8);
 
     useEffect(() => {
@@ -85,16 +87,24 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
             >
 
                 {/* Playlist title + badge */}
-                <div className="flex items-center gap-2 mb-3">
-                    <span className="text-base font-black text-white truncate flex-1">{playlist.name}</span>
-                    <Badge className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase shrink-0', theme.badge)}>
+                <div className="mb-4 flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+                        <Radio className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <span className="block text-lg font-semibold leading-tight text-white truncate">{playlist.name}</span>
+                        <div className="mt-1 flex items-center gap-2">
+                            <Badge className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase shrink-0', theme.badge)}>
                         {emotion}
-                    </Badge>
+                            </Badge>
+                            <span className="text-[11px] font-medium text-white/45">{playlist.songCount} songs</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* ── Album Art Swipe Strip ── */}
                 <div className="mb-4">
-                    <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2">
+                    <p className="text-[10px] font-semibold text-white/35 uppercase tracking-widest mb-2">
                         Swipe to preview
                     </p>
                     <div
@@ -108,7 +118,7 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                                 className="flex-shrink-0 snap-start flex flex-col items-start active:scale-95 transition-transform duration-150"
                                 style={{ width: '90px' }}
                             >
-                                <div className="w-[90px] h-[90px] rounded-2xl overflow-hidden bg-white/5 mb-1.5 shadow-xl relative">
+                                <div className="w-[90px] h-[90px] rounded-2xl overflow-hidden bg-white/5 mb-1.5 shadow-xl relative border border-white/10">
                                     {song.imageUrl ? (
                                         <img src={song.imageUrl} alt={song.title} width={90} height={90} className="w-full h-full object-cover aspect-square" loading={index < 3 ? "eager" : "lazy"} />
                                     ) : (
@@ -140,13 +150,11 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                 {/* ── Full Song List ── */}
                 <div className="flex flex-col gap-1 pb-2">
                     {playlist.songs.map((song, index) => (
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                        <button
+                            type="button"
                             key={song._id || `song-${index}`}
                             onClick={() => onPlay(index)}
-                            className="flex items-center gap-3 px-3 py-2.5 bg-black/45 backdrop-blur-sm active:bg-black/60 cursor-pointer rounded-xl border border-white/[0.08] transition-all active:scale-[0.99]"
+                            className="flex w-full items-center gap-3 px-3 py-2.5 bg-[#101014]/80 backdrop-blur-sm active:bg-black/60 cursor-pointer rounded-2xl border border-white/[0.08] text-left transition-all active:scale-[0.99]"
                         >
                             <span className="w-5 text-center text-[10px] text-white/35 font-bold group-active:text-green-400 shrink-0">
                                 {index + 1}
@@ -171,7 +179,7 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                             <span className="text-[11px] text-white/45 font-semibold tabular-nums shrink-0">
                                 {formatDuration(song.duration)}
                             </span>
-                        </div>
+                        </button>
                     ))}
                 </div>
             </div>
@@ -181,7 +189,7 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                 className="fixed left-0 right-0 z-30 px-3 pt-2"
                 style={{ bottom: `calc(${bottomInsetPx}px + env(safe-area-inset-bottom, 0px) + 8px)` }}
             >
-                <div ref={actionBarRef} className="mx-auto w-full max-w-md bg-black/55 backdrop-blur-2xl rounded-2xl border border-white/[0.10] p-3 shadow-2xl">
+                <div ref={actionBarRef} className="mx-auto w-full max-w-md bg-[#101014]/90 backdrop-blur-2xl rounded-3xl border border-white/[0.10] p-3 shadow-2xl">
                     {/* Row 1: playlist name mini + save/share */}
                     <div className="flex items-center justify-between mb-2.5">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -200,13 +208,15 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                         <div className="flex items-center gap-2 shrink-0">
                             <button type="button"
                                 onClick={onSave}
-                                className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-pink-400 active:bg-white/15 transition-colors"
+                                className="w-9 h-9 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center text-pink-300 active:bg-white/15 transition-colors"
+                                aria-label="Save playlist"
                             >
                                 <Heart className="w-4 h-4" />
                             </button>
                             <button type="button"
                                 onClick={onShare}
-                                className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-indigo-400 active:bg-white/15 transition-colors"
+                                className="w-9 h-9 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center text-indigo-300 active:bg-white/15 transition-colors"
+                                aria-label="Share playlist"
                             >
                                 <Share2 className="w-4 h-4" />
                             </button>
@@ -217,16 +227,16 @@ export const MoodPlaylistDisplayMobile: React.FC<MoodPlaylistDisplayMobileProps>
                     <div className="flex gap-2">
                         <button type="button"
                             onClick={() => onPlay(0)}
-                            className="flex-1 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-400 active:from-green-400 active:to-emerald-300 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
+                            className="flex-1 h-12 rounded-full bg-emerald-400 active:bg-emerald-300 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
                         >
                             <Play className="w-4 h-4 fill-black" />
                             Play All
                         </button>
                         <button type="button"
                             onClick={onTryAgain}
-                            className="flex-1 h-12 rounded-xl bg-white/8 border border-white/15 text-white font-bold text-sm flex items-center justify-center gap-2 active:bg-white/15 active:scale-[0.98] transition-all"
+                            className="flex-1 h-12 rounded-full bg-white/[0.04] border border-white/10 text-white font-bold text-sm flex items-center justify-center gap-2 active:bg-white/15 active:scale-[0.98] transition-all"
                         >
-                            <Sparkles className="w-4 h-4 text-purple-400" />
+                            <Sparkles className="w-4 h-4 text-emerald-300" />
                             New Mood
                         </button>
                     </div>

@@ -13,10 +13,10 @@ export default function MoodPlaylistPage() {
   }, [navigate]);
 
   return (
-    <div className="mood-playlist-page relative h-full min-h-0 flex flex-col bg-gradient-to-br from-[#0f0f23] via-[#1a0f2e] to-[#2a1a3e]">
+    <div className="mood-playlist-page relative h-full min-h-0 flex flex-col bg-[#08090a]">
       {/* Static Background - fixed to viewport behind content */}
       <div className="mood-playlist-background">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a1f] via-[#1a0a2e] to-[#2d1b4e]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_34%),linear-gradient(135deg,#08090a_0%,#111315_48%,#15110d_100%)]" />
       </div>
 
       {/* Content wrapper */}

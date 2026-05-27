@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import { Sparkles, AlertCircle } from 'lucide-react';
+import { Sparkles, AlertCircle, Smile, Frown, Snowflake, Zap, Heart, Headphones, Wand2, Radio } from 'lucide-react';
 
 interface MoodPlaylistGeneratorMobileProps {
     moodText: string;
@@ -21,12 +21,12 @@ interface MoodPlaylistGeneratorMobileProps {
 }
 
 const QUICK_MOODS = [
-    { label: 'Happy', emoji: '😊', text: 'I want a playlist that sounds happy, upbeat, and full of positive energy.' },
-    { label: 'Sad', emoji: '😢', text: 'I need a sad, melancholic, and emotional playlist for deep reflection.' },
-    { label: 'Calm', emoji: '❄️', text: 'Looking for a very calm, peaceful, and relaxing playlist to unwind.' },
-    { label: 'Energy', emoji: '⚡', text: 'Create an extremely energetic and motivating playlist for an intense workout.' },
-    { label: 'Romance', emoji: '❤️', text: 'I want a romantic, slow, and intimate playlist perfect for a date night.' },
-    { label: 'Focus', emoji: '🎧', text: 'I need a quiet, focused, deep-work playlist with minimal distractions.' },
+    { label: 'Happy', icon: Smile, text: 'I want a playlist that sounds happy, upbeat, and full of positive energy.' },
+    { label: 'Sad', icon: Frown, text: 'I need a sad, melancholic, and emotional playlist for deep reflection.' },
+    { label: 'Calm', icon: Snowflake, text: 'Looking for a very calm, peaceful, and relaxing playlist to unwind.' },
+    { label: 'Energy', icon: Zap, text: 'Create an extremely energetic and motivating playlist for an intense workout.' },
+    { label: 'Romance', icon: Heart, text: 'I want a romantic, slow, and intimate playlist perfect for a date night.' },
+    { label: 'Focus', icon: Headphones, text: 'I need a quiet, focused, deep-work playlist with minimal distractions.' },
 ];
 
 export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobileProps> = ({
@@ -97,21 +97,19 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                 style={{ paddingBottom: `calc(${bottomInsetPx + panelHeight + 20 + EXTRA_BOTTOM_GAP_PX}px + env(safe-area-inset-bottom, 0px))` }}
             >
 
-                {/* Title block */}
-                <div className="mx-auto flex max-w-md flex-col items-center text-center">
-                    <img
-                        src="https://res.cloudinary.com/djqq8kba8/image/upload/v1773035583/Mood-icon_asax7o.svg"
-                        alt="AI Mood"
-                        width={56}
-                        height={56}
-                        className="w-14 h-14 mb-3 object-contain animate-pulse aspect-square"
-                        style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 14px rgba(255,255,255,0.35))' }}
-                    />
-                    <h2 className="text-2xl font-semibold text-white tracking-tight leading-none mb-1.5">
+                <div className="mx-auto flex max-w-sm flex-col items-center text-center">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300 shadow-[0_0_32px_rgba(16,185,129,0.16)]">
+                        <Wand2 className="h-8 w-8" />
+                    </div>
+                    <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
+                        <Radio className="h-3.5 w-3.5 text-emerald-300" />
+                        Gemini grounded
+                    </div>
+                    <h2 className="text-2xl font-semibold text-white tracking-tight leading-tight mb-2">
                         AI Mood Generator
                     </h2>
-                    <p className="text-[11px] text-white/40 font-medium tracking-widest uppercase">
-                        Describe your vibe. We'll curate the music.
+                    <p className="text-sm leading-6 text-white/50">
+                        Describe a mood, moment, language, or artist taste. Gemini finds real songs for your playlist.
                     </p>
                 </div>
             </div>
@@ -122,24 +120,24 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                 style={{ bottom: `calc(${bottomInsetPx + EXTRA_BOTTOM_GAP_PX}px + env(safe-area-inset-bottom, 0px) + 20px)` }}
             >
                 <div ref={panelRef} className="mx-auto w-full max-w-md">
-                    {/* Quick Moods - keep old visual style, move position only */}
                     <div className="mb-3">
-                        <p className="text-[10px] font-semibold text-white/55 uppercase tracking-widest mb-2.5 text-center">
+                        <p className="text-[10px] font-semibold text-white/50 uppercase tracking-widest mb-2.5 text-center">
                             Quick Moods
                         </p>
                         <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-1">
-                            {QUICK_MOODS.map(({ label, emoji, text }) => (
+                            {QUICK_MOODS.map(({ label, icon: Icon, text }) => (
                                 <button
                                     key={label}
                                     type="button"
                                     onClick={() => onQuickMood(text)}
                                     disabled={isRateLimitReached}
                                     className={cn(
-                                        "flex-shrink-0 snap-start flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white/12 border border-white/20 text-white/90 text-sm font-semibold hover:bg-purple-500/25 hover:text-white hover:border-purple-300/45 active:scale-95 transition-all duration-150",
-                                        isRateLimitReached && "opacity-45 cursor-not-allowed hover:bg-white/12 hover:text-white/90 hover:border-white/20 active:scale-100"
+                                        "flex-shrink-0 snap-start flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-2.5 text-sm font-semibold text-white/80 shadow-lg backdrop-blur-xl active:scale-95 transition-all duration-150",
+                                        "hover:border-emerald-300/30 hover:bg-emerald-300/10 hover:text-white",
+                                        isRateLimitReached && "opacity-45 cursor-not-allowed hover:border-white/10 hover:bg-black/45 hover:text-white/80 active:scale-100"
                                     )}
                                 >
-                                    <span className="text-lg leading-none">{emoji}</span>
+                                    <Icon className="h-4 w-4 text-emerald-300" />
                                     <span>{label}</span>
                                 </button>
                             ))}
@@ -162,25 +160,23 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                     <form onSubmit={onSubmit}>
                         <div
                             className={cn(
-                                "backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden transition-all",
+                                "backdrop-blur-2xl rounded-3xl border shadow-2xl overflow-hidden transition-all",
                                 isRateLimitReached
                                     ? "bg-black/20 border-white/10"
-                                    : "bg-black/30 border-white/15 focus-within:border-white/25 focus-within:bg-black/40"
+                                    : "bg-[#101014]/90 border-white/10 focus-within:border-emerald-300/35 focus-within:bg-black/50"
                             )}
                         >
-                            {/* Textarea */}
                             <Textarea
                                 value={moodText}
                                 onChange={(e) => {
                                     if (e.target.value.length <= MAX_LENGTH) onMoodChange(e.target.value);
                                 }}
-                                placeholder="How are you feeling right now?"
+                                placeholder="Trending Hindi Punjabi songs for confident late-night romantic mood..."
                                 disabled={isRateLimitReached}
-                                className="min-h-[64px] max-h-[110px] resize-none border-0 !ring-0 !ring-offset-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none text-[15px] px-4 pt-3 pb-1 bg-transparent text-white placeholder:text-white/40 leading-relaxed"
+                                className="min-h-[76px] max-h-[128px] resize-none border-0 !ring-0 !ring-offset-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none text-[15px] px-4 pt-4 pb-1 bg-transparent text-white placeholder:text-white/35 leading-relaxed"
                                 aria-label="Mood description"
                             />
 
-                            {/* Bottom bar: char count + button */}
                             <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/10">
                                 <div className="flex min-w-0 items-center gap-2 pr-2">
                                     <span className={cn(
@@ -201,7 +197,7 @@ export const MoodPlaylistGeneratorMobile: React.FC<MoodPlaylistGeneratorMobilePr
                                 <button
                                     type="submit"
                                     disabled={!isValid || isRateLimitReached}
-                                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 disabled:opacity-40 text-white text-sm font-bold shadow-lg active:scale-95 transition-all"
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 disabled:opacity-40 text-black text-sm font-bold shadow-lg active:scale-95 transition-all"
                                 >
                                     <Sparkles className="w-4 h-4" />
                                     Generate

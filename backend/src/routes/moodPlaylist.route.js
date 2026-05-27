@@ -15,15 +15,12 @@
 import express from 'express';
 import { validateMoodInput } from '../services/moodPlaylist/validator.js';
 import { checkRateLimit, consumeRateLimit, getRateLimitStatus, FREE_USER_DAILY_LIMIT } from '../services/moodPlaylist/rateLimiter.js';
-import { getCachedPlaylist, setCachedPlaylist } from '../services/moodPlaylist/cacheManager.js';
-import { analyzeEmotion } from '../services/moodPlaylist/emotionAnalyzer.js';
-import { mapEmotionToGenres } from '../services/moodPlaylist/genreMapper.js';
-import { generatePlaylist } from '../services/moodPlaylist/playlistGenerator.js';
+import { setCachedPlaylist } from '../services/moodPlaylist/cacheManager.js';
+import { generateGeminiMoodPlaylist } from '../services/moodPlaylist/geminiPlaylistGenerator.js';
 import { savePlaylist, getUserPlaylists, deletePlaylist, finalizeToLibrary } from '../services/moodPlaylist/saveHandler.js';
 import { createShareLink, getSharedPlaylist, revokeShareLink } from '../services/moodPlaylist/shareHandler.js';
 import {
   logMoodInputSubmitted,
-  logEmotionDetected,
   logPlaylistGenerated,
   logRateLimitHit
 } from '../services/moodPlaylist/analytics.js';
@@ -161,82 +158,13 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
       });
     }
 
-    // Force bypass cache temporarily to flush old images and HTML entities
-    const bypassCache = true;
-
-    // Step 3: Check cache (Requirement 8.1, 8.2, 8.4, 8.5)
-    const cachedPlaylist = bypassCache ? null : await getCachedPlaylist(sanitizedMoodText);
-
-    if (cachedPlaylist && !bypassCache) {
-      console.log('[MoodPlaylistAPI] Cache hit for mood text');
-      const consumeResult = await consumeRateLimit(userId, isPremium, userContext);
-
-      if (!consumeResult.allowed) {
-        logRateLimitHit(userId, isPremium);
-        return res.status(429).json({
-          error: 'Rate limit exceeded',
-          message: consumeResult.error,
-          upgradeUrl: '/premium',
-          resetAt: consumeResult.resetAt?.toISOString()
-        });
-      }
-
-      cached = true;
-      success = true;
-      emotion = cachedPlaylist.emotion;
-
-      // Record metrics for cache hit
-      await metricsCollector.recordRequest({
-        userId,
-        success: true,
-        responseTime: Date.now() - startTime,
-        cached: true,
-        apiUsed: false,
-        apiFailed: false,
-        emotion: cachedPlaylist.emotion
-      });
-
-      // Return cached playlist (Requirement 8.5)
-      return res.status(200).json({
-        playlist: {
-          ...cachedPlaylist,
-          cached: true
-        },
-        rateLimitInfo: {
-          remaining: consumeResult.remaining,
-          resetAt: consumeResult.resetAt?.toISOString()
-        }
-      });
-    }
-
-    // Step 4: Analyze emotion (Requirement 2.1, 2.2, 2.3, 2.4, 2.5, 2.6)
     apiUsed = true;
-    const emotionResult = await analyzeEmotion(sanitizedMoodText);
+    const playlist = await generateGeminiMoodPlaylist(sanitizedMoodText);
+    emotion = playlist.emotion;
 
-    // Track if API failed and fallback was used
-    if (emotionResult.source === 'fallback' || emotionResult.source === 'default') {
-      apiFailed = true;
-    }
-
-    emotion = emotionResult.emotion;
-
-    // Log emotion detection (Requirement 12.2)
-    logEmotionDetected(userId, emotionResult.emotion, emotionResult.confidence, emotionResult.source);
-
-    // Log context detection
-    if (emotionResult.context?.primary) {
-      console.log(`[MoodPlaylistAPI] Context detected: ${emotionResult.context.primary}`);
-    }
-
-    // Step 5: Map emotion + context to search queries (Requirement 4.1, 4.8)
-    const genres = mapEmotionToGenres(emotionResult.emotion, emotionResult.context?.primary || null);
-
-    // Step 6: Generate playlist with context (Requirement 5.1–5.8)
-    const playlist = await generatePlaylist(genres, emotionResult.emotion, sanitizedMoodText, emotionResult.context);
-
-    // Step 7: Cache the generated playlist (Requirement 8.1, 8.3) - Skip in development
+    // Cache only Gemini-generated playlists.
     if (process.env.NODE_ENV !== 'development') {
-      await setCachedPlaylist(sanitizedMoodText, playlist, emotionResult.emotion);
+      await setCachedPlaylist(sanitizedMoodText, playlist, playlist.emotion);
     } else {
       console.log('[MoodPlaylistAPI] Development mode - skipping cache write');
     }
@@ -244,7 +172,7 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
     const processingTime = Date.now() - startTime;
 
     // Log playlist generation (Requirement 12.3)
-    logPlaylistGenerated(userId, emotionResult.emotion, playlist.songCount, false, processingTime);
+    logPlaylistGenerated(userId, playlist.emotion, playlist.songCount, false, processingTime);
 
     success = true;
 
@@ -256,7 +184,7 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
       cached: false,
       apiUsed,
       apiFailed,
-      emotion: emotionResult.emotion
+      emotion: playlist.emotion
     });
 
     // Step 8: Auto-save to history (non-blocking so it doesn't delay response)
@@ -264,8 +192,8 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
     try {
       const userInfo = { fullName: req.auth.name || '', imageUrl: req.auth.picture || '' };
       const saveResult = await savePlaylist(userId, {
-        name: playlist.name || `${emotionResult.emotion} Mood Playlist`,
-        emotion: emotionResult.emotion,
+        name: playlist.name || `${playlist.emotion} Mood Playlist`,
+        emotion: playlist.emotion,
         songs: playlist.songs,
         moodText: sanitizedMoodText,
         description: `Generated from: "${sanitizedMoodText}"`,
@@ -327,11 +255,16 @@ router.post('/mood-generate', protectRoute, async (req, res) => {
       emotion
     });
 
+    const status = error.status || 500;
+    const isMoodGenerationFailure = error.code === 'gemini-mood-generation-failed';
+
     // Return user-friendly error message (Requirement 13.2, 13.3, 13.5)
     // Never expose technical details like stack traces
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: 'Something went wrong. Please try again.'
+    return res.status(status).json({
+      error: isMoodGenerationFailure ? 'Mood generation unavailable' : 'Internal server error',
+      message: isMoodGenerationFailure
+        ? 'Gemini could not resolve playable songs from the music search provider right now. Try again in a moment or add artist, language, or vibe hints.'
+        : 'Something went wrong. Please try again.'
     });
   }
 });
@@ -623,7 +556,11 @@ router.get('/mood-history', protectRoute, async (req, res) => {
     });
   } catch (error) {
     console.error('[MoodPlaylistAPI] Error fetching mood history:', error.message);
-    return res.status(500).json({ error: 'Failed to fetch mood history', message: 'Please try again.' });
+    const isTimeout = error.code === 'deadline-exceeded';
+    return res.status(isTimeout ? 503 : 500).json({
+      error: isTimeout ? 'Mood history temporarily unavailable' : 'Failed to fetch mood history',
+      message: isTimeout ? 'Mood history is taking too long to load. Please try again.' : 'Please try again.'
+    });
   }
 });
 
@@ -655,5 +592,3 @@ router.post('/mood-finalize', protectRoute, async (req, res) => {
 });
 
 export default router;
-
-

@@ -13,6 +13,21 @@ const db = admin.firestore();
 const PLAYLISTS_COLLECTION = 'playlists';
 const MOOD_HISTORY_MAX_RECORDS = 20;
 const MOOD_HISTORY_SCAN_LIMIT = 250;
+const MOOD_HISTORY_QUERY_TIMEOUT_MS = Number(process.env.MOOD_HISTORY_QUERY_TIMEOUT_MS || 8000);
+
+const withQueryDeadline = (promise, label, timeoutMs = MOOD_HISTORY_QUERY_TIMEOUT_MS) => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+        const error = new Error(`${label} timed out`);
+        error.code = 'deadline-exceeded';
+        reject(error);
+    }, timeoutMs);
+
+    promise
+      .then(resolve, reject)
+      .finally(() => clearTimeout(timer));
+  });
+};
 
 const extractTimestampSeconds = (value) => {
   if (!value) return 0;
@@ -33,17 +48,18 @@ const extractTimestampSeconds = (value) => {
 const enforceMoodHistoryRetention = async (userId) => {
   let snapshot;
   try {
-    snapshot = await db.collection(PLAYLISTS_COLLECTION)
+      snapshot = await withQueryDeadline(db.collection(PLAYLISTS_COLLECTION)
+        .where('createdBy.uid', '==', userId)
+        .where('moodGenerated', '==', true)
+        .orderBy('createdAt', 'desc')
+        .limit(MOOD_HISTORY_SCAN_LIMIT)
+        .get(), 'Mood history retention query');
+  } catch (error) {
+    if (error.code === 'deadline-exceeded') throw error;
+    snapshot = await withQueryDeadline(db.collection(PLAYLISTS_COLLECTION)
       .where('createdBy.uid', '==', userId)
-      .where('moodGenerated', '==', true)
-      .orderBy('createdAt', 'desc')
       .limit(MOOD_HISTORY_SCAN_LIMIT)
-      .get();
-  } catch {
-    snapshot = await db.collection(PLAYLISTS_COLLECTION)
-      .where('createdBy.uid', '==', userId)
-      .limit(MOOD_HISTORY_SCAN_LIMIT)
-      .get();
+      .get(), 'Mood history retention fallback query');
   }
 
   const moodDocs = [];
@@ -221,17 +237,18 @@ export const getUserPlaylists = async (userId, limit = 10, page = 1) => {
 
     let snapshot;
     try {
-      snapshot = await db.collection(PLAYLISTS_COLLECTION)
+      snapshot = await withQueryDeadline(db.collection(PLAYLISTS_COLLECTION)
         .where('createdBy.uid', '==', userId)
         .where('moodGenerated', '==', true)
         .orderBy('createdAt', 'desc')
-        .limit(200)
-        .get();
-    } catch {
-      snapshot = await db.collection(PLAYLISTS_COLLECTION)
+        .limit(MOOD_HISTORY_MAX_RECORDS)
+        .get(), 'Mood history query');
+    } catch (error) {
+      if (error.code === 'deadline-exceeded') throw error;
+      snapshot = await withQueryDeadline(db.collection(PLAYLISTS_COLLECTION)
         .where('createdBy.uid', '==', userId)
-        .limit(200)
-        .get();
+        .limit(MOOD_HISTORY_SCAN_LIMIT)
+        .get(), 'Mood history fallback query');
     }
 
     const playlists = [];
@@ -268,7 +285,9 @@ export const getUserPlaylists = async (userId, limit = 10, page = 1) => {
       timestamp: new Date().toISOString()
     });
 
-    throw new Error(`Failed to fetch playlists: ${error.message}`);
+    const wrappedError = new Error(`Failed to fetch playlists: ${error.message}`);
+    wrappedError.code = error.code;
+    throw wrappedError;
   }
 };
 

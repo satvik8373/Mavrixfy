@@ -4,7 +4,7 @@ import { Song } from '@/types';
 export interface MoodPlaylist {
   _id: string;
   name: string;
-  emotion: 'sadness' | 'joy' | 'anger' | 'love' | 'fear' | 'surprise';
+  emotion: string;
   songs: Song[];
   songCount: number;
   generatedAt: string;
@@ -92,6 +92,10 @@ export const generateMoodPlaylist = async (moodText: string): Promise<GeneratePl
     // Handle authentication errors
     if (error.response?.status === 401) {
       throw new Error('Please log in to generate mood playlists');
+    }
+
+    if (error.response?.status === 503 && error.response.data?.message) {
+      throw new Error(error.response.data.message);
     }
 
     // Handle server errors

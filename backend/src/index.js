@@ -50,6 +50,7 @@ import versionRoutes from "./routes/version.route.js";
 import smartSearchRoutes from "./routes/smartSearch.route.js";
 import recommendationRoutes from "./routes/recommendation.route.js";
 import { verifyEmailConfig } from "./services/email.service.js";
+import { withAuthDeadline } from "./middleware/auth.middleware.js";
 
 const __dirname = path.resolve();
 const app = express();
@@ -120,7 +121,7 @@ app.use(async (req, res, next) => {
     const idToken = authHeader.split('Bearer ')[1];
 
     try {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await withAuthDeadline(admin.auth().verifyIdToken(idToken));
       req.auth = {
         uid: decodedToken.uid,
         email: decodedToken.email,
@@ -129,7 +130,9 @@ app.use(async (req, res, next) => {
       console.log(`Firebase auth successful for user: ${decodedToken.uid}`);
     } catch (error) {
       // Check if it's a Firebase initialization error
-      if (error.message.includes('Unable to detect a Project Id')) {
+      if (error.code === 'auth-timeout') {
+        console.error('Firebase auth verification timed out before route handling.');
+      } else if (error.message.includes('Unable to detect a Project Id')) {
         console.error('Firebase Project ID not configured properly. Please check your environment variables.');
         console.error('To fix this, set FIREBASE_PROJECT_ID=spotify-8fefc in your environment variables.');
       } else {

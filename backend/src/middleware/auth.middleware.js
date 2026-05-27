@@ -18,3 +18,17 @@ export const isAuthenticated = async (req, res, next) => {
 		message: "Unauthorized - Authentication required" 
 	});
 };
+
+export const withAuthDeadline = (promise, timeoutMs = 7000) => {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => {
+				const error = new Error("Firebase auth verification timed out");
+				error.code = "auth-timeout";
+				reject(error);
+		}, timeoutMs);
+
+		promise
+			.then(resolve, reject)
+			.finally(() => clearTimeout(timer));
+	});
+};
