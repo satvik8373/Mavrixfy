@@ -47,7 +47,7 @@ if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATOR
 
 // Initialize Analytics only in browser environment
 let analytics: any = null;
-if (typeof window !== 'undefined' && !navigator.webdriver && !/Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent)) {
+if (typeof window !== 'undefined') {
   const initializeAnalytics = async () => {
     try {
       const { getAnalytics, isSupported } = await import("firebase/analytics");

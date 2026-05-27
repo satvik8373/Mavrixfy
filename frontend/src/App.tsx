@@ -2,8 +2,6 @@ import { RouterProvider, createBrowserRouter, Navigate, useLocation, useRouteErr
 import { Suspense, lazy, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { performanceService } from './services/performanceService';
-import { startRecommendationSessionTracking } from './services/recommendationService';
-import { audioManager } from './utils/audioManager';
 import { APP_LOAD_RECOVERY_KEY, isRecoverableAppLoadError, performHardRefresh } from './utils/errorRecovery';
 
 import { clearAuthRedirectState } from './utils/clearAuthRedirectState';
@@ -452,7 +450,9 @@ function App() {
 			if (started) return;
 			started = true;
 			interactionEvents.forEach((eventName) => window.removeEventListener(eventName, startTracking));
-			startRecommendationSessionTracking();
+			void import('./services/recommendationService')
+				.then(({ startRecommendationSessionTracking }) => startRecommendationSessionTracking())
+				.catch(() => {});
 		};
 
 		interactionEvents.forEach((eventName) => {
@@ -484,7 +484,9 @@ function App() {
 
 	useEffect(() => {
 		const resumeAudio = () => {
-			void audioManager.resumeIfPausedUnexpectedly();
+			void import('./utils/audioManager')
+				.then(({ audioManager }) => audioManager.resumeIfPausedUnexpectedly())
+				.catch(() => {});
 		};
 
 		const handleVisibilityChange = () => {

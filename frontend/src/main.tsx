@@ -9,41 +9,6 @@ declare global {
   }
 }
 
-function isAutomatedAudit() {
-  return (
-    /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent) ||
-    window.location.search.includes('lighthouse=1')
-  );
-}
-
-function renderLighthouseHome() {
-  const root = document.getElementById('root');
-  if (!root) return;
-
-  document.title = 'Mavrixfy - Free Music Streaming Platform';
-  root.innerHTML = `
-    <main style="min-height:100%;background:#050505;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:grid;place-items:center;padding:24px;text-align:center">
-      <section style="width:min(100%,720px);display:grid;gap:18px;justify-items:center">
-        <img src="/mavrixfy-icons/mavrixfy-icon-maskable-160.webp" alt="Mavrixfy" width="128" height="128" fetchpriority="high" style="width:128px;height:128px;object-fit:contain" />
-        <p style="margin:0;color:#1ed760;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Music streaming and discovery</p>
-        <h1 style="margin:0;font-size:clamp(36px,7vw,72px);line-height:1;font-weight:800;letter-spacing:0">Mavrixfy</h1>
-        <p style="margin:0;max-width:54ch;color:rgba(255,255,255,.72);font-size:18px;line-height:1.55">
-          Discover, play and share songs, playlists, artists and trending music.
-        </p>
-        <nav aria-label="Featured music pages" style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:6px">
-          <a href="/songs" style="color:#050505;background:#1ed760;text-decoration:none;border-radius:999px;padding:10px 16px;font-weight:700">Songs</a>
-          <a href="/playlists" style="color:#fff;background:rgba(255,255,255,.12);text-decoration:none;border-radius:999px;padding:10px 16px;font-weight:700">Playlists</a>
-          <a href="/trending" style="color:#fff;background:rgba(255,255,255,.12);text-decoration:none;border-radius:999px;padding:10px 16px;font-weight:700">Trending</a>
-          <a href="/blog" style="color:#fff;background:rgba(255,255,255,.12);text-decoration:none;border-radius:999px;padding:10px 16px;font-weight:700">Blog</a>
-        </nav>
-      </section>
-    </main>
-  `;
-}
-
-const isLighthouseHomeAudit =
-  isAutomatedAudit() && (window.location.pathname === '/' || window.location.pathname === '/home');
-
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
   if (sessionStorage.getItem(APP_LOAD_RECOVERY_KEY)) return;
@@ -51,10 +16,6 @@ window.addEventListener('vite:preloadError', (event) => {
   sessionStorage.setItem(APP_LOAD_RECOVERY_KEY, '1');
   void performHardRefresh();
 });
-
-if (isLighthouseHomeAudit) {
-  renderLighthouseHome();
-}
 
 function initializeAnalytics() {
   try {
@@ -95,7 +56,6 @@ function initializeAnalytics() {
 
 function scheduleAnalytics() {
   if (!import.meta.env.PROD) return;
-  if (isAutomatedAudit()) return;
 
   let initialized = false;
   const interactionEvents = ['pointerdown', 'keydown', 'touchstart'];
@@ -119,9 +79,7 @@ function scheduleAnalytics() {
   });
 }
 
-if (!isLighthouseHomeAudit) {
-  scheduleAnalytics();
-}
+scheduleAnalytics();
 
 // Log environment info for debugging
 if (import.meta.env.DEV) {
@@ -215,7 +173,7 @@ window.addEventListener('unhandledrejection', (event) => {
 
 // Cleanup legacy custom service worker registrations.
 // Vite PWA controls the Workbox-generated sw.js registration below.
-if (!isLighthouseHomeAudit && 'serviceWorker' in navigator && !isAutomatedAudit()) {
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.getRegistrations()
       .then((registrations) => {
@@ -235,7 +193,7 @@ if (!isLighthouseHomeAudit && 'serviceWorker' in navigator && !isAutomatedAudit(
   });
 }
 
-if (!isLighthouseHomeAudit && !isAutomatedAudit()) {
+if ('serviceWorker' in navigator) {
   let applyServiceWorkerUpdate: ((reloadPage?: boolean) => Promise<void>) | undefined;
 
   applyServiceWorkerUpdate = registerSW({
@@ -253,14 +211,12 @@ if (!isLighthouseHomeAudit && !isAutomatedAudit()) {
 }
 
 // Let the inline document shell paint before loading the full SPA graph.
-if (!isLighthouseHomeAudit) {
-  const bootstrapApp = () => {
-    void import('./bootstrap');
-  };
+const bootstrapApp = () => {
+  void import('./bootstrap');
+};
 
-  if ('requestAnimationFrame' in window) {
-    window.requestAnimationFrame(bootstrapApp);
-  } else {
-    window.setTimeout(bootstrapApp, 0);
-  }
+if ('requestAnimationFrame' in window) {
+  window.requestAnimationFrame(bootstrapApp);
+} else {
+  window.setTimeout(bootstrapApp, 0);
 }

@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useReducer, useEffect, useSyncExternalStore } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     Search,
@@ -22,6 +22,26 @@ interface LeftSidebarProps {
     isCollapsed?: boolean;
     onToggleCollapse?: () => void;
 }
+
+const runAfterSidebarIntent = (callback: () => void) => {
+    let hasRun = false;
+    const intentEvents = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
+
+    const run = () => {
+        if (hasRun) return;
+        hasRun = true;
+        intentEvents.forEach((eventName) => window.removeEventListener(eventName, run));
+        callback();
+    };
+
+    intentEvents.forEach((eventName) => {
+        window.addEventListener(eventName, run, { once: true, passive: true });
+    });
+
+    return () => {
+        intentEvents.forEach((eventName) => window.removeEventListener(eventName, run));
+    };
+};
 
 type LikedPlaylistsData = {
     likedIds: string[];
@@ -131,8 +151,23 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
     // Check if we're on the mood playlist page
     const isMoodPlaylistPage = location.pathname === '/mood-playlist';
 
+    const loadLikedSongsCount = useCallback(async () => {
+        if (isActuallyAuthenticated) {
+            try {
+                const { getLikedSongsCount } = await import('@/services/likedSongsService');
+                const count = await getLikedSongsCount();
+                dispatchSidebar({ type: 'liked_count', count });
+            } catch (error) {
+                dispatchSidebar({ type: 'liked_count', count: 0 });
+            }
+        } else {
+            dispatchSidebar({ type: 'liked_count', count: 0 });
+        }
+    }, [isActuallyAuthenticated]);
+
     useEffect(() => {
         let isCancelled = false;
+        let cancelDeferredFetch: (() => void) | undefined;
 
         const loadSidebarData = async () => {
             dispatchSidebar({ type: 'loading', value: true });
@@ -146,7 +181,9 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
                     await loadLikedSongsCount();
                 }
             } else {
-                await fetchPublicPlaylists();
+                cancelDeferredFetch = runAfterSidebarIntent(() => {
+                    void fetchPublicPlaylists();
+                });
                 if (!isCancelled) {
                     dispatchSidebar({ type: 'liked_count', count: 0 });
                 }
@@ -161,8 +198,9 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
 
         return () => {
             isCancelled = true;
+            cancelDeferredFetch?.();
         };
-    }, [isActuallyAuthenticated, fetchUserPlaylists, fetchPublicPlaylists]);
+    }, [isActuallyAuthenticated, fetchUserPlaylists, fetchPublicPlaylists, loadLikedSongsCount]);
 
     useEffect(() => {
         if (!isActuallyAuthenticated || userPlaylists.length > 0) {
@@ -190,21 +228,7 @@ export const LeftSidebar = ({ isCollapsed = false, onToggleCollapse }: LeftSideb
         return () => {
             document.removeEventListener('likedSongsUpdated', handleLikedSongsUpdated);
         };
-    }, [isActuallyAuthenticated]);
-
-    const loadLikedSongsCount = async () => {
-        if (isActuallyAuthenticated) {
-            try {
-                const { getLikedSongsCount } = await import('@/services/likedSongsService');
-                const count = await getLikedSongsCount();
-                dispatchSidebar({ type: 'liked_count', count });
-            } catch (error) {
-                dispatchSidebar({ type: 'liked_count', count: 0 });
-            }
-        } else {
-            dispatchSidebar({ type: 'liked_count', count: 0 });
-        }
-    };
+    }, [loadLikedSongsCount]);
 
     const isActive = (path: string) => {
         return location.pathname.startsWith(path);

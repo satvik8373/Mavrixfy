@@ -1,5 +1,4 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { audioManager } from '@/utils/audioManager';
 import { APP_LOAD_RECOVERY_KEY, isRecoverableAppLoadError, performHardRefresh } from '@/utils/errorRecovery';
 
 interface Props {
@@ -57,11 +56,9 @@ class ErrorBoundary extends Component<Props, State> {
 
     // If it's an audio error, try to reset audio state
     if (isAudioError) {
-      try {
-        audioManager.stopSong();
-      } catch (e) {
-        // Ignore cleanup errors
-      }
+      void import('@/utils/audioManager')
+        .then(({ audioManager }) => audioManager.stopSong())
+        .catch(() => {});
     }
 
     if (isRecoverableAppLoadError(error) && !sessionStorage.getItem(APP_LOAD_RECOVERY_KEY)) {

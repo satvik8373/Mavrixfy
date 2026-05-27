@@ -1,7 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import type { User as FirebaseUser } from 'firebase/auth';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 interface User {
@@ -38,11 +36,15 @@ const buildBasicUser = (firebaseUser: FirebaseUser): User => ({
   picture: firebaseUser.photoURL || '',
 });
 
-const loadUserProfile = async (firebaseUser: FirebaseUser): Promise<User> => {
+const loadUserProfile = async (
+  firebaseUser: FirebaseUser,
+  firebaseDb: Awaited<typeof import('@/lib/firebase')>['db'],
+): Promise<User> => {
   const basicUser = buildBasicUser(firebaseUser);
 
   try {
-    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+    const { doc, getDoc } = await import('firebase/firestore');
+    const userDoc = await getDoc(doc(firebaseDb, 'users', firebaseUser.uid));
     const profile = userDoc.data();
 
     return {
@@ -65,6 +67,28 @@ const syncAuthStore = (nextUser: User | null) => {
   useAuthStore.getState().setUserProfile(nextUser.name, nextUser.picture);
 };
 
+const isPublicGuestRoute = () => {
+  if (typeof window === 'undefined') return false;
+
+  const pathname = window.location.pathname;
+  return (
+    pathname === '/' ||
+    pathname === '/home' ||
+    pathname === '/search' ||
+    pathname === '/songs' ||
+    pathname === '/playlists' ||
+    pathname.startsWith('/playlist/') ||
+    pathname.startsWith('/song/') ||
+    pathname.startsWith('/album/') ||
+    pathname.startsWith('/albums/') ||
+    pathname.startsWith('/artist/') ||
+    pathname.startsWith('/genre/') ||
+    pathname.startsWith('/trending') ||
+    pathname.startsWith('/blog') ||
+    pathname.startsWith('/jiosaavn/')
+  );
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +98,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     typeof navigator === 'undefined' ? true : navigator.onLine,
   );
 
-  const applyFirebaseUser = useCallback(async (firebaseUser: FirebaseUser | null) => {
+  const applyFirebaseUser = useCallback(async (
+    firebaseUser: FirebaseUser | null,
+    firebaseDb: Awaited<typeof import('@/lib/firebase')>['db'],
+  ) => {
     if (!firebaseUser) {
       setUser(null);
       setError(null);
@@ -83,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const nextUser = await loadUserProfile(firebaseUser);
+      const nextUser = await loadUserProfile(firebaseUser, firebaseDb);
       setUser(nextUser);
       setError(null);
       syncAuthStore(nextUser);
@@ -104,11 +131,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let isMounted = true;
     let unsubscribe: (() => void) | undefined;
+    let cleanupDelayedAuth: (() => void) | undefined;
 
     const startAuth = async () => {
       setLoading(true);
 
       try {
+        const [{ onAuthStateChanged }, { auth, db }] = await Promise.all([
+          import('firebase/auth'),
+          import('@/lib/firebase'),
+        ]);
+
         await auth.authStateReady();
         if (!isMounted) return;
 
@@ -116,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!hasResolvedInitialAuth.current) {
             setLoading(true);
           }
-          await applyFirebaseUser(firebaseUser);
+          await applyFirebaseUser(firebaseUser, db);
           if (isMounted) {
             hasResolvedInitialAuth.current = true;
             setLoading(false);
@@ -131,10 +164,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    void startAuth();
+    if (isPublicGuestRoute() && !useAuthStore.getState().isAuthenticated) {
+      hasResolvedInitialAuth.current = true;
+      setLoading(false);
+
+      const events = ['pointerdown', 'keydown', 'touchstart'];
+      const startAfterIntent = () => {
+        cleanupDelayedAuth?.();
+        void startAuth();
+      };
+
+      events.forEach((eventName) => {
+        window.addEventListener(eventName, startAfterIntent, { once: true, passive: true });
+      });
+      cleanupDelayedAuth = () => {
+        events.forEach((eventName) => window.removeEventListener(eventName, startAfterIntent));
+      };
+    } else {
+      void startAuth();
+    }
 
     return () => {
       isMounted = false;
+      cleanupDelayedAuth?.();
       unsubscribe?.();
     };
   }, [applyFirebaseUser]);
@@ -152,7 +204,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshUserData = useCallback(async () => {
-    await applyFirebaseUser(auth.currentUser);
+    const { auth, db } = await import('@/lib/firebase');
+    await applyFirebaseUser(auth.currentUser, db);
   }, [applyFirebaseUser]);
 
   const contextValue = useMemo(

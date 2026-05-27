@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { Song } from '@/types';
-import { playSong } from '@/utils/audioManager';
 
 type MediaType = 'image' | 'gif' | 'video' | 'audio';
 type Platform = 'web' | 'app';
@@ -160,6 +159,30 @@ function AudioMedia({ url }: { url: string }) {
 
 const PROMOS_CACHE_KEY = 'mavrixfy_promos_cache';
 const CACHE_DURATION = 15 * 60 * 1000;
+const interactionEvents = ['pointerdown', 'keydown', 'touchstart'] as const;
+
+function runAfterIntent(callback: () => void) {
+  let didRun = false;
+
+  const run = () => {
+    if (didRun) return;
+    didRun = true;
+    interactionEvents.forEach((eventName) => {
+      window.removeEventListener(eventName, run);
+    });
+    callback();
+  };
+
+  interactionEvents.forEach((eventName) => {
+    window.addEventListener(eventName, run, { once: true, passive: true });
+  });
+
+  return () => {
+    interactionEvents.forEach((eventName) => {
+      window.removeEventListener(eventName, run);
+    });
+  };
+}
 
 export function PromotionsBanner() {
   const [current, setCurrent] = useState(0);
@@ -178,16 +201,8 @@ export function PromotionsBanner() {
     }
     return undefined;
   });
-  const isLighthouse = typeof navigator !== 'undefined' &&
-    (
-      navigator.webdriver ||
-      /Chrome-Lighthouse|Lighthouse|HeadlessChrome/i.test(navigator.userAgent) ||
-      window.location.search.includes('lighthouse=1')
-    );
 
   useEffect(() => {
-    if (isLighthouse) return;
-
     let isCancelled = false;
 
     const fetchPromos = async () => {
@@ -228,12 +243,17 @@ export function PromotionsBanner() {
       }
     };
 
-    void fetchPromos();
+    const cleanupIntent = promos === undefined
+      ? runAfterIntent(() => {
+          void fetchPromos();
+        })
+      : undefined;
 
     return () => {
       isCancelled = true;
+      cleanupIntent?.();
     };
-  }, [isLighthouse]);
+  }, [promos]);
 
   // Auto-rotate every 5s — skip for video/audio (let them play)
   useEffect(() => {
@@ -277,7 +297,9 @@ export function PromotionsBanner() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      void playSong(songToPlay);
+      void import('@/utils/audioManager')
+        .then(({ playSong }) => playSong(songToPlay))
+        .catch(() => {});
     } else if (promo.actionType === 'playlist' && promo.actionUrl) {
       if (promo.actionUrl.startsWith('jio_') || !isNaN(Number(promo.actionUrl))) {
         navigate(`/jiosaavn/playlist/${promo.actionUrl}`);

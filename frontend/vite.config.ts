@@ -171,6 +171,7 @@ export default defineConfig(({ mode }) => {
 			rollupOptions: {
 				output: {
 					manualChunks(id) {
+						if (id.includes('commonjsHelpers')) return 'vendor-utils';
 						if (!id.includes('node_modules')) return undefined;
 						if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/.test(id)) return 'react-vendor';
 						if (/[\\/]node_modules[\\/](@?firebase|firebase)[\\/]/.test(id)) return 'firebase';

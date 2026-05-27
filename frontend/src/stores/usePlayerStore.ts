@@ -1,7 +1,6 @@
 import { createWithEqualityFn as create } from 'zustand/traditional';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Song } from '@/types';
-import { audioManager } from '@/utils/audioManager';
 import { trackSongSkip } from '@/services/recommendationService';
 
 export type ShuffleMode = 'off' | 'normal' | 'smart';
@@ -129,8 +128,25 @@ const smartShuffleArray = <T extends Song>(array: T[]): T[] => {
   return result;
 };
 
+type AudioManagerModule = typeof import('@/utils/audioManager');
+
+let audioManagerModulePromise: Promise<AudioManagerModule> | null = null;
+
+const getAudioManagerModule = () => {
+  audioManagerModulePromise ??= import('@/utils/audioManager');
+  return audioManagerModulePromise;
+};
+
+const withAudioManager = (callback: (manager: AudioManagerModule['audioManager']) => void | Promise<void>) => {
+  void getAudioManagerModule()
+    .then(({ audioManager }) => callback(audioManager))
+    .catch(() => {});
+};
+
 const syncQueueWithAudioManager = (queue: Song[], currentIndex: number) => {
-  audioManager.setQueue(queue, currentIndex);
+  withAudioManager((audioManager) => {
+    audioManager.setQueue(queue, currentIndex);
+  });
 };
 
 export const usePlayerStore = create<PlayerState>()(
@@ -182,11 +198,11 @@ export const usePlayerStore = create<PlayerState>()(
         syncQueueWithAudioManager(state.queue, state.currentIndex);
 
         if (nextIsPlaying) {
-          void audioManager.resumeSong();
+          withAudioManager((audioManager) => audioManager.resumeSong());
           return;
         }
 
-        audioManager.pauseSong();
+        withAudioManager((audioManager) => audioManager.pauseSong());
       },
 
       setCurrentTime: (time) => {
@@ -203,14 +219,14 @@ export const usePlayerStore = create<PlayerState>()(
       setVolume: (volume) => {
         const nextVolume = Math.max(0, Math.min(volume, 100));
         set({ volume: nextVolume });
-        audioManager.setVolume(nextVolume / 100);
+        withAudioManager((audioManager) => audioManager.setVolume(nextVolume / 100));
       },
 
       seekTo: (time) => {
-        const duration = get().duration || audioManager.getDuration();
+        const duration = get().duration;
         const nextTime = Math.max(0, Math.min(time, duration || time));
         set({ currentTime: nextTime });
-        audioManager.seekTo(nextTime);
+        withAudioManager((audioManager) => audioManager.seekTo(nextTime));
       },
 
       togglePlay: () => {
@@ -257,7 +273,7 @@ export const usePlayerStore = create<PlayerState>()(
         });
 
         syncQueueWithAudioManager(playQueue, playIndex);
-        void audioManager.playSong(songToPlay);
+        withAudioManager((audioManager) => audioManager.playSong(songToPlay));
       },
 
       playNext: () => {
@@ -266,8 +282,8 @@ export const usePlayerStore = create<PlayerState>()(
         const stateBeforeNext = get();
         trackSongSkip(
           stateBeforeNext.currentSong,
-          audioManager.getCurrentTime() || stateBeforeNext.currentTime,
-          audioManager.getDuration() || stateBeforeNext.duration,
+          stateBeforeNext.currentTime,
+          stateBeforeNext.duration,
         );
 
         const now = Date.now();
@@ -280,8 +296,10 @@ export const usePlayerStore = create<PlayerState>()(
             lastPlayNextTime: now,
             isPlaying: true,
           });
-          audioManager.seekTo(0);
-          void audioManager.resumeSong();
+          withAudioManager((audioManager) => {
+            audioManager.seekTo(0);
+            return audioManager.resumeSong();
+          });
           return;
         }
 
@@ -305,23 +323,23 @@ export const usePlayerStore = create<PlayerState>()(
         }
 
         syncQueueWithAudioManager(queue, nextIndex);
-        void audioManager.playSong(nextSong);
+        withAudioManager((audioManager) => audioManager.playSong(nextSong));
       },
 
       playPrevious: () => {
         const { queue, currentIndex, isRepeating, isPlaying } = get();
         if (queue.length === 0) return;
 
-        const elapsedSeconds = audioManager.getCurrentTime();
+        const elapsedSeconds = get().currentTime;
         if (elapsedSeconds > 3 && !isRepeating) {
-          audioManager.seekTo(0);
+          withAudioManager((audioManager) => audioManager.seekTo(0));
           set({
             currentTime: 0,
             isPlaying: true,
           });
 
           if (isPlaying) {
-            void audioManager.resumeSong();
+            withAudioManager((audioManager) => audioManager.resumeSong());
           }
           return;
         }
@@ -330,7 +348,7 @@ export const usePlayerStore = create<PlayerState>()(
         trackSongSkip(
           stateBeforePrevious.currentSong,
           elapsedSeconds || stateBeforePrevious.currentTime,
-          audioManager.getDuration() || stateBeforePrevious.duration,
+          stateBeforePrevious.duration,
         );
 
         const previousIndex = (currentIndex - 1 + queue.length) % queue.length;
@@ -350,7 +368,7 @@ export const usePlayerStore = create<PlayerState>()(
         }
 
         syncQueueWithAudioManager(queue, previousIndex);
-        void audioManager.playSong(previousSong);
+        withAudioManager((audioManager) => audioManager.playSong(previousSong));
       },
 
       toggleShuffle: () => {
@@ -504,7 +522,7 @@ export const usePlayerStore = create<PlayerState>()(
             duration: 0,
             isPlaying: false,
           });
-          audioManager.stopSong();
+          withAudioManager((audioManager) => audioManager.stopSong());
           syncQueueWithAudioManager([], 0);
           return;
         }
@@ -532,9 +550,9 @@ export const usePlayerStore = create<PlayerState>()(
 
         if (index === currentIndex) {
           if (isPlaying) {
-            void audioManager.playSong(nextSong);
+            withAudioManager((audioManager) => audioManager.playSong(nextSong));
           } else {
-            audioManager.stopSong();
+            withAudioManager((audioManager) => audioManager.stopSong());
           }
         }
       },
@@ -559,7 +577,7 @@ export const usePlayerStore = create<PlayerState>()(
         });
 
         syncQueueWithAudioManager(shuffledQueue, 0);
-        void audioManager.playSong(shuffledQueue[0]);
+        withAudioManager((audioManager) => audioManager.playSong(shuffledQueue[0]));
       },
     }),
     {
@@ -606,7 +624,9 @@ setTimeout(() => {
   }
 
   const freshState = usePlayerStore.getState();
-  audioManager.setVolume(freshState.volume / 100);
+  if (!freshState.currentSong) return;
+
+  withAudioManager((audioManager) => audioManager.setVolume(freshState.volume / 100));
   syncQueueWithAudioManager(freshState.queue, freshState.currentIndex);
 }, 0);
 

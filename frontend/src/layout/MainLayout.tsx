@@ -1,7 +1,6 @@
 import { Suspense, lazy, useEffect, useReducer, useRef, useCallback, memo } from 'react';
 import type { ErrorInfo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import MobileNav from './components/MobileNav';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { useSidebarStore, COLLAPSED_WIDTH, MAX_WIDTH, MIN_WIDTH } from '@/stores/useSidebarStore';
 import { useBackgroundRefresh } from '@/hooks/useBackgroundRefresh';
@@ -13,9 +12,7 @@ const PlaybackControls = lazy(() => import('./components/PlaybackControls'));
 const Header = lazy(() => import('@/components/Header'));
 const QueuePanel = lazy(() => import('@/components/QueuePanel'));
 const DesktopFooter = lazy(() => import('@/components/DesktopFooter'));
-
-// Memoized components to prevent unnecessary re-renders
-const MemoizedMobileNav = memo(MobileNav);
+const MobileNav = lazy(() => import('./components/MobileNav'));
 
 const RouteErrorFallback = (error: Error, errorInfo: ErrorInfo) => (
   <div className="flex min-h-[420px] w-full items-center justify-center p-6">
@@ -411,9 +408,13 @@ const MainLayout = () => {
       )}
 
       {/* Mobile Navigation */}
-      <MemoizedMobileNav />
+      {isMobile && (
+        <Suspense fallback={null}>
+          <MobileNav />
+        </Suspense>
+      )}
     </div>
   );
 };
 
-export default MainLayout;
+export default memo(MainLayout);

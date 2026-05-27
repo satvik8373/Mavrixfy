@@ -5,13 +5,6 @@ import { useAuthStore } from './useAuthStore';
 
 const loadLikedSongsFirestoreService = () => import('@/services/likedSongsService');
 
-const isAutomatedAudit = () =>
-  typeof navigator !== 'undefined' &&
-  (
-    /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent) ||
-    window.location.search.includes('lighthouse=1')
-  );
-
 // Local backup service for offline or error scenarios
 const localLikedSongsService = {
   getLikedSongs: (): Song[] => {
@@ -75,7 +68,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
 
         try {
           let songs: Song[] = [];
-          const isAuthenticated = useAuthStore.getState().isAuthenticated && !isAutomatedAudit();
+          const isAuthenticated = useAuthStore.getState().isAuthenticated;
 
           // Try Firestore first if user is authenticated
           if (isAuthenticated) {
@@ -184,7 +177,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           localLikedSongsService.addLikedSong(songToSave);
 
           // Update Firestore if user is authenticated - don't await to prevent UI blocking
-          const isAuthenticated = useAuthStore.getState().isAuthenticated && !isAutomatedAudit();
+          const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
             // Pass the song's likedAt date if it exists (for Mavrixfy imports)
             void loadLikedSongsFirestoreService()
@@ -255,7 +248,7 @@ export const useLikedSongsStore = create<LikedSongsStore>()(
           localLikedSongsService.removeLikedSong(songId);
 
           // Update Firestore if user is authenticated
-          const isAuthenticated = useAuthStore.getState().isAuthenticated && !isAutomatedAudit();
+          const isAuthenticated = useAuthStore.getState().isAuthenticated;
           if (isAuthenticated) {
             try {
               const likedSongsFirestoreService = await loadLikedSongsFirestoreService();
@@ -369,12 +362,10 @@ useAuthStore.subscribe((state) => {
 // Initialize the store by loading liked songs
 // This must be done outside of any component to ensure it's only called once
 // Use queueMicrotask instead of setTimeout to avoid performance violations
-if (!isAutomatedAudit()) {
-  queueMicrotask(() => {
-    useLikedSongsStore.getState().loadLikedSongs().catch(() => {
-      // Error handling without logging
-    });
+queueMicrotask(() => {
+  useLikedSongsStore.getState().loadLikedSongs().catch(() => {
+    // Error handling without logging
   });
-}
+});
 
 

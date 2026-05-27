@@ -56,13 +56,6 @@ const getRandomHomeCategories = (): Array<typeof ALL_JIOSAAVN_CATEGORIES[number]
 };
 
 const runAfterGuestIntent = (callback: () => void, fallbackDelayMs?: number) => {
-  if (
-    /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent) ||
-    window.location.search.includes('lighthouse=1')
-  ) {
-    return () => undefined;
-  }
-
   let hasRun = false;
   const intentEvents = ['pointerdown', 'keydown', 'touchstart', 'wheel'];
   let fallbackTimer: number | undefined;
@@ -91,13 +84,6 @@ const runAfterGuestIntent = (callback: () => void, fallbackDelayMs?: number) => 
     intentEvents.forEach((eventName) => window.removeEventListener(eventName, run));
   };
 };
-
-const isAutomatedAudit = () =>
-  typeof navigator !== 'undefined' &&
-  (
-    /Chrome-Lighthouse|Lighthouse/i.test(navigator.userAgent) ||
-    window.location.search.includes('lighthouse=1')
-  );
 
 interface HomeState {
   isInitialLoading: boolean;
@@ -337,7 +323,7 @@ const HomePage = () => {
   const fetchFeaturedPlaylists = usePlaylistStore(state => state.fetchFeaturedPlaylists);
   const isLoading = usePlaylistStore(state => state.isLoading);
   const storedIsAuthenticated = useAuthStore(state => state.isAuthenticated);
-  const isAuthenticated = storedIsAuthenticated && !isAutomatedAudit();
+  const isAuthenticated = storedIsAuthenticated;
   const isAuthReady = useAuthStore(state => state.isAuthReady);
 
   const [{
@@ -370,9 +356,9 @@ const HomePage = () => {
 
   // Load liked songs count
   useEffect(() => {
-    if (isAutomatedAudit()) return;
-    loadLikedSongs();
-  }, [loadLikedSongs]);
+    if (!isAuthenticated) return;
+    void loadLikedSongs();
+  }, [isAuthenticated, loadLikedSongs]);
 
   // Update meta tags for home page
   useEffect(() => {
@@ -399,9 +385,10 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAuthReady) return;
+    if (!isAuthReady && storedIsAuthenticated) return;
 
     let isCancelled = false;
+    let cancelGuestPlaylistFetch: (() => void) | undefined;
 
     const loadHomePlaylists = async () => {
       try {
@@ -420,9 +407,15 @@ const HomePage = () => {
           return;
         }
 
+        dispatchHome({ type: 'home_loaded' });
+        dispatchHome({ type: 'playlists_loading', isLoading: false });
+
         if (usePlaylistStore.getState().publicPlaylists.length === 0) {
-          await fetchPublicPlaylists();
+          cancelGuestPlaylistFetch = runAfterGuestIntent(() => {
+            void fetchPublicPlaylists();
+          });
         }
+        return;
       } catch {
         // The page can continue with JioSaavn rows if playlist sync fails.
       } finally {
@@ -437,8 +430,9 @@ const HomePage = () => {
 
     return () => {
       isCancelled = true;
+      cancelGuestPlaylistFetch?.();
     };
-  }, [fetchPublicPlaylists, fetchFeaturedPlaylists, isAuthenticated, isAuthReady]);
+  }, [fetchPublicPlaylists, fetchFeaturedPlaylists, isAuthenticated, isAuthReady, storedIsAuthenticated]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
