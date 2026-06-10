@@ -2,6 +2,14 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/app-ads.txt",
+      "destination": "/app-ads.txt"
+    },
+    {
+      "source": "/home/app-ads.txt",
+      "destination": "/app-ads.txt"
+    },
+    {
       "source": "/firebase-messaging-sw.js",
       "destination": "/firebase-messaging-sw.js"
     },

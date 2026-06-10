@@ -5,6 +5,14 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
+      "source": "/app-ads.txt",
+      "destination": "/app-ads.txt"
+    },
+    {
+      "source": "/home/app-ads.txt",
+      "destination": "/app-ads.txt"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "https://spotify-api-drab.vercel.app/api/$1"
     },
