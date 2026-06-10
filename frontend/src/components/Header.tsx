@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, XCircle, User, Home, Bell, Megaphone, Download } from 'lucide-react';
+import { Search, XCircle, User, Home, Bell, Megaphone, Smartphone } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import debounce from 'lodash/debounce';
 import { WhatsNewDialog } from './WhatsNewDialog';
 import { useOptimizedAvatar } from '@/hooks/useOptimizedAvatar';
+import { PLAY_STORE_URL } from '@/config/appLinks';
 
 import {
   DropdownMenu,
@@ -27,7 +28,6 @@ interface HeaderProps {
 interface HeaderActionsProps {
   user: any;
   authLoading: boolean;
-  isAndroid: boolean;
   avatarUrl: string | null;
   avatarLoading: boolean;
   setShowWhatsNew: (val: boolean) => void;
@@ -35,10 +35,25 @@ interface HeaderActionsProps {
   navigate: (path: string) => void;
 }
 
+const HeaderPlayStoreLink = () => (
+  <a
+    href={PLAY_STORE_URL}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex h-9 items-center gap-2 rounded-full border border-emerald-400/35 bg-emerald-400/10 px-3 text-xs font-semibold text-emerald-300 transition-all hover:bg-emerald-400/20 hover:text-emerald-200 md:px-4 md:text-sm"
+    title="Mavrixfy Android app is available on Google Play"
+    aria-label="Open Mavrixfy Android app on Google Play"
+  >
+    <Smartphone size={16} />
+    <span className="hidden lg:inline whitespace-nowrap">Android app available</span>
+    <span className="hidden sm:inline lg:hidden whitespace-nowrap">Play Store</span>
+    <span className="sm:hidden">App</span>
+  </a>
+);
+
 const HeaderActions = ({
   user,
   authLoading,
-  isAndroid,
   avatarUrl,
   avatarLoading,
   setShowWhatsNew,
@@ -49,31 +64,22 @@ const HeaderActions = ({
 
   if (!user) {
     return (
-      <Button
-        className="rounded-full bg-white hover:bg-white/90 hover:scale-105 text-black font-bold px-8 text-sm transition-all"
-        style={{ height: '48px' }}
-        onClick={() => navigate('/login')}
-      >
-        Log in
-      </Button>
+      <>
+        <HeaderPlayStoreLink />
+        <Button
+          className="rounded-full bg-white hover:bg-white/90 hover:scale-105 text-black font-bold px-8 text-sm transition-all"
+          style={{ height: '48px' }}
+          onClick={() => navigate('/login')}
+        >
+          Log in
+        </Button>
+      </>
     );
   }
 
   return (
     <>
-      {/* APK Download for Android Users - Show on mobile too */}
-      {isAndroid && (
-        <a
-          href={import.meta.env.VITE_APK_DOWNLOAD_URL || 'https://github.com/satvik8373/Mavrixfy-App/releases/download/v1.0.0/mavrixfy.apk'}
-          download
-          className="flex items-center gap-2 px-3 md:px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-medium rounded-full transition-all text-xs md:text-sm"
-          title="Download Android APK"
-        >
-          <Download size={16} />
-          <span className="hidden sm:inline">Download APK</span>
-          <span className="sm:hidden">APK</span>
-        </a>
-      )}
+      <HeaderPlayStoreLink />
 
       {/* Bell Icon - Show on mobile too */}
       <button type="button"
@@ -189,7 +195,6 @@ const Header = ({ className }: HeaderProps) => {
   const searchFormRef = useRef<HTMLFormElement>(null);
   const authProcessedRef = useRef(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
-  const [isAndroid] = useState(() => /android/.test(navigator.userAgent.toLowerCase()));
 
   // Optimized avatar loading with rate limiting
   const { avatarUrl, isLoading: avatarLoading } = useOptimizedAvatar(
@@ -395,7 +400,6 @@ const Header = ({ className }: HeaderProps) => {
           <HeaderActions
             user={user}
             authLoading={authLoading}
-            isAndroid={isAndroid}
             avatarUrl={avatarUrl}
             avatarLoading={avatarLoading}
             setShowWhatsNew={setShowWhatsNew}

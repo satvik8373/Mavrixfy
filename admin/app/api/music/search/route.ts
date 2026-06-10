@@ -26,6 +26,8 @@ type JioSaavnSong = {
   releaseDate?: string | null;
   language?: string;
   genre?: string;
+  songCount?: string | number | null;
+  type?: string;
 };
 
 type NormalizedSong = {
@@ -588,12 +590,120 @@ export async function GET(request: NextRequest) {
   const query = (searchParams.get('query') || searchParams.get('q') || '').trim();
   const page = Math.max(0, asNumber(searchParams.get('page')) || 0);
   const limit = Math.min(50, Math.max(1, asNumber(searchParams.get('limit')) || 20));
+  const type = searchParams.get('type') || 'song';
 
   if (!query) {
     return NextResponse.json(
       { success: false, message: 'Search query is required' },
       { status: 400 }
     );
+  }
+
+  if (type === 'playlist') {
+    const apiPage = page + 1;
+    try {
+      const url = `${SONG_API_BASE_URL}/search/playlists?query=${encodeURIComponent(query)}&page=${apiPage}&limit=${limit}`;
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          accept: 'application/json',
+          'user-agent': 'MavrixfyAdmin/1.0 (+https://mavrixfy.site)',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to search playlists from JioSaavn: ${response.statusText}`);
+      }
+
+      const payload = await response.json();
+      const { results } = extractJioSaavnData(payload);
+      
+      const normalizedPlaylists = results.map((playlist: any) => {
+        const title = decodeHtmlEntities(playlist.name || playlist.title || '');
+        const artist = playlist.firstname || playlist.lastname || playlist.username || 'JioSaavn';
+        const images = normalizeImages(playlist.image, playlist.imageUrl);
+        return {
+          id: `api_playlist_${playlist.id}`,
+          saavnId: String(playlist.id),
+          title,
+          artist,
+          album: playlist.description || 'Playlist',
+          imageUrl: images[images.length - 1]?.url || '',
+          songCount: asNumber(playlist.songCount) || asNumber(playlist.songsCount) || 0,
+          type: 'playlist',
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          total: normalizedPlaylists.length,
+          start: page * limit + 1,
+          results: normalizedPlaylists,
+        },
+      });
+    } catch (error: any) {
+      console.error('[playlist-search]', error);
+      return NextResponse.json(
+        { success: false, message: error.message || 'Failed to search playlists.' },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (type === 'album') {
+    const apiPage = page + 1;
+    try {
+      const url = `${SONG_API_BASE_URL}/search/albums?query=${encodeURIComponent(query)}&page=${apiPage}&limit=${limit}`;
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          accept: 'application/json',
+          'user-agent': 'MavrixfyAdmin/1.0 (+https://mavrixfy.site)',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to search albums from JioSaavn: ${response.statusText}`);
+      }
+
+      const payload = await response.json();
+      const { results } = extractJioSaavnData(payload);
+      
+      const normalizedAlbums = results.map((album: JioSaavnSong) => {
+        const title = decodeHtmlEntities(album.name || album.title || '');
+        const artist = normalizePrimaryArtists(album);
+        const images = normalizeImages(album.image, album.imageUrl);
+        return {
+          id: `api_album_${album.id}`,
+          saavnId: String(album.id),
+          title,
+          artist,
+          album: title,
+          imageUrl: images[images.length - 1]?.url || '',
+          year: yearFrom(album.year),
+          songCount: asNumber(album.songCount) || 0,
+          type: 'album',
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          total: normalizedAlbums.length,
+          start: page * limit + 1,
+          results: normalizedAlbums,
+        },
+      });
+    } catch (error: any) {
+      console.error('[album-search]', error);
+      return NextResponse.json(
+        { success: false, message: error.message || 'Failed to search albums.' },
+        { status: 500 }
+      );
+    }
   }
 
   const apiPage = page + 1;

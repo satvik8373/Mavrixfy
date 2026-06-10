@@ -1,7 +1,7 @@
 import { DecodedIdToken } from 'firebase-admin/auth';
 import { NextRequest } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
-import { AdminPermission, AdminRole, hasPermission, ROLE_PERMISSIONS } from '@/lib/permissions';
+import { AdminPermission, AdminRole, hasPermission, ROLE_PERMISSIONS, getPermissionLabel } from '@/lib/permissions';
 
 export class AdminApiError extends Error {
   status: number;
@@ -117,7 +117,8 @@ export async function requireAdminPermission(
   }
 
   if (!hasPermission(session.role, session.permissions, permission)) {
-    throw new AdminApiError(403, 'You do not have permission to manage the catalog.');
+    const label = getPermissionLabel(permission);
+    throw new AdminApiError(403, `You do not have permission to: ${label}.`);
   }
 
   return session;

@@ -15,20 +15,67 @@
 const admin = require('firebase-admin');
 const readline = require('readline');
 
+const fs = require('fs');
+const path = require('path');
+
+function loadEnvLocal() {
+  const envPath = path.join(__dirname, '.env.local');
+  if (!fs.existsSync(envPath)) return {};
+  const content = fs.readFileSync(envPath, 'utf8');
+  const env = {};
+  content.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const firstEq = trimmed.indexOf('=');
+    if (firstEq === -1) return;
+    const key = trimmed.substring(0, firstEq).trim();
+    let val = trimmed.substring(firstEq + 1).trim();
+    if (val.startsWith('"') && val.endsWith('"')) {
+      val = val.substring(1, val.length - 1);
+    } else if (val.startsWith("'") && val.endsWith("'")) {
+      val = val.substring(1, val.length - 1);
+    }
+    val = val.replace(/\\n/g, '\n');
+    env[key] = val;
+  });
+  return env;
+}
+
 // Initialize Firebase Admin
 try {
-  const serviceAccount = require('./service-account.json');
+  let credential;
+  try {
+    const serviceAccount = require('./service-account.json');
+    credential = admin.credential.cert(serviceAccount);
+  } catch (err) {
+    const env = loadEnvLocal();
+    const projectId = process.env.FIREBASE_PROJECT_ID || env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY || env.FIREBASE_PRIVATE_KEY;
+
+    if (projectId && clientEmail && privateKey) {
+      credential = admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey
+      });
+    } else {
+      throw new Error('Could not find service-account.json or credentials in .env.local');
+    }
+  }
+
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential
   });
   console.log('✅ Firebase Admin initialized');
 } catch (error) {
-  console.error('❌ Error: Could not find service-account.json');
+  console.error('❌ Error: Could not initialize Firebase Admin SDK');
+  console.error(error.message);
   console.error('');
   console.error('To fix this:');
   console.error('1. Go to Firebase Console → Project Settings → Service Accounts');
   console.error('2. Click "Generate New Private Key"');
-  console.error('3. Save the file as "service-account.json" in the admin directory');
+  console.error('3. Save the file as "service-account.json" in the admin directory or define credentials in .env.local');
   console.error('');
   process.exit(1);
 }

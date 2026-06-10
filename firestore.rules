@@ -7,19 +7,40 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    function hasAdminProfile() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+        );
+    }
+
     // Helper function to check if user is admin
     function isAdmin() {
       return isSignedIn() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
+        hasAdminProfile() ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
+    }
+
+    function adminProtectedKeys() {
+      return ['admin', 'isAdmin', 'role', 'roles', 'adminRole', 'adminPermissions', 'adminStatus'];
     }
     
     // Users collection - read own profile, admins can read all
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() &&
+        request.auth.uid == userId &&
+        !request.resource.data.keys().hasAny(adminProtectedKeys());
+      allow update: if isAdmin() ||
+        (
+          isSignedIn() &&
+          request.auth.uid == userId &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(adminProtectedKeys())
+        );
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
     
     // Admin collection - only admins can access
@@ -69,6 +90,12 @@ service cloud.firestore {
     
     // Promotions - public read, admin write
     match /promotions/{promotionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Home app configuration - public read, admin write
+    match /appConfig/{configId} {
       allow read: if true;
       allow write: if isAdmin();
     }

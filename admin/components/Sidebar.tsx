@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   LogOut,
   LayoutDashboard,
+  MonitorPlay,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { hasPermission } from '@/lib/permissions';
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { label: 'Playlists', href: '/dashboard/playlists', icon: ListMusic, permission: 'playlists.manage', group: 'Catalog' },
   { label: 'Artists', href: '/dashboard/artists', icon: Mic2, permission: 'artists.manage', group: 'Catalog' },
   { label: 'Discovery', href: '/dashboard/discovery', icon: Search, permission: 'discovery.manage', group: 'Growth' },
+  { label: 'Home Video', href: '/dashboard/home-video', icon: MonitorPlay, permission: 'home_video.manage', group: 'Growth' },
   { label: 'Moderation', href: '/dashboard/moderation', icon: ShieldAlert, permission: 'moderation.manage', group: 'Trust' },
   { label: 'Users', href: '/dashboard/users', icon: Users, permission: 'users.manage', group: 'Trust' },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, permission: 'analytics.view', group: 'Monitor' },

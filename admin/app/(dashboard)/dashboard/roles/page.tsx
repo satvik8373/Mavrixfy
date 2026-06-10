@@ -7,7 +7,7 @@ import { ShieldCheck, Users, Loader2 } from 'lucide-react';
 
 const ROLES = [
   { key: 'super_admin', label: 'Super Admin', description: 'Full access to all features and settings', color: 'bg-blue-600' },
-  { key: 'content_editor', label: 'Content Editor', description: 'Manage songs, playlists, and artists', color: 'bg-purple-600' },
+  { key: 'content_editor', label: 'Content Editor', description: 'Manage catalog content and home video', color: 'bg-purple-600' },
   { key: 'moderator', label: 'Moderator', description: 'Content moderation and user management', color: 'bg-green-600' },
   { key: 'analyst', label: 'Analyst', description: 'View analytics and reports (read-only)', color: 'bg-orange-500' },
 ];
@@ -17,6 +17,7 @@ const PERMISSIONS: Record<string, boolean[]> = {
   'Manage Songs':        [true,  true,  false, false],
   'Manage Playlists':    [true,  true,  false, false],
   'Manage Artists':      [true,  true,  false, false],
+  'Home Video':          [true,  true,  false, false],
   'Content Moderation':  [true,  false, true,  false],
   'User Management':     [true,  false, true,  false],
   'View Analytics':      [true,  true,  true,  true],

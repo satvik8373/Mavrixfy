@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { X, Download } from 'lucide-react';
+import { X, Download, Smartphone } from 'lucide-react';
+import { PLAY_STORE_URL } from '@/config/appLinks';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -23,10 +24,13 @@ const isIOSDevice = () => {
   return /iPad|iPhone|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
 };
 
+const isAndroidDevice = () => /Android/i.test(navigator.userAgent);
+
 const PWAInstallPrompt = () => {
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
   const [visible, dispatchVisible] = useReducer((_visible: boolean, nextVisible: boolean) => nextVisible, false);
   const [isIOS] = useState(isIOSDevice);
+  const [isAndroid] = useState(isAndroidDevice);
 
   useEffect(() => {
     // Already installed or recently dismissed — do nothing
@@ -38,19 +42,27 @@ const PWAInstallPrompt = () => {
       return () => window.clearTimeout(t);
     }
 
+    const androidTimer = isAndroid
+      ? window.setTimeout(() => dispatchVisible(true), 8000)
+      : undefined;
+
     const handler = (e: Event) => {
       e.preventDefault();
       deferredPromptRef.current = e as BeforeInstallPromptEvent;
       dispatchVisible(true);
     };
 
+    const handleInstalled = () => dispatchVisible(false);
+
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => dispatchVisible(false));
+    window.addEventListener('appinstalled', handleInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', handleInstalled);
+      if (androidTimer) window.clearTimeout(androidTimer);
     };
-  }, [isIOS]);
+  }, [isAndroid, isIOS]);
 
   const handleInstall = async () => {
     if (!deferredPromptRef.current) return;
@@ -76,7 +88,7 @@ const PWAInstallPrompt = () => {
       className="fixed bottom-0 left-0 right-0 z-[200] px-4 pb-safe border-none bg-transparent p-0 max-w-none outline-none"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
     >
-      <div className="bg-zinc-900 border border-white/10 rounded-2xl p-4 flex items-center gap-3 shadow-2xl max-w-md mx-auto">
+      <div className="bg-zinc-900 border border-white/10 rounded-2xl p-4 flex flex-wrap items-center gap-3 shadow-2xl max-w-md mx-auto">
         <img
           src="/mavrixfy-icons/mavrixfy-icon-maskable-192.png"
           alt="Mavrixfy"
@@ -89,27 +101,43 @@ const PWAInstallPrompt = () => {
               Tap <span className="font-medium text-white/80">Share</span> then{' '}
               <span className="font-medium text-white/80">Add to Home Screen</span>
             </p>
+          ) : isAndroid ? (
+            <p className="text-xs text-white/60 mt-0.5">Android app is available on Google Play</p>
           ) : (
             <p className="text-xs text-white/60 mt-0.5">Add to your home screen for the best experience</p>
           )}
         </div>
-        {!isIOS && (
+        <div className="ml-auto flex items-center gap-2">
+          {isAndroid && (
+            <a
+              href={PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 bg-white text-black text-xs font-semibold px-3 py-2 rounded-lg flex-shrink-0"
+              aria-label="Open Mavrixfy on Google Play"
+            >
+              <Smartphone size={14} />
+              Play Store
+            </a>
+          )}
+          {!isIOS && deferredPromptRef.current && (
+            <button type="button"
+              onClick={handleInstall}
+              className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-lg flex-shrink-0"
+              aria-label="Install web app"
+            >
+              <Download size={14} />
+              {isAndroid ? 'Web app' : 'Install'}
+            </button>
+          )}
           <button type="button"
-            onClick={handleInstall}
-            className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-lg flex-shrink-0"
-            aria-label="Install app"
+            onClick={handleDismiss}
+            className="p-1.5 text-white/40 hover:text-white/80 flex-shrink-0"
+            aria-label="Dismiss"
           >
-            <Download size={14} />
-            Install
+            <X size={16} />
           </button>
-        )}
-        <button type="button"
-          onClick={handleDismiss}
-          className="p-1.5 text-white/40 hover:text-white/80 flex-shrink-0"
-          aria-label="Dismiss"
-        >
-          <X size={16} />
-        </button>
+        </div>
       </div>
     </dialog>
   );

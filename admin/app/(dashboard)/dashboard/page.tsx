@@ -3,8 +3,15 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase-client';
-import { Music2, ListMusic, Users, Activity, ArrowRight } from 'lucide-react';
+import { Music2, ListMusic, Users, Activity, ArrowRight, MonitorPlay } from 'lucide-react';
 import Link from 'next/link';
+
+const quickLinks = [
+  { label: 'Manage Songs', desc: 'Add, edit or remove songs from catalog', href: '/dashboard/songs', icon: Music2 },
+  { label: 'Manage Playlists', desc: 'Create and manage editorial playlists', href: '/dashboard/playlists', icon: ListMusic },
+  { label: 'Home Video', desc: 'Control the app top video showcase', href: '/dashboard/home-video', icon: MonitorPlay },
+  { label: 'Manage Users', desc: 'View and manage user accounts', href: '/dashboard/users', icon: Users },
+];
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<{ songs: number; playlists: number; users: number } | undefined>(undefined);
@@ -33,12 +40,6 @@ export default function DashboardPage() {
     { label: 'Playlists', value: metrics?.playlists ?? 0, icon: ListMusic, color: 'text-purple-600', bg: 'bg-purple-50', href: '/dashboard/playlists' },
     { label: 'Users', value: metrics?.users ?? 0, icon: Users, color: 'text-green-600', bg: 'bg-green-50', href: '/dashboard/users' },
     { label: 'Status', value: 'Online', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50', href: '/dashboard/analytics' },
-  ];
-
-  const quickLinks = [
-    { label: 'Manage Songs', desc: 'Add, edit or remove songs from catalog', href: '/dashboard/songs', icon: Music2 },
-    { label: 'Manage Playlists', desc: 'Create and manage editorial playlists', href: '/dashboard/playlists', icon: ListMusic },
-    { label: 'Manage Users', desc: 'View and manage user accounts', href: '/dashboard/users', icon: Users },
   ];
 
   return (

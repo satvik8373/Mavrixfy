@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { collection, getDocs, query, orderBy, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase-client';
-import { Music2, Plus, Search, Edit, Trash2, Play, Pause, Loader2, X, Check, RefreshCw, Database, Globe, Upload } from 'lucide-react';
+import { Music2, Music, ListMusic, Plus, Search, Edit, Trash2, Play, Pause, Loader2, X, Check, RefreshCw, Database, Globe, Upload } from 'lucide-react';
 
 const ADMIN_SEARCH_API = '/api/music/search';
 const ADMIN_UPLOAD_API = '/api/music/upload';
@@ -36,6 +36,9 @@ interface Song {
   playbackType?: 'audio';
   externalUrl?: string;
   inFirestore?: boolean;
+  songCount?: number;
+  type?: 'album' | 'song' | 'playlist';
+  saavnId?: string;
 }
 
 interface ApiSong {
@@ -61,6 +64,8 @@ interface ApiSong {
   sourceLabel?: string;
   playbackType?: 'audio';
   externalUrl?: string;
+  songCount?: number | string | null;
+  type?: string;
 }
 
 interface SongForm {
@@ -235,6 +240,7 @@ function normalizeApiSong(s: ApiSong): Song {
     playbackType: s.playbackType || (bestAudio ? 'audio' : undefined),
     externalUrl: s.externalUrl || s.url || '',
     inFirestore: false,
+    saavnId: s.id ? String(s.id) : undefined,
   };
 }
 
@@ -245,15 +251,19 @@ export default function SongsPage() {
 
   // API search
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState<'song' | 'album' | 'playlist'>('song');
   const [apiResults, setApiResults] = useState<Song[]>([]);
   const [apiLoading, setApiLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [searched, setSearched] = useState(false);
   const [apiTotal, setApiTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [importingAlbumId, setImportingAlbumId] = useState<string | null>(null);
+  const [importingPlaylistId, setImportingPlaylistId] = useState<string | null>(null);
 
   // View mode: 'catalog' = firestore, 'search' = api results
   const [viewMode, setViewMode] = useState<'catalog' | 'search'>('catalog');
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
   // Modal
   const [showModal, setShowModal] = useState(false);
@@ -276,6 +286,17 @@ export default function SongsPage() {
   const apiPageRef = useRef(0);
 
   useEffect(() => { fetchFirestoreSongs(); }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearchModal(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -405,7 +426,7 @@ export default function SongsPage() {
   }
 
   // Debounced API search — searches page 0 first, then loads more
-  const searchApi = useCallback(async (q: string, page = 0, append = false) => {
+  const searchApi = useCallback(async (q: string, page = 0, append = false, currentSearchType?: 'song' | 'album' | 'playlist') => {
     if (!q.trim()) {
       setApiResults([]);
       setSearched(false);
@@ -416,17 +437,59 @@ export default function SongsPage() {
     else setApiLoading(true);
     setApiError('');
     setSearched(true);
+    const queryType = currentSearchType || searchType;
     try {
       const res = await fetch(
-        `${ADMIN_SEARCH_API}?query=${encodeURIComponent(q.trim())}&page=${page}&limit=20`
+        `${ADMIN_SEARCH_API}?query=${encodeURIComponent(q.trim())}&page=${page}&limit=20&type=${queryType}`
       );
       if (!res.ok) throw new Error(`API returned ${res.status}`);
       const json = await res.json();
-      const results: ApiSong[] = json?.data?.results || [];
+      const results: any[] = json?.data?.results || [];
       const total: number = json?.data?.total || 0;
       setApiTotal(total);
       apiPageRef.current = page;
-      const normalized = results.map(normalizeApiSong);
+
+      const normalized = results.map(item => {
+        if (item.type === 'playlist') {
+          const playlistTitle = item.title || item.name || '';
+          return {
+            ...item,
+            inFirestore: false,
+            saavnId: item.id ? String(item.id) : undefined,
+            title: playlistTitle,
+            artist: item.artist || 'JioSaavn Playlist',
+            imageUrl: Array.isArray(item.image)
+              ? (getMediaUrl(item.image[item.image.length - 1]) || getMediaUrl(item.image[0]))
+              : (typeof item.image === 'string' ? item.image : item.imageUrl || '')
+          };
+        }
+        if (item.type === 'album') {
+          const albumTitle = item.title || item.name || '';
+          const exists = firestoreSongs.some(
+            fs => fs.album?.toLowerCase() === albumTitle.toLowerCase()
+          );
+          return {
+            ...item,
+            inFirestore: exists,
+            saavnId: item.id ? String(item.id) : undefined,
+            title: albumTitle,
+            artist: item.artists?.primary?.map((a: any) => a.name).join(', ') || item.primaryArtists || item.artist || '',
+            imageUrl: Array.isArray(item.image)
+              ? (getMediaUrl(item.image[item.image.length - 1]) || getMediaUrl(item.image[0]))
+              : (typeof item.image === 'string' ? item.image : item.imageUrl || '')
+          };
+        }
+        const apiSong = normalizeApiSong(item);
+        const exists = firestoreSongs.some(
+          fs => fs.title.toLowerCase() === apiSong.title.toLowerCase() &&
+                fs.artist.toLowerCase() === apiSong.artist.toLowerCase()
+        );
+        return {
+          ...apiSong,
+          inFirestore: exists,
+        };
+      });
+
       if (append) {
         setApiResults(prev => mergeUniqueSongs(prev, normalized));
       } else {
@@ -439,9 +502,9 @@ export default function SongsPage() {
       setApiLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [searchType, firestoreSongs]);
 
-  function handleSearchChange(val: string) {
+  function handleSearchChange(val: string, currentSearchType = searchType) {
     setSearchQuery(val);
     if (val.trim()) {
       setViewMode('search');
@@ -453,7 +516,143 @@ export default function SongsPage() {
       apiPageRef.current = 0;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => searchApi(val, 0, false), 500);
+    debounceRef.current = setTimeout(() => searchApi(val, 0, false, currentSearchType), 500);
+  }
+
+  function handleSearchTypeChange(type: 'song' | 'album' | 'playlist') {
+    setSearchType(type);
+    setApiResults([]);
+    setSearched(false);
+    setApiTotal(0);
+    apiPageRef.current = 0;
+    if (searchQuery.trim()) {
+      setViewMode('search');
+      searchApi(searchQuery, 0, false, type);
+    }
+  }
+
+  async function importAlbumSongs(albumId: string, albumTitle: string) {
+    setImportingAlbumId(albumId);
+    try {
+      const res = await fetch(`/api/music/album?id=${albumId}`);
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      const json = await res.json();
+      if (!json.success || !json.data?.songs) {
+        throw new Error(json.message || 'No songs found in this album');
+      }
+
+      const albumSongs: Song[] = json.data.songs;
+      if (albumSongs.length === 0) {
+        alert('This album has no playable songs with direct audio URLs.');
+        return;
+      }
+
+      let importedCount = 0;
+      const savePromises = albumSongs.map(async (song): Promise<Song | null> => {
+        const alreadyExists = firestoreSongs.some(
+          fs => fs.title.toLowerCase() === song.title.toLowerCase() &&
+                fs.artist.toLowerCase() === song.artist.toLowerCase()
+        );
+        if (alreadyExists) return null;
+
+        const data = {
+          title: song.title,
+          artist: song.artist,
+          album: song.album || albumTitle || null,
+          genre: song.genre || null,
+          duration: song.duration || null,
+          imageUrl: song.imageUrl || null,
+          streamUrl: song.streamUrl || null,
+          audioUrl: song.streamUrl || null,
+          year: song.year || null,
+          releaseDate: song.releaseDate || null,
+          source: 'jiosaavn',
+          sourceLabel: 'jiosaavn',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        const ref = await addDoc(collection(db, 'songs'), data);
+        importedCount++;
+        return { ...song, id: ref.id, inFirestore: true };
+      });
+
+      const savedSongs = await Promise.all(savePromises);
+      const validSaved = savedSongs.filter((s): s is Song => s !== null);
+
+      if (validSaved.length > 0) {
+        setFirestoreSongs(prev => [...validSaved, ...prev]);
+      }
+
+      alert(`Successfully imported ${importedCount} new songs from the album "${albumTitle}"!`);
+      setApiResults(prev => prev.map(item => item.saavnId === albumId ? { ...item, inFirestore: true } : item));
+    } catch (err: any) {
+      alert('Failed to import album: ' + err.message);
+    } finally {
+      setImportingAlbumId(null);
+    }
+  }
+
+  async function importPlaylistSongs(playlistId: string, playlistTitle: string) {
+    setImportingPlaylistId(playlistId);
+    try {
+      const res = await fetch(`/api/music/playlist?id=${playlistId}`);
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      const json = await res.json();
+      if (!json.success || !json.data?.songs) {
+        throw new Error(json.message || 'No songs found in this playlist');
+      }
+
+      const playlistSongs: Song[] = json.data.songs;
+      if (playlistSongs.length === 0) {
+        alert('This playlist has no playable songs with direct audio URLs.');
+        return;
+      }
+
+      let importedCount = 0;
+      const savePromises = playlistSongs.map(async (song): Promise<Song | null> => {
+        const alreadyExists = firestoreSongs.some(
+          fs => fs.title.toLowerCase() === song.title.toLowerCase() &&
+                fs.artist.toLowerCase() === song.artist.toLowerCase()
+        );
+        if (alreadyExists) return null;
+
+        const data = {
+          title: song.title,
+          artist: song.artist,
+          album: song.album || null,
+          genre: song.genre || null,
+          duration: song.duration || null,
+          imageUrl: song.imageUrl || null,
+          streamUrl: song.streamUrl || null,
+          audioUrl: song.streamUrl || null,
+          year: song.year || null,
+          releaseDate: song.releaseDate || null,
+          source: 'jiosaavn',
+          sourceLabel: 'jiosaavn',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        const ref = await addDoc(collection(db, 'songs'), data);
+        importedCount++;
+        return { ...song, id: ref.id, inFirestore: true };
+      });
+
+      const savedSongs = await Promise.all(savePromises);
+      const validSaved = savedSongs.filter((s): s is Song => s !== null);
+
+      if (validSaved.length > 0) {
+        setFirestoreSongs(prev => [...validSaved, ...prev]);
+      }
+
+      alert(`Successfully imported ${importedCount} new songs from the playlist "${playlistTitle}"!`);
+      setApiResults(prev => prev.map(item => item.saavnId === playlistId ? { ...item, inFirestore: true } : item));
+    } catch (err: any) {
+      alert('Failed to import playlist: ' + err.message);
+    } finally {
+      setImportingPlaylistId(null);
+    }
   }
 
   // Save an API song directly into Firestore catalog
@@ -622,110 +821,55 @@ export default function SongsPage() {
         </div>
       </div>
 
-      {/* Search bar */}
+      {/* Search trigger bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+        <button
+          type="button"
+          onClick={() => setShowSearchModal(true)}
+          className="input-field pl-10 pr-10 text-left text-gray-400 hover:text-gray-500 hover:border-gray-300 w-full flex items-center justify-between"
+        >
+          <span>Search and Import full songs/albums from JioSaavn...</span>
+          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-bold text-gray-400 bg-gray-100 border border-gray-200 rounded shadow-sm">
+            Ctrl + K
+          </kbd>
+        </button>
+      </div>
+
+      {/* Catalog filter */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
-          placeholder="Search full songs via JioSaavn mirrors (newest first)..."
-          value={searchQuery}
-          onChange={e => handleSearchChange(e.target.value)}
+          placeholder={`Filter ${firestoreSongs.length} catalog songs...`}
+          value={catalogFilter}
+          onChange={e => setCatalogFilter(e.target.value)}
           className="input-field pl-10 pr-10"
+          disabled={fsLoading}
         />
-        {searchQuery && (
-          <button type="button" onClick={() => {
-            setSearchQuery(''); setViewMode('catalog');
-            setApiResults([]); setSearched(false);
-            setApiTotal(0); apiPageRef.current = 0;
-          }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+        {catalogFilter && (
+          <button type="button" onClick={() => setCatalogFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             <X className="size-4" />
           </button>
         )}
       </div>
 
-      {/* Tab bar */}
-      <div className="flex w-full overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-1 sm:w-fit">
-        <button type="button"
-          onClick={() => { setViewMode('catalog'); setSearchQuery(''); setApiResults([]); setSearched(false); }}
-          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-            viewMode === 'catalog' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <Database className="size-4" />
-          Catalog ({firestoreSongs.length})
-        </button>
-        <button type="button"
-          onClick={() => { setViewMode('search'); if (searchQuery) searchApi(searchQuery, 0, false); }}
-          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-            viewMode === 'search' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          <Globe className="size-4" />
-          Search Results {searched && !apiLoading ? `(${apiResults.length}${apiTotal > apiResults.length ? `/${apiTotal}` : ''})` : ''}
-        </button>
-      </div>
-
-      {/* Catalog filter (only in catalog mode) */}
-      {viewMode === 'catalog' && (
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder={`Filter ${firestoreSongs.length} catalog songs...`}
-            value={catalogFilter}
-            onChange={e => setCatalogFilter(e.target.value)}
-            className="input-field pl-10 pr-10"
-            disabled={fsLoading}
-          />
-          {catalogFilter && (
-            <button type="button" onClick={() => setCatalogFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X className="size-4" />
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Table */}
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        {isLoading ? (
+        {fsLoading ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16">
             <Loader2 className="size-6 animate-spin text-blue-600" />
-            <p className="text-sm text-gray-500">
-              {viewMode === 'search' ? `Searching for "${searchQuery}"...` : 'Loading catalog...'}
-            </p>
+            <p className="text-sm text-gray-500">Loading catalog...</p>
           </div>
-        ) : viewMode === 'search' && !searched ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search className="size-10 text-gray-300" />
-            <p className="mt-3 text-sm font-medium text-gray-900">Search for songs</p>
-            <p className="mt-1 text-xs text-gray-500">Type in the search bar above to find full songs from the connected JioSaavn sources</p>
-          </div>
-        ) : apiError && viewMode === 'search' ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <X className="size-10 text-red-300" />
-            <p className="mt-3 text-sm font-medium text-gray-900">Search failed</p>
-            <p className="mt-1 text-xs text-gray-500">{apiError}</p>
-          </div>
-        ) : displaySongs.length === 0 ? (
+        ) : filteredCatalog.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Music2 className="size-10 text-gray-300" />
             <p className="mt-3 text-sm font-medium text-gray-900">
-              {viewMode === 'search' ? `No results for "${searchQuery}"` : 'No songs in catalog yet'}
+              {catalogFilter ? 'No matching songs found' : 'No songs in catalog yet'}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {viewMode === 'catalog' ? 'Click "Add Song" to upload an MP3 or search to import from music APIs' : 'This song may not be available in the connected full-song APIs'}
+              {catalogFilter ? 'Try adjusting your filter query' : 'Click "Add Song" or search above to import songs'}
             </p>
-            {viewMode === 'search' && (
-                <button type="button"
-                  onClick={() => {
-                    openCreateModal(searchQuery);
-                  }}
-                  className="btn-primary mt-4 flex items-center gap-2"
-                >
-                  <Plus className="size-4" /> Upload "{searchQuery}" manually
-                </button>
-            )}
           </div>
         ) : (
           <>
@@ -743,7 +887,7 @@ export default function SongsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {displaySongs.map(song => (
+                {filteredCatalog.map(song => (
                   <tr key={song.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -793,36 +937,14 @@ export default function SongsPage() {
                             )}
                           </button>
                         )}
-                        {/* API song: show "Add to Catalog" button */}
-                        {viewMode === 'search' && !song.inFirestore && song.streamUrl && (
-                          <button type="button"
-                            onClick={() => saveApiSongToFirestore(song)}
-                            disabled={savingApiId === song.id}
-                            className="flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100 disabled:opacity-50"
-                            title="Add to catalog"
-                          >
-                            {savingApiId === song.id ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
-                            Add
-                          </button>
-                        )}
-                        {viewMode === 'search' && song.inFirestore && (
-                          <span className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-400">
-                            In catalog
-                          </span>
-                        )}
-                        {/* Catalog song: edit + delete */}
-                        {viewMode === 'catalog' && (
-                          <>
-                            <button type="button" onClick={() => openEdit(song)}
-                              className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Edit">
-                              <Edit className="size-4" />
-                            </button>
-                            <button type="button" onClick={() => handleDelete(song.id)}
-                              className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700" title="Delete">
-                              <Trash2 className="size-4" />
-                            </button>
-                          </>
-                        )}
+                        <button type="button" onClick={() => openEdit(song)}
+                          className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Edit">
+                          <Edit className="size-4" />
+                        </button>
+                        <button type="button" onClick={() => handleDelete(song.id)}
+                          className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700" title="Delete">
+                          <Trash2 className="size-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -831,40 +953,8 @@ export default function SongsPage() {
             </table>
             </div>
             <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-500">
-              {viewMode === 'search'
-                ? `${apiResults.length} newest-first direct-play results for "${searchQuery}"`
-                : `${filteredCatalog.length} of ${firestoreSongs.length} songs${catalogFilter ? ` matching "${catalogFilter}"` : ''}`
-              }
+              {`${filteredCatalog.length} of ${firestoreSongs.length} songs${catalogFilter ? ` matching "${catalogFilter}"` : ''}`}
             </div>
-            {/* Load more for search results */}
-            {viewMode === 'search' && apiResults.length < apiTotal && (
-              <div className="border-t border-gray-100 px-4 py-3 text-center">
-                <button type="button"
-                  onClick={() => searchApi(searchQuery, apiPageRef.current + 1, true)}
-                  disabled={loadingMore}
-                  className="btn-secondary flex items-center gap-2 mx-auto text-sm"
-                >
-                  {loadingMore ? <Loader2 className="size-4 animate-spin" /> : null}
-                  Load more ({apiResults.length} of {apiTotal})
-                </button>
-              </div>
-            )}
-            {/* Not found hint */}
-            {viewMode === 'search' && searched && !apiLoading && (
-              <div className="border-t border-gray-100 bg-blue-50 px-4 py-3">
-                <p className="text-xs text-blue-700">
-                  Can't find the song? It may not be available in the connected full-song APIs.{' '}
-                  <button type="button"
-                    onClick={() => {
-                      openCreateModal(searchQuery);
-                    }}
-                    className="font-semibold underline hover:no-underline"
-                  >
-                    Upload "{searchQuery}" manually
-                  </button>
-                </p>
-              </div>
-            )}
           </>
         )}
       </div>
@@ -988,6 +1078,311 @@ export default function SongsPage() {
                 {saving ? (uploadingAudio ? 'Uploading MP3...' : (editId ? 'Saving Changes...' : 'Adding Song...')) : (editId ? 'Save Changes' : 'Add Song')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Big Search Modal Popup */}
+      {showSearchModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+          onKeyDown={e => { if (e.key === 'Escape') setShowSearchModal(false); }}
+        >
+          {/* Backdrop Click */}
+          <button type="button" aria-label="Close search" className="fixed inset-0 cursor-default" onClick={() => setShowSearchModal(false)} />
+
+          {/* Modal Panel */}
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+            style={{ height: 'min(90vh, 760px)' }}>
+
+            {/* ── Search Header ── */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 bg-white">
+              <Search className="size-5 text-blue-500 flex-shrink-0" />
+              <input
+                type="text"
+                id="search-modal-input"
+                placeholder={searchType === 'song' ? 'Search songs, artists...' : searchType === 'album' ? 'Search albums, movies...' : 'Search playlists...'}
+                value={searchQuery}
+                onChange={e => handleSearchChange(e.target.value)}
+                autoFocus
+                className="flex-1 bg-transparent text-base font-medium text-gray-900 outline-none placeholder-gray-400 min-w-0"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setApiResults([]); setSearched(false); setApiTotal(0); }}
+                  className="rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowSearchModal(false)}
+                className="ml-1 flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-gray-600 transition-colors border border-gray-200"
+                aria-label="Close"
+              >
+                <X className="size-3.5" /> Esc
+              </button>
+            </div>
+
+            {/* ── Type Tabs ── */}
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <span className="text-xs font-semibold text-gray-400 mr-1 uppercase tracking-wide">Search:</span>
+              <button
+                type="button"
+                onClick={() => handleSearchTypeChange('song')}
+                className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-all border ${
+                  searchType === 'song'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                }`}
+              >
+                <Music2 className="size-3.5" /> Songs
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSearchTypeChange('album')}
+                className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-all border ${
+                  searchType === 'album'
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                }`}
+              >
+                <Database className="size-3.5" /> Albums & Movies
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSearchTypeChange('playlist')}
+                className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-all border ${
+                  searchType === 'playlist'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                }`}
+              >
+                <ListMusic className="size-3.5" /> Playlists
+              </button>
+              {searched && !apiLoading && (
+                <span className="ml-auto text-xs text-gray-400 font-medium">
+                  {apiResults.length}{apiTotal > apiResults.length ? ` / ${apiTotal}` : ''} result{apiResults.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+
+            {/* ── Results List ── */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Loading */}
+              {apiLoading && apiResults.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 py-20">
+                  <Loader2 className="size-10 animate-spin text-blue-500" />
+                  <p className="text-sm text-gray-500 font-medium">Searching JioSaavn...</p>
+                </div>
+
+
+              ) : apiError ? (
+                <div className="flex flex-col items-center justify-center h-full py-20 text-center">
+                  <div className="size-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                    <X className="size-8 text-red-400" />
+                  </div>
+                  <p className="text-base font-semibold text-gray-900">Search failed</p>
+                  <p className="text-sm text-gray-500 mt-1 max-w-xs">{apiError}</p>
+                </div>
+
+
+              ) : !searched ? (
+                <div className="flex flex-col items-center justify-center h-full py-20 text-center px-8">
+                  <div className="size-20 rounded-full bg-blue-50 flex items-center justify-center mb-5">
+                    <Search className="size-9 text-blue-400" />
+                  </div>
+                  <p className="text-lg font-bold text-gray-900">Find & Import Music</p>
+                  <p className="text-sm text-gray-500 mt-2 max-w-sm leading-relaxed">
+                    Search for any song or album from JioSaavn and import it directly into your catalog with one click.
+                  </p>
+                  <div className="mt-5 flex flex-col gap-1.5 text-xs text-gray-400">
+                    <p>🎵 <strong>Songs tab</strong> — import individual tracks</p>
+                    <p>💿 <strong>Albums & Movies tab</strong> — import entire albums at once</p>
+                  </div>
+                </div>
+
+
+              ) : apiResults.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full py-20 text-center px-8">
+                  <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                    <Music2 className="size-8 text-gray-400" />
+                  </div>
+                  <p className="text-base font-semibold text-gray-900">No results for "{searchQuery}"</p>
+                  <p className="text-sm text-gray-500 mt-1">Check the spelling or try a different search term.</p>
+                </div>
+
+
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {apiResults.map(song => (
+                    <div
+                      key={song.id}
+                      className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
+                    >
+                      {/* Artwork */}
+                      <div className="relative size-[72px] flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm group/art">
+                        {song.imageUrl ? (
+                          <img
+                            src={song.imageUrl}
+                            alt={song.title}
+                            className="size-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="flex size-full items-center justify-center">
+                            <Music2 className="size-7 text-gray-300" />
+                          </div>
+                        )}
+                        {/* Play overlay — songs only */}
+                        {song.type !== 'album' && song.type !== 'playlist' && song.streamUrl && (
+                          <button
+                            type="button"
+                            onClick={() => handlePlaySong(song)}
+                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/art:opacity-100 transition-opacity rounded-xl"
+                            title={activeSongId === song.id && isAudioPlaying ? 'Pause' : 'Play preview'}
+                          >
+                            {activeSongId === song.id && isAudioPlaying
+                              ? <Pause className="size-7 text-white drop-shadow" />
+                              : <Play className="size-7 text-white drop-shadow" fill="currentColor" />
+                            }
+                          </button>
+                        )}
+                        {/* Album icon badge */}
+                        {song.type === 'album' && (
+                          <div className="absolute bottom-1 right-1 rounded bg-purple-600 px-1 py-0.5">
+                            <Database className="size-2.5 text-white" />
+                          </div>
+                        )}
+                        {/* Playlist icon badge */}
+                        {song.type === 'playlist' && (
+                          <div className="absolute bottom-1 right-1 rounded bg-indigo-600 px-1 py-0.5">
+                            <ListMusic className="size-2.5 text-white" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold text-gray-900 truncate leading-tight" title={song.title}>
+                          {song.title}
+                        </p>
+                        <p className="text-sm text-gray-500 truncate mt-0.5">{song.artist || '—'}</p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {song.type === 'playlist' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700">
+                              <ListMusic className="size-2.5" /> Playlist
+                            </span>
+                          ) : song.type === 'album' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-700">
+                              <Database className="size-2.5" /> Album
+                            </span>
+                          ) : (
+                            song.album && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600 max-w-[160px] truncate">
+                                {song.album}
+                              </span>
+                            )
+                          )}
+                          {song.year && (
+                            <span className="text-[11px] text-gray-400 font-medium">{song.year}</span>
+                          )}
+                          {activeSongId === song.id && isAudioPlaying && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-100 text-orange-600">
+                              <span className="size-1.5 rounded-full bg-orange-500 animate-pulse inline-block" /> Playing
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action */}
+                      <div className="flex-shrink-0 ml-2">
+                        {song.type === 'playlist' ? (
+                          importingPlaylistId === song.saavnId ? (
+                            <span className="inline-flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-500 border border-gray-200 min-w-[130px] justify-center">
+                              <Loader2 className="size-4 animate-spin text-blue-500" /> Importing…
+                            </span>
+                          ) : song.inFirestore ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-400 min-w-[130px] justify-center">
+                              <Check className="size-4 text-green-500" /> Imported
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => importPlaylistSongs(song.saavnId || '', song.title)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 border border-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 hover:border-indigo-700 shadow transition-all min-w-[130px] justify-center"
+                            >
+                              <Plus className="size-4" /> Import Playlist
+                            </button>
+                          )
+                        ) : song.type === 'album' ? (
+                          importingAlbumId === song.saavnId ? (
+                            <span className="inline-flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-500 border border-gray-200 min-w-[130px] justify-center">
+                              <Loader2 className="size-4 animate-spin text-blue-500" /> Importing…
+                            </span>
+                          ) : song.inFirestore ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-400 min-w-[130px] justify-center">
+                              <Check className="size-4 text-green-500" /> Imported
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => importAlbumSongs(song.saavnId || '', song.title)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 border border-purple-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-purple-700 hover:border-purple-700 shadow transition-all min-w-[130px] justify-center"
+                            >
+                              <Plus className="size-4" /> Import Album
+                            </button>
+                          )
+                        ) : (
+                          song.inFirestore ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-400 min-w-[120px] justify-center">
+                              <Check className="size-4 text-green-500" /> In Catalog
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => saveApiSongToFirestore(song)}
+                              disabled={savingApiId === song.id}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 border border-green-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-green-700 hover:border-green-700 disabled:opacity-50 shadow transition-all min-w-[120px] justify-center"
+                            >
+                              {savingApiId === song.id
+                                ? <Loader2 className="size-4 animate-spin" />
+                                : <Plus className="size-4" />
+                              }
+                              Import Song
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Sticky Footer ── */}
+            {searched && apiResults.length > 0 && (
+              <div className="border-t border-gray-100 bg-gray-50 px-5 py-3 flex items-center justify-between">
+                <p className="text-xs text-gray-400">
+                  Showing <strong className="text-gray-600">{apiResults.length}</strong>
+                  {apiTotal > apiResults.length && <> of <strong className="text-gray-600">{apiTotal}</strong></>} results
+                </p>
+                {apiResults.length < apiTotal && (
+                  <button
+                    type="button"
+                    onClick={() => searchApi(searchQuery, apiPageRef.current + 1, true)}
+                    disabled={loadingMore}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-all shadow-sm"
+                  >
+                    {loadingMore ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                    Load more
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

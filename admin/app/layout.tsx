@@ -30,6 +30,9 @@ export const metadata: Metadata = {
     shortcut: '/admin-mark.svg',
     apple: '/admin-apple-touch-icon.png',
   },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 };
 
 export const viewport: Viewport = {
@@ -47,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={inter.className}>
         <PwaRegister />
         {children}

@@ -13,6 +13,7 @@ import ProfileDropdown from '@/components/ProfileDropdown';
 import { PingPongScroll } from '@/components/PingPongScroll';
 import { useAudioOutputDevice } from '@/hooks/useAudioOutputDevice';
 import type { AudioOutputDeviceType } from '@/lib/audioOutputDevice';
+import { PLAY_STORE_URL } from '@/config/appLinks';
 
 const SongDetailsView = lazy(() => import('@/components/SongDetailsView'));
 const QueueDrawer = lazy(() => import('@/components/QueueDrawer'));
@@ -81,6 +82,35 @@ const NAV_ITEMS: NavItem[] = [
 
 const LEFT_NAV_ITEMS = NAV_ITEMS.filter((item) => item.position === 'left');
 const RIGHT_NAV_ITEMS = NAV_ITEMS.filter((item) => item.position === 'right');
+
+const MobilePlayStoreLink = () => (
+  <a
+    href={PLAY_STORE_URL}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="w-7 h-7 rounded-full bg-emerald-400/10 border border-emerald-400/30 flex items-center justify-center text-emerald-300 transition-colors hover:bg-emerald-400/20"
+    aria-label="Open Mavrixfy Android app on Google Play"
+    title="Android app available on Google Play"
+  >
+    <Smartphone className="h-4 w-4" />
+  </a>
+);
+
+const getDropdownPosition = () => {
+  if (typeof window === 'undefined') return 'right-0';
+  return window.innerWidth < 400 ? 'left-0' : 'right-0';
+};
+
+const getDropdownStyles = () => {
+  const position = getDropdownPosition();
+  return {
+    className: `absolute top-full mt-1 w-36 bg-popover/95 backdrop-blur-sm rounded-md shadow-xl overflow-hidden z-50 border border-border ${position}`,
+    style: {
+      minWidth: '144px',
+      maxWidth: '320px',
+    }
+  };
+};
 
 const MobileProgressBar = React.memo(() => {
   const { currentTime, duration } = usePlayerStore(
@@ -212,6 +242,7 @@ const MobileTopHeader = ({  routeState: { showMobileTopHeader, isLikedRoute, isL
             <h2 className="text-sm font-semibold text-foreground">Your Library</h2>
           </div>
           <div className="flex items-center gap-2">
+            <MobilePlayStoreLink />
           </div>
         </div>
       ) : isSearchRoute ? (
@@ -257,7 +288,9 @@ const MobileTopHeader = ({  routeState: { showMobileTopHeader, isLikedRoute, isL
             )}
             <h2 className="text-sm font-semibold text-foreground">Search</h2>
           </div>
-          <div className="flex items-center gap-2" />
+          <div className="flex items-center gap-2">
+            <MobilePlayStoreLink />
+          </div>
         </div>
       ) : (
         <div className="flex items-center justify-between px-4 h-10">
@@ -302,6 +335,7 @@ const MobileTopHeader = ({  routeState: { showMobileTopHeader, isLikedRoute, isL
             )}
           </div>
           <div className="flex items-center gap-2">
+            <MobilePlayStoreLink />
             <button type="button"
               onClick={onWhatsNewOpen}
               className="w-7 h-7 rounded-full hover:bg-[#1f1f1f] flex items-center justify-center transition-colors"
@@ -372,12 +406,11 @@ const BottomPlayerNav = ({
               {/* Player Content */}
               <div className="relative px-3 flex items-center justify-between w-full h-[48px]">
                 {/* Left: Album Art + Song Info */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
-                  className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer touch-manipulation"
+                <button
+                  type="button"
+                  className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer touch-manipulation appearance-none border-0 bg-transparent p-0 text-left"
                   onClick={onSongTap}
+                  aria-label={`Open details for ${currentSong.title}`}
                 >
                   <div className="h-full w-[42px] -ml-3 flex-shrink-0 overflow-hidden rounded-none shadow-none">
                     <img
@@ -406,7 +439,7 @@ const BottomPlayerNav = ({
                       />
                     </div>
                   </div>
-                </div>
+                </button>
 
                 {/* Right: Controls */}
                 <div className="flex items-center gap-1" style={{ color: albumColors.text || '#ffffff', transition: 'color 300ms ease' }}>
@@ -622,35 +655,6 @@ const MobileNav = () => {
     e.stopPropagation();
     setState(prev => ({ ...prev, showProfileMenu: !prev.showProfileMenu }));
   };
-
-  // Calculate dropdown position to stay within viewport
-  const getDropdownPosition = () => {
-    if (typeof window === 'undefined') return 'right-0';
-
-    // Check if we're near the right edge of the screen
-    const viewportWidth = window.innerWidth;
-
-    // If we're within 160px of the right edge, position dropdown to the left
-    if (viewportWidth < 400) {
-      return 'left-0';
-    }
-
-    return 'right-0';
-  };
-
-  // Get dropdown container styles
-  const getDropdownStyles = () => {
-    const position = getDropdownPosition();
-    return {
-      className: `absolute top-full mt-1 w-36 bg-popover/95 backdrop-blur-sm rounded-md shadow-xl overflow-hidden z-50 border border-border ${position}`,
-      style: {
-        minWidth: '144px',
-        maxWidth: '320px',
-      }
-    };
-  };
-
-
 
   return (
     <>

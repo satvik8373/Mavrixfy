@@ -48,15 +48,6 @@ export default function NotificationsPage() {
     if (!form.title.trim() || !form.message.trim()) { setError('Title and message are required.'); return; }
     setSaving(true); setError(''); setSendResult(null);
     try {
-      const data = {
-        title: form.title.trim(),
-        message: form.message.trim(),
-        platform: form.platform,
-        sentAt: serverTimestamp(),
-        delivered: 0, opened: 0, status: 'sending',
-      };
-      const ref = await addDoc(collection(db, 'notifications'), data);
-
       const res = await fetch('/api/notifications/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,13 +55,23 @@ export default function NotificationsPage() {
           title: form.title.trim(),
           message: form.message.trim(),
           platform: form.platform,
-          notificationId: ref.id,
         }),
       });
       const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to send.');
       setSendResult(result);
 
-      setNotifications(prev => [{ id: ref.id, ...data, delivered: result.delivered || 0 } as any, ...prev]);
+      const localNotification = {
+        title: form.title.trim(),
+        message: form.message.trim(),
+        platform: form.platform,
+        sentAt: { toDate: () => new Date() },
+        delivered: result.delivered || 0,
+        opened: 0,
+        status: 'sent',
+      };
+
+      setNotifications(prev => [{ id: result.id, ...localNotification } as any, ...prev]);
       setStats(s => ({ ...s, sentToday: s.sentToday + 1, totalDelivered: s.totalDelivered + (result.delivered || 0) }));
       setForm(EMPTY_FORM);
     } catch (e: any) { setError(e.message || 'Failed to send.'); }

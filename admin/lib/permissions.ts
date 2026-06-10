@@ -6,6 +6,7 @@ export type AdminPermission =
   | 'playlists.manage'
   | 'artists.manage'
   | 'discovery.manage'
+  | 'home_video.manage'
   | 'moderation.manage'
   | 'users.manage'
   | 'analytics.view'
@@ -21,6 +22,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'playlists.manage',
     'artists.manage',
     'discovery.manage',
+    'home_video.manage',
     'moderation.manage',
     'users.manage',
     'analytics.view',
@@ -34,6 +36,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'catalog.manage',
     'playlists.manage',
     'artists.manage',
+    'home_video.manage',
     'analytics.view',
   ],
   moderator: [
@@ -74,6 +77,7 @@ export function getPermissionLabel(permission: AdminPermission): string {
     'playlists.manage': 'Manage Playlists',
     'artists.manage': 'Manage Artists',
     'discovery.manage': 'Manage Discovery',
+    'home_video.manage': 'Manage Home Video',
     'moderation.manage': 'Manage Moderation',
     'users.manage': 'Manage Users',
     'analytics.view': 'View Analytics',

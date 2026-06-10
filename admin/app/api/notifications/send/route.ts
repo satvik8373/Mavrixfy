@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 
 function getAdminApp(): App {
@@ -153,6 +153,20 @@ export async function POST(req: NextRequest) {
 
     const targetPlatform: string = platform || 'all';
 
+    let finalNotificationId = notificationId;
+    if (!finalNotificationId) {
+      const docRef = await db.collection('notifications').add({
+        title,
+        message,
+        platform: targetPlatform,
+        sentAt: FieldValue.serverTimestamp(),
+        delivered: 0,
+        opened: 0,
+        status: 'sending',
+      });
+      finalNotificationId = docRef.id;
+    }
+
     // Collect all tokens grouped by type
     const usersSnap = await db.collection('users').get();
     const expoTokens: string[]   = []; // Expo push tokens → Android + iOS
@@ -259,8 +273,8 @@ export async function POST(req: NextRequest) {
     const totalDelivered = expoResult.delivered + webResult.delivered + androidResult.delivered;
     const totalTokens = expoTokens.length + webTokens.length + androidFcmTokens.length;
 
-    if (notificationId) {
-      await db.collection('notifications').doc(notificationId).update({
+    if (finalNotificationId) {
+      await db.collection('notifications').doc(finalNotificationId).update({
         delivered: totalDelivered,
         status: 'sent',
         breakdown: {
@@ -272,6 +286,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
+      id: finalNotificationId,
       delivered: totalDelivered,
       total: totalTokens,
       breakdown: {
