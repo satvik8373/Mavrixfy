@@ -38,6 +38,7 @@ import musicRoutes from "./routes/music.route.js";
 import playlistRoutes from "./routes/playlist.route.js";
 import moodPlaylistRoutes from "./routes/moodPlaylist.route.js";
 import uploadRoutes from "./routes/upload.route.js";
+import youtubeMusicRoutes from "./routes/youtubeMusic.route.js";
 
 import likedSongRoutes from "./routes/likedSong.route.js";
 import cloudinaryRoutes from "./routes/cloudinary.route.js";
@@ -190,6 +191,7 @@ app.use("/api/songs", songRoutes);
 app.use("/api/albums", albumRoutes);
 app.use("/api/stats", statRoutes);
 app.use("/api/music", musicRoutes);
+app.use("/api/youtube-music", youtubeMusicRoutes);
 app.use("/api/playlists", moodPlaylistRoutes);
 app.use("/api/playlists", playlistRoutes);
 app.use("/api/upload", uploadRoutes);

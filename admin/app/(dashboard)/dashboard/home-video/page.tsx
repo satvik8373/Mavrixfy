@@ -48,6 +48,7 @@ interface HomeHeroVideoItem {
   title: string;
   videoUrl: string;
   posterUrl: string;
+  adUnitId?: string;
   linkUrl: string;
   songId: string;
   song: CatalogSong | null;
@@ -75,6 +76,7 @@ interface HomeHeroConfig {
   title: string;
   videoUrl: string;
   posterUrl: string;
+  adUnitId?: string;
   items: HomeHeroVideoItem[];
 }
 
@@ -86,6 +88,7 @@ const DEFAULT_VIDEO_ITEM: HomeHeroVideoItem = {
     'https://res.cloudinary.com/djqq8kba8/video/upload/f_mp4,vc_h264,c_crop,g_center,w_1440,h_810/c_fill,w_1080,h_608,q_auto:good/v1780900137/Cocktail_2_Official_Trailer___Shahid_Kapoor_Kriti_Sanon_Rashmika_Mandanna___In_Cinemas_19th_June_1440p_dwlaum.mp4',
   posterUrl:
     'https://res.cloudinary.com/djqq8kba8/video/upload/so_2,c_crop,g_center,w_1440,h_810/c_fill,w_1080,h_608,q_auto,f_jpg/v1780900137/Cocktail_2_Official_Trailer___Shahid_Kapoor_Kriti_Sanon_Rashmika_Mandanna___In_Cinemas_19th_June_1440p_dwlaum.jpg',
+  adUnitId: '',
   linkUrl: '',
   songId: '',
   song: null,
@@ -99,6 +102,7 @@ const DEFAULT_HOME_HERO_CONFIG: HomeHeroConfig = {
   title: DEFAULT_VIDEO_ITEM.title,
   videoUrl: DEFAULT_VIDEO_ITEM.videoUrl,
   posterUrl: DEFAULT_VIDEO_ITEM.posterUrl,
+  adUnitId: DEFAULT_VIDEO_ITEM.adUnitId,
   items: [DEFAULT_VIDEO_ITEM],
 };
 
@@ -147,7 +151,8 @@ function normalizeLinkedSong(value: unknown): CatalogSong | null {
 function normalizeVideoItem(value: unknown, index: number): HomeHeroVideoItem | null {
   const record = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const videoUrl = trimString(record.videoUrl);
-  if (!videoUrl) return null;
+  const adUnitId = trimString(record.adUnitId);
+  if (!videoUrl && !adUnitId) return null;
 
   const song = normalizeLinkedSong(record.song);
 
@@ -177,6 +182,7 @@ function normalizeVideoItem(value: unknown, index: number): HomeHeroVideoItem | 
     title: trimString(record.title) || DEFAULT_VIDEO_ITEM.title,
     videoUrl,
     posterUrl: trimString(record.posterUrl),
+    adUnitId,
     linkUrl: trimString(record.linkUrl),
     songId: trimString(record.songId) || song?.id || '',
     song,
@@ -193,6 +199,7 @@ function normalizeConfig(data: Partial<HomeHeroConfig> | undefined): HomeHeroCon
     title: trimString(record.title) || DEFAULT_VIDEO_ITEM.title,
     videoUrl: trimString(record.videoUrl) || DEFAULT_VIDEO_ITEM.videoUrl,
     posterUrl: trimString(record.posterUrl) || DEFAULT_VIDEO_ITEM.posterUrl,
+    adUnitId: trimString(record.adUnitId),
   };
   const items = Array.isArray(record.items)
     ? record.items
@@ -207,6 +214,7 @@ function normalizeConfig(data: Partial<HomeHeroConfig> | undefined): HomeHeroCon
     title: firstVisibleItem.title,
     videoUrl: firstVisibleItem.videoUrl,
     posterUrl: firstVisibleItem.posterUrl,
+    adUnitId: firstVisibleItem.adUnitId || trimString(record.adUnitId),
     items: normalizedItems,
   };
 }
@@ -218,6 +226,7 @@ function createBlankVideoItem(): HomeHeroVideoItem {
     title: 'New showcase',
     videoUrl: '',
     posterUrl: '',
+    adUnitId: '',
     linkUrl: '',
     songId: '',
     song: null,
@@ -239,6 +248,7 @@ function buildSavePayload(config: HomeHeroConfig): HomeHeroConfig {
     title: firstVisibleItem.title,
     videoUrl: firstVisibleItem.videoUrl,
     posterUrl: firstVisibleItem.posterUrl,
+    adUnitId: firstVisibleItem.adUnitId || config.adUnitId || '',
     items: normalizedItems,
   };
 }
@@ -1375,6 +1385,19 @@ export default function HomeVideoPage() {
                             value={item.videoUrl}
                             onChange={(event) => updateItem(item.id, { videoUrl: event.target.value })}
                             placeholder="https://res.cloudinary.com/.../video.mp4"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor={`home-video-ad-${item.id}`} className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                            Native Video Ad Unit ID (Optional)
+                          </label>
+                          <input
+                            id={`home-video-ad-${item.id}`}
+                            className="mt-1.5 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            value={item.adUnitId || ''}
+                            onChange={(event) => updateItem(item.id, { adUnitId: event.target.value })}
+                            placeholder="ca-app-pub-3940256099942544/1044960115"
                           />
                         </div>
 

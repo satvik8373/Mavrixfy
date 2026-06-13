@@ -23,6 +23,7 @@ interface HomeHeroVideoItem {
   title: string;
   videoUrl: string;
   posterUrl: string;
+  adUnitId?: string;
   linkUrl: string;
   songId: string;
   song: CatalogSong | null;
@@ -36,6 +37,7 @@ interface HomeHeroConfig {
   title: string;
   videoUrl: string;
   posterUrl: string;
+  adUnitId?: string;
   items: HomeHeroVideoItem[];
 }
 
@@ -47,6 +49,7 @@ const DEFAULT_VIDEO_ITEM: HomeHeroVideoItem = {
     'https://res.cloudinary.com/djqq8kba8/video/upload/f_mp4,vc_h264,c_crop,g_center,w_1440,h_810/c_fill,w_1080,h_608,q_auto:good/v1780900137/Cocktail_2_Official_Trailer___Shahid_Kapoor_Kriti_Sanon_Rashmika_Mandanna___In_Cinemas_19th_June_1440p_dwlaum.mp4',
   posterUrl:
     'https://res.cloudinary.com/djqq8kba8/video/upload/so_2,c_crop,g_center,w_1440,h_810/c_fill,w_1080,h_608,q_auto,f_jpg/v1780900137/Cocktail_2_Official_Trailer___Shahid_Kapoor_Kriti_Sanon_Rashmika_Mandanna___In_Cinemas_19th_June_1440p_dwlaum.jpg',
+  adUnitId: '',
   linkUrl: '',
   songId: '',
   song: null,
@@ -86,7 +89,8 @@ function normalizeSong(value: unknown): CatalogSong | null {
 function normalizeVideoItem(value: unknown, index: number): HomeHeroVideoItem | null {
   const record = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const videoUrl = trimString(record.videoUrl);
-  if (!videoUrl) return null;
+  const adUnitId = trimString(record.adUnitId);
+  if (!videoUrl && !adUnitId) return null;
 
   const song = normalizeSong(record.song);
 
@@ -96,6 +100,7 @@ function normalizeVideoItem(value: unknown, index: number): HomeHeroVideoItem | 
     title: trimString(record.title) || DEFAULT_VIDEO_ITEM.title,
     videoUrl,
     posterUrl: trimString(record.posterUrl),
+    adUnitId,
     linkUrl: trimString(record.linkUrl),
     songId: trimString(record.songId) || song?.id || '',
     song,
@@ -112,6 +117,7 @@ function normalizeConfig(value: unknown): HomeHeroConfig {
     title: trimString(record.title) || DEFAULT_VIDEO_ITEM.title,
     videoUrl: trimString(record.videoUrl) || DEFAULT_VIDEO_ITEM.videoUrl,
     posterUrl: trimString(record.posterUrl) || DEFAULT_VIDEO_ITEM.posterUrl,
+    adUnitId: trimString(record.adUnitId),
   };
   const configuredItems = Array.isArray(record.items)
     ? record.items
@@ -126,6 +132,7 @@ function normalizeConfig(value: unknown): HomeHeroConfig {
     title: firstVisibleItem.title,
     videoUrl: firstVisibleItem.videoUrl,
     posterUrl: firstVisibleItem.posterUrl,
+    adUnitId: firstVisibleItem.adUnitId || trimString(record.adUnitId),
     items,
   };
 }

@@ -8,7 +8,8 @@ import {
   getHollywoodSongs, 
   getHindiSongs,
   getSongDetails,
-  getAlbumDetails
+  getAlbumDetails,
+  searchAllPlatforms
 } from "../controllers/music.controller.js";
 
 const router = Router();
@@ -18,6 +19,9 @@ const JIOSAAVN_API_BASE_URL = process.env.JIOSAAVN_API_BASE_URL || "https://mavr
 
 // Proxy endpoint for JioSaavn search
 router.get("/search", searchSongs);
+
+// Unified search across JioSaavn and YouTube Music
+router.get("/search/all", searchAllPlatforms);
 
 // Get trending songs
 router.get("/combined/trending", async (req, res) => {
